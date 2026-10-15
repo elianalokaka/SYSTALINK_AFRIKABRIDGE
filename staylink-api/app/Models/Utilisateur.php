@@ -2,14 +2,17 @@
 
 namespace App\Models;
 
+use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 
-class Utilisateur extends Authenticatable
+
+class Utilisateur extends Authenticatable implements MustVerifyEmail
 {
-    use Notifiable;
+    use HasApiTokens, Notifiable;
 
     protected $table = 'utilisateurs';
 
@@ -178,5 +181,18 @@ class Utilisateur extends Authenticatable
             Abonnement::class,
             'suivi_id'
         );
+    }
+
+
+    public function hasVerifiedEmail(): bool
+    {
+        return ! is_null($this->email_verifie_le);
+    }
+
+    public function markEmailAsVerified(): bool
+    {
+        return $this->forceFill([
+            'email_verifie_le' => $this->freshTimestamp(),
+        ])->save();
     }
 }
