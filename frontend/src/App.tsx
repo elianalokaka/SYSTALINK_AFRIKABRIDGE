@@ -1,21 +1,17 @@
+import { Atelier } from './pages/atelier/Atelier'
+
 /**
  * Racine de l'application.
  *
- * Écran volontairement minimal : il sert à vérifier que la chaîne
- * React + TypeScript + Tailwind + tokens fonctionne, avant d'écrire les vrais
- * écrans — qui se construiront composant par composant.
+ * TEMPORAIRE : on affiche l'atelier du design system, qui prouve que les
+ * primitives existent et possèdent tous leurs états.
  *
- * Contrainte du projet : aucune valeur en dur.
- * Ici, tout passe par les tokens définis dans `src/index.css`.
+ * Le routage (react-router) et les vrais écrans arriveront avec le module
+ * `feat/api-et-auth`. À ce moment-là, l'atelier passera derrière une route de
+ * développement au lieu d'être la racine.
  */
 function App() {
-  return (
-    <main className="grid min-h-dvh place-items-center bg-surface-0 px-6">
-      <h1 className="text-center text-2xl font-medium tracking-tight text-fg-1">
-        Bienvenue au projet <span className="text-accent">AfricaBridge</span>
-      </h1>
-    </main>
-  )
+  return <Atelier />
 }
 
 export default App

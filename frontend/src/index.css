@@ -50,6 +50,15 @@
   --color-neutral: #a9a39c; /* termine, archivé */
   --color-neutral-bg: #262523;
 
+  /* ── Typographie ─────────────────────────────────────────────────────────── */
+  /* Poppins est une géométrique : lettres larges, besoin d'un peu plus
+     d'interligne que la moyenne. Ne pas descendre sous text-xs (12px)
+     pour du texte destiné à être lu. */
+  --font-sans: 'Poppins', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* Monospace — décision encore ouverte (JetBrains Mono ou Monaspace).
+     Pile système en attendant : le contrat a besoin de mono pour `contenu_code`. */
+  --font-mono: ui-monospace, 'Cascadia Code', 'Consolas', 'Liberation Mono', monospace;
+
   /* ── Rayons : un seul cran court. JAMAIS de pilule. ──────────────────────── */
   --radius-sm: 4px;
   --radius-md: 6px;
@@ -69,6 +78,8 @@
     margin: 0;
     background-color: var(--color-surface-0);
     color: var(--color-fg-1);
+    font-family: var(--font-sans);
+    line-height: 1.55; /* Poppins demande un interligne plus généreux */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -81,8 +92,8 @@
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
-   EN ATTENTE — Police
-   Décision non tranchée : Mona Sans ou Poppins (et monospace à choisir).
-   Tant qu'elle ne l'est pas, la pile système par défaut est utilisée.
-   Elle s'ajoutera ICI, sous forme de token — jamais dans un composant.
+   Police : Poppins, auto-hébergée.
+   Les fichiers de police sont importés dans `main.tsx`
+   (`@fontsource/poppins/...`) — pas ici, pour que Vite les traite avec le
+   reste du build et les serve depuis notre propre origine.
    ────────────────────────────────────────────────────────────────────────── */
