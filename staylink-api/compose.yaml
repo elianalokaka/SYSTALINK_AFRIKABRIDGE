@@ -11,11 +11,7 @@ services:
       - ./:/var/www/html
       - vendor_data:/var/www/html/vendor
 
-    command: >
-      sh -c "
-        composer install --no-interaction --prefer-dist
-        && exec php-fpm
-      "
+    command: ["sh", "-c", "composer install --no-interaction --prefer-dist && exec php-fpm"]
 
     depends_on:
       postgres:
