@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\V1\Auth\InscriptionController;
 use App\Http\Controllers\Api\V1\Auth\ConnexionController;
 use App\Http\Controllers\Api\V1\Auth\ProfilConnecteController;
 use App\Http\Controllers\Api\V1\Auth\DeconnexionController;
+use App\Http\Controllers\Api\V1\Suivi\NePlusSuivreMembreController;
+use App\Http\Controllers\Api\V1\Suivi\SuivreMembreController;
 
 Route::prefix('v1')->group(function () {
 
@@ -25,6 +27,13 @@ Route::prefix('v1')->group(function () {
 
         Route::post('/auth/logout', DeconnexionController::class)
             ->name('auth.logout');
+        Route::post('/users/{id}/follow', SuivreMembreController::class)
+        ->whereNumber('id')
+        ->name('users.follow');
+
+    Route::delete('/users/{id}/follow', NePlusSuivreMembreController::class)
+        ->whereNumber('id')
+        ->name('users.unfollow');
     });
 
 });

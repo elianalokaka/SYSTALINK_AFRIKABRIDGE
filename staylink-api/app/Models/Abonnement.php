@@ -12,7 +12,10 @@ class Abonnement extends Model
     // La table possède created_at, mais pas updated_at.
     public const UPDATED_AT = null;
 
-    protected $fillable = [];
+    protected $fillable = [
+        'abonne_id',
+        'suivi_id',
+    ];
 
     /**
      * Utilisateur qui suit.
