@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\V1\Projet\DeciderDemandeAdhesionController;
 use App\Http\Controllers\Api\V1\Projet\EnvoyerMessageController;
 use App\Http\Controllers\Api\V1\Projet\LireMessagesController;
 use App\Http\Controllers\Api\V1\Projet\SupprimerMessageController;
+use App\Http\Controllers\Api\V1\Ressource\PublierRessourceController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -75,6 +76,8 @@ Route::prefix('v1')->group(function () {
             ->whereNumber('id')
             ->whereNumber('messageId')
             ->name('projects.messages.destroy');
+        Route::post('/resources', PublierRessourceController::class)
+            ->name('resources.store');
     });
 
 });

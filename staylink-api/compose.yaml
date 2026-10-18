@@ -10,6 +10,7 @@ services:
     volumes:
       - ./:/var/www/html
       - vendor_data:/var/www/html/vendor
+      - ./docker/php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini:ro
 
     command: ["sh", "-c", "composer install --no-interaction --prefer-dist && exec php-fpm"]
 
