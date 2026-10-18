@@ -7,19 +7,21 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-
 class Projet extends Model
 {
     protected $table = 'projets';
 
     protected $fillable = [
-            'createur_id',
-            'nom',
-            'description',
-            'domaine',
-            'objectifs',
-            'nombre_max_membres',
-            'statut',
+        'createur_id',
+        'nom',
+        'description',
+        'domaine',
+        'objectifs',
+        'nombre_max_membres',
+        'statut',
+        'progression',
+        'date_fin',
+        'lien_realisation',
 
     ];
 
@@ -31,6 +33,8 @@ class Projet extends Model
     {
         return [
             'nombre_max_membres' => 'integer',
+            'progression' => 'integer',
+            'date_fin' => 'date',
         ];
     }
 
@@ -62,6 +66,7 @@ class Projet extends Model
     {
         return $this->hasMany(ProjetDomaine::class, 'projet_id');
     }
+
     /**
      * Utilisateurs appartenant à l'équipe du projet.
      */
@@ -111,7 +116,6 @@ class Projet extends Model
             'projet_id'
         );
     }
-
 
     /**
      * Messages de discussion du projet.

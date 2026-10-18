@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\V1\Suivi\SuivreMembreController;
 use App\Http\Controllers\Api\V1\Projet\CreerProjetController;
 use App\Http\Controllers\Api\V1\Projet\DeposerDemandeAdhesionController;
 use App\Http\Controllers\Api\V1\Projet\DeciderDemandeAdhesionController;
+use App\Http\Controllers\Api\V1\Projet\ModifierProjetController;
 use App\Http\Controllers\Api\V1\Projet\EnvoyerMessageController;
 use App\Http\Controllers\Api\V1\Projet\LireMessagesController;
 use App\Http\Controllers\Api\V1\Projet\SupprimerMessageController;
@@ -58,6 +59,9 @@ Route::prefix('v1')->group(function () {
             ->name('users.unfollow');
         Route::post('/projects', CreerProjetController::class)
             ->name('projects.store');
+        Route::patch('/projects/{id}', ModifierProjetController::class)
+            ->whereNumber('id')
+            ->name('projects.update');
         Route::post('/projects/{id}/join-requests', DeposerDemandeAdhesionController::class)
             ->whereNumber('id')
             ->name('projects.join-requests.store');

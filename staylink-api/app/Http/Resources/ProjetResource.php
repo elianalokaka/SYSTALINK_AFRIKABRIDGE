@@ -21,7 +21,7 @@ class ProjetResource extends JsonResource
                 ->values()
                 ->all(),
             'statut' => $this->statut,
-            'progression' => 0,
+            'progression' => $this->progression,
             'nombre_membres_souhaite' => $this->nombre_max_membres,
             'nombre_membres_actuel' => $this->participations()->count(),
             'competences_recherchees' => $this->competences
@@ -41,8 +41,8 @@ class ProjetResource extends JsonResource
                 'pays' => $createur->pays,
                 'role_profil' => null,
             ],
-            'lien_realisation' => null,
-            'date_fin' => null,
+            'lien_realisation' => $this->lien_realisation,
+            'date_fin' => $this->date_fin?->toDateString(),
             'is_member' => true,
             'ma_demande_statut' => null,
             'created_at' => $this->created_at?->toISOString(),
