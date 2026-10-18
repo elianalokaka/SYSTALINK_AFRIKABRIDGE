@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\V1\Profil\VoirProfilController;
 use App\Http\Controllers\Api\V1\Suivi\NePlusSuivreMembreController;
 use App\Http\Controllers\Api\V1\Suivi\SuivreMembreController;
 use App\Http\Controllers\Api\V1\Projet\CreerProjetController;
+use App\Http\Controllers\Api\V1\Projet\DeposerDemandeAdhesionController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -52,6 +53,9 @@ Route::prefix('v1')->group(function () {
             ->name('users.unfollow');
         Route::post('/projects', CreerProjetController::class)
             ->name('projects.store');
+        Route::post('/projects/{id}/join-requests', DeposerDemandeAdhesionController::class)
+            ->whereNumber('id')
+            ->name('projects.join-requests.store');
     });
 
 });
