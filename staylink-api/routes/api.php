@@ -13,6 +13,9 @@ use App\Http\Controllers\Api\V1\Suivi\SuivreMembreController;
 use App\Http\Controllers\Api\V1\Projet\CreerProjetController;
 use App\Http\Controllers\Api\V1\Projet\DeposerDemandeAdhesionController;
 use App\Http\Controllers\Api\V1\Projet\DeciderDemandeAdhesionController;
+use App\Http\Controllers\Api\V1\Projet\EnvoyerMessageController;
+use App\Http\Controllers\Api\V1\Projet\LireMessagesController;
+use App\Http\Controllers\Api\V1\Projet\SupprimerMessageController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -60,6 +63,18 @@ Route::prefix('v1')->group(function () {
         Route::patch('/join-requests/{id}', DeciderDemandeAdhesionController::class)
             ->whereNumber('id')
             ->name('join-requests.update');
+        Route::get('/projects/{id}/messages', LireMessagesController::class)
+            ->whereNumber('id')
+            ->name('projects.messages.index');
+
+        Route::post('/projects/{id}/messages', EnvoyerMessageController::class)
+            ->whereNumber('id')
+            ->name('projects.messages.store');
+
+        Route::delete('/projects/{id}/messages/{messageId}', SupprimerMessageController::class)
+            ->whereNumber('id')
+            ->whereNumber('messageId')
+            ->name('projects.messages.destroy');
     });
 
 });
