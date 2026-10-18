@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\Profil\UploadPhotoProfilController;
 use App\Http\Controllers\Api\V1\Profil\VoirProfilController;
 use App\Http\Controllers\Api\V1\Suivi\NePlusSuivreMembreController;
 use App\Http\Controllers\Api\V1\Suivi\SuivreMembreController;
+use App\Http\Controllers\Api\V1\Projet\CreerProjetController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -49,6 +50,8 @@ Route::prefix('v1')->group(function () {
         Route::delete('/users/{id}/follow', NePlusSuivreMembreController::class)
             ->whereNumber('id')
             ->name('users.unfollow');
+        Route::post('/projects', CreerProjetController::class)
+            ->name('projects.store');
     });
 
 });

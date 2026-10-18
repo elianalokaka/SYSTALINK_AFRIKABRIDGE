@@ -13,15 +13,18 @@ class Projet extends Model
     protected $table = 'projets';
 
     protected $fillable = [
-        'nom',
-        'description',
-        'domaine',
-        'objectifs',
-        'nombre_max_membres',
+            'createur_id',
+            'nom',
+            'description',
+            'domaine',
+            'objectifs',
+            'nombre_max_membres',
+            'statut',
+
     ];
 
     protected $attributes = [
-        'statut' => 'ouvert',
+        'statut' => 'recrutement',
     ];
 
     protected function casts(): array
@@ -55,6 +58,10 @@ class Projet extends Model
         );
     }
 
+    public function domaines(): HasMany
+    {
+        return $this->hasMany(ProjetDomaine::class, 'projet_id');
+    }
     /**
      * Utilisateurs appartenant à l'équipe du projet.
      */

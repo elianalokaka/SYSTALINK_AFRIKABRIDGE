@@ -15,6 +15,7 @@ class MembreProjet extends Model
     protected $fillable = [
         'projet_id',
         'utilisateur_id',
+        'role',
     ];
 
     protected $attributes = [
