@@ -13,6 +13,8 @@ class Candidature extends Model
         'projet_id',
         'candidat_id',
         'message_motivation',
+        'statut',
+        'date_decision',
     ];
 
     protected $attributes = [
