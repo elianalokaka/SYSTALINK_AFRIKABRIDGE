@@ -1,0 +1,101 @@
+PHASE 1 : Socle, Authentification et Profils (J1 - J4)
+Objectif : Sécuriser les accès (Sanctum SPA), valider le modèle de données utilisateur et la confidentialité stricte.
+Priorité
+Test Backend (Routes API v1.2.0)
+Dépendances
+Ce que ça valide (en mots simples)
+Critères de validation (Preuves OpenAPI v1.2.0)
+P0
+T1.1 : Auth (CSRF, Login, Session)
+Aucune
+Vérifie que les cookies de session protègent les connexions sans jamais exposer de token dans le code.
+- GET /sanctum/csrf-cookie pose le cookie XSRF-TOKEN.
+- POST /auth/login pose africabridge_session (HttpOnly).
+- GET /auth/me renvoie le ProfilPrive (avec email).
+P0
+T1.2 : Profil & Confidentialité
+T1.1
+Vérifie qu'on peut modifier son profil, mais que l'email reste strictement privé pour les autres.
+- PATCH /users/me met à jour la bio, pays, etc.
+- GET /users/{id} renvoie le schéma Profil sans la clé email (403/Erreur si fuite).
+P0
+T1.3 : Compétences & Photo
+T1.1
+Vérifie qu'on peut sync ses compétences et uploader une photo avec les bonnes limites de poids.
+- PUT /users/me/skills remplace la liste (sync).
+- POST /users/me/photo accepte jpg/png/webp (2 Mo max -> 422 si dépassé).
+P1
+T1.4 : Système d'abonnement (Follow)
+T1.1
+Vérifie qu'on peut s'abonner à quelqu'un, se désabonner, et voir les compteurs.
+- POST /users/{id}/follow (422 si soi-même, 409 si déjà fait).
+- DELETE /users/{id}/follow (idempotent, 200).
+- GET /users/{id}/followers paginé.
+PHASE 2 : Projets, Équipes et Règles Métier (J5 - J10)
+Objectif : Cœur du réacteur. Gestion des domaines multiples, des statuts définitifs et des transactions d'équipe.
+Priorité
+Test Backend (Routes API v1.2.0)
+Dépendances
+Ce que ça valide (en mots simples)
+Critères de validation (Preuves OpenAPI v1.2.0)
+P0
+T2.1 : Création de Projet (Multi-domaines)
+T1.1, T1.3
+Vérifie qu'on peut créer un projet avec 1 à 3 domaines, et que le créateur est ajouté d'office.
+- POST /projects exige domaines (tableau de 1 à 3 éléments, ex: [agriculture, iot]).
+- Le créateur est inséré dans project_members (rôle proprietaire).
+- 422 si statut: termine à la création.
+P0
+T2.2 : Demandes d'adhésion (Join Requests)
+T2.1
+Vérifie qu'on peut demander à rejoindre, et que c'est bloqué si le projet est plein ou terminé.
+- POST /projects/{id}/join-requests renvoie 409 si déjà membre, demande en attente, projet termine ou équipe complète.
+P0
+T2.3 : Décision sur demandes
+T2.2
+Vérifie que seul le créateur accepte/refuse, et que l'acceptation ajoute le membre.
+- PATCH /join-requests/{id} exige d'être le propriétaire (403 sinon).
+- Si acceptee, crée la ligne dans project_members dans la même transaction.
+P0
+T2.4 : Règle "Le créateur ne peut pas quitter"
+T2.3
+Vérifie que le créateur est bloqué s'il essaie de quitter sa propre équipe.
+- DELETE /projects/{id}/members/{userId} renvoie 409 si l'utilisateur cible est le proprietaire.
+P0
+T2.5 : Statuts et fin de projet (Définitif)
+T2.1
+Vérifie que passer un projet en "Terminé" le verrouille à jamais et le met dans le portfolio.
+- PATCH /projects/{id} avec statut: termine fixe progression à 100 et date_fin.
+- Toute tentative de sortie du statut termine renvoie 422.
+PHASE 3 : Collaboration, Ressources et Dashboard (J11 - J13)
+Objectif : Finaliser les espaces de travail, la gestion stricte des fichiers (413 vs 422) et les agrégats.
+Priorité
+Test Backend (Routes API v1.2.0)
+Dépendances
+Ce que ça valide (en mots simples)
+Critères de validation (Preuves OpenAPI v1.2.0)
+P0
+T3.1 : Messagerie & Soft Delete
+T2.3
+Vérifie que les membres peuvent chatter, et que les messages supprimés disparaissent chez les autres.
+- GET /projects/{id}/messages utilise le polling (apres_id, depuis).
+- Renvoie le tableau supprimes (ids soft-deleted) pour que le front les efface.
+P0
+T3.2 : Ressources & Limites de Fichiers
+T2.3
+Vérifie le partage de liens/fichiers, la différence entre erreur métier (422) et serveur (413).
+- POST /resources avec type: document exige un fichier.
+- Fichier > 10 Mo renvoie 422 (erreur Laravel).
+- Corps > 16 Mo renvoie 413 (JSON Nginx/PHP).
+P0
+T3.3 : Portfolio & Suggestions
+T2.5
+Vérifie que les projets terminés s'affichent sur les profils, et que les suggestions ciblent les bons talents.
+- GET /users/{id}/portfolio ne renvoie que les projets termine.
+- GET /users/suggestions?projet_id=X renvoie les talents hors équipe avec les bonnes compétences.
+P1
+T3.4 : Dashboard & Stats d'impact
+Toutes
+Vérifie les chiffres d'impact publics (pour le jury) et le tableau de bord personnel.
+- GET /stats (public) renvoie membres_count, projets_count, etc. (Cache 5 min).
+- GET /me/dashboard renvoie les agrégats personnels (repli P0 si non livré).

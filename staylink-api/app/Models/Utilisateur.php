@@ -2,13 +2,12 @@
 
 namespace App\Models;
 
-use Laravel\Sanctum\HasApiTokens;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
-
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 class Utilisateur extends Authenticatable implements MustVerifyEmail
 {
@@ -63,7 +62,7 @@ class Utilisateur extends Authenticatable implements MustVerifyEmail
             'utilisateur_competence',
             'utilisateur_id',
             'competence_id'
-        );
+        )->withPivot('niveau');
     }
 
     /**
@@ -104,7 +103,6 @@ class Utilisateur extends Authenticatable implements MustVerifyEmail
             'utilisateur_id'
         );
     }
-
 
     /**
      * Candidatures envoyées par l'utilisateur.
@@ -182,7 +180,6 @@ class Utilisateur extends Authenticatable implements MustVerifyEmail
             'suivi_id'
         );
     }
-
 
     public function hasVerifiedEmail(): bool
     {
