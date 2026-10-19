@@ -60,6 +60,46 @@ export type CompetencesUpdate = Schemas['CompetencesUpdate']
 export type CategorieCompetence = Competence['categorie']
 export type NiveauCompetence = NonNullable<CompetenceUtilisateur['niveau']>
 
+/* ── Projets ──────────────────────────────────────────────────────────────── */
+
+/** Identité courte d'un projet (portfolio, dashboard, demandes). */
+export type ProjetResume = Required<Schemas['ProjetResume']>
+
+/**
+ * Carte légère des LISTES — la description est tronquée à 200 caractères.
+ *
+ * `Omit` + ré-ajout : les champs imbriqués `createur` (objet) et
+ * `competences_recherchees` (TABLEAU) sont forcés sur nos alias `Required`.
+ * Une simple intersection `& { competences_recherchees: Competence[] }` ne
+ * suffit PAS pour un tableau : `Array<A> & Array<B>` ne se réduit pas — il
+ * faut REMPLACER le champ, d'où `Omit`.
+ */
+export type ProjetCarte = Omit<
+  Required<Schemas['ProjetCarte']>,
+  'createur' | 'competences_recherchees'
+> & {
+  createur: UtilisateurResume
+  competences_recherchees: Competence[]
+}
+
+/** Détail complet d'un projet. */
+export type Projet = Omit<
+  Required<Schemas['Projet']>,
+  'createur' | 'competences_recherchees'
+> & {
+  createur: UtilisateurResume
+  competences_recherchees: Competence[]
+}
+
+/** Corps de `POST /projects` — `statut: termine` est refusé à la création (422). */
+export type ProjetCreate = Schemas['ProjetCreate']
+
+/** Corps de `PATCH /projects/{id}` — tout est optionnel (propriétaire). */
+export type ProjetUpdate = Schemas['ProjetUpdate']
+
+/** Statut autorisé à la création : `recrutement` ou `en_cours`, jamais `termine`. */
+export type StatutProjetCreation = Schemas['StatutProjetCreation']
+
 /* ── Énumérations partagées ───────────────────────────────────────────────────
    Générées depuis l'OpenAPI : ajouter une valeur au contrat doit CASSER la
    compilation des libellés (lib/labels.ts), pas produire un libellé vide. */
