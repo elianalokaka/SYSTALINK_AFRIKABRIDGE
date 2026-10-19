@@ -52,6 +52,14 @@ export type Competence = Required<Schemas['Competence']>
 export type CompetenceUtilisateur = Required<Schemas['CompetenceUtilisateur']>
 export type LienProfil = Required<Schemas['LienProfil']>
 
+/** Corps de `PUT /users/me/skills` — remplace TOUTE la liste de compétences. */
+export type CompetencesUpdate = Schemas['CompetencesUpdate']
+
+/* Types dérivés des enums EN LIGNE du contrat (pas des schémas nommés).
+   Les générer ici évite de recopier la liste des valeurs à la main. */
+export type CategorieCompetence = Competence['categorie']
+export type NiveauCompetence = NonNullable<CompetenceUtilisateur['niveau']>
+
 /* ── Énumérations partagées ───────────────────────────────────────────────────
    Générées depuis l'OpenAPI : ajouter une valeur au contrat doit CASSER la
    compilation des libellés (lib/labels.ts), pas produire un libellé vide. */

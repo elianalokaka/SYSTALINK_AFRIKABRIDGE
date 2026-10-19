@@ -1,11 +1,14 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { AppShell } from './components/layout/AppShell'
 import { RequiertSession } from './features/auth/RequiertSession'
 import { SessionProvider } from './features/auth/SessionProvider'
 import { Accueil } from './pages/accueil/Accueil'
 import { Connexion } from './pages/auth/Connexion'
 import { Inscription } from './pages/auth/Inscription'
 import { Atelier } from './pages/atelier/Atelier'
+import { MonProfil } from './pages/profil/MonProfil'
+import { ModifierProfil } from './pages/profil/ModifierProfil'
 
 /**
  * Configuration globale de TanStack Query.
@@ -35,7 +38,7 @@ const queryClient = new QueryClient({
  *                          de RequiertSession a besoin du routeur)
  *
  * Routes publiques : /connexion, /inscription, /atelier (page de développement).
- * Routes protégées : / (RequiertSession).
+ * Routes protégées : un layout `RequiertSession` → `AppShell` → les pages.
  */
 function App() {
   return (
@@ -46,14 +49,19 @@ function App() {
             <Route path="/connexion" element={<Connexion />} />
             <Route path="/inscription" element={<Inscription />} />
             <Route path="/atelier" element={<Atelier />} />
+
             <Route
-              path="/"
               element={
                 <RequiertSession>
-                  <Accueil />
+                  <AppShell />
                 </RequiertSession>
               }
-            />
+            >
+              <Route index element={<Accueil />} />
+              <Route path="profil" element={<MonProfil />} />
+              <Route path="profil/modifier" element={<ModifierProfil />} />
+            </Route>
+
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </SessionProvider>

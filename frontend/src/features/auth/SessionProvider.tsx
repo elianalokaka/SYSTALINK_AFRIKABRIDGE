@@ -13,6 +13,8 @@ interface ValeurSession {
   seConnecter: (corps: UserLogin) => Promise<ProfilPrive>
   sInscrire: (corps: UserRegister) => Promise<ProfilPrive>
   seDeconnecter: () => Promise<void>
+  /** Fusionne un patch dans le profil en cache (après PATCH /users/me, photo…). */
+  mettreAJourProfil: (partiel: Partial<ProfilPrive>) => void
 }
 
 const ContexteSession = createContext<ValeurSession | null>(null)
@@ -79,6 +81,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     queryClient.setQueryData(['session'], null)
   }, [queryClient])
 
+  const mettreAJourProfil = useCallback(
+    (partiel: Partial<ProfilPrive>) => {
+      queryClient.setQueryData<ProfilPrive | null>(['session'], (ancien) =>
+        ancien ? { ...ancien, ...partiel } : ancien
+      )
+    },
+    [queryClient]
+  )
+
   const valeur = useMemo<ValeurSession>(
     () => ({
       profil: requete.data ?? null,
@@ -86,8 +97,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       seConnecter,
       sInscrire,
       seDeconnecter,
+      mettreAJourProfil,
     }),
-    [requete.data, requete.isPending, seConnecter, sInscrire, seDeconnecter]
+    [requete.data, requete.isPending, seConnecter, sInscrire, seDeconnecter, mettreAJourProfil]
   )
 
   return <ContexteSession.Provider value={valeur}>{children}</ContexteSession.Provider>
