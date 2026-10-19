@@ -86,7 +86,7 @@ export function Projets() {
           </CardCorps>
         </Card>
       ) : requete.data && requete.data.data.length > 0 ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {requete.data.data.map((projet) => (
             <Link key={projet.id} to={`/projets/${projet.id}`}>
               <CarteProjet projet={projet} />
