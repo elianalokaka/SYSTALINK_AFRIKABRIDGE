@@ -8,16 +8,17 @@ use App\Http\Controllers\Api\V1\Profil\ModifierProfilController;
 use App\Http\Controllers\Api\V1\Profil\RemplacerCompetencesController;
 use App\Http\Controllers\Api\V1\Profil\UploadPhotoProfilController;
 use App\Http\Controllers\Api\V1\Profil\VoirProfilController;
-use App\Http\Controllers\Api\V1\Suivi\NePlusSuivreMembreController;
-use App\Http\Controllers\Api\V1\Suivi\SuivreMembreController;
 use App\Http\Controllers\Api\V1\Projet\CreerProjetController;
-use App\Http\Controllers\Api\V1\Projet\DeposerDemandeAdhesionController;
 use App\Http\Controllers\Api\V1\Projet\DeciderDemandeAdhesionController;
-use App\Http\Controllers\Api\V1\Projet\ModifierProjetController;
+use App\Http\Controllers\Api\V1\Projet\DeposerDemandeAdhesionController;
 use App\Http\Controllers\Api\V1\Projet\EnvoyerMessageController;
 use App\Http\Controllers\Api\V1\Projet\LireMessagesController;
+use App\Http\Controllers\Api\V1\Projet\ModifierProjetController;
+use App\Http\Controllers\Api\V1\Projet\RetirerMembreProjetController;
 use App\Http\Controllers\Api\V1\Projet\SupprimerMessageController;
 use App\Http\Controllers\Api\V1\Ressource\PublierRessourceController;
+use App\Http\Controllers\Api\V1\Suivi\NePlusSuivreMembreController;
+use App\Http\Controllers\Api\V1\Suivi\SuivreMembreController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -65,6 +66,10 @@ Route::prefix('v1')->group(function () {
         Route::post('/projects/{id}/join-requests', DeposerDemandeAdhesionController::class)
             ->whereNumber('id')
             ->name('projects.join-requests.store');
+        Route::delete('/projects/{id}/members/{userId}', RetirerMembreProjetController::class)
+            ->whereNumber('id')
+            ->whereNumber('userId')
+            ->name('projects.members.destroy');
         Route::patch('/join-requests/{id}', DeciderDemandeAdhesionController::class)
             ->whereNumber('id')
             ->name('join-requests.update');
