@@ -1,5 +1,6 @@
 import { handlersAuth } from './auth'
 import { handlersProfil } from './profil'
+import { handlersProjets } from './projets'
 
 /**
  * Point d'entrée unique des handlers MSW.
@@ -8,4 +9,4 @@ import { handlersProfil } from './profil'
  * modules suivants ajouteront leurs routes, ils n'auront qu'à ajouter leur
  * handler à cette liste — sans toucher à `browser.ts` ni `server.ts`.
  */
-export const handlers = [...handlersAuth, ...handlersProfil]
+export const handlers = [...handlersAuth, ...handlersProfil, ...handlersProjets]

@@ -1,4 +1,13 @@
-import type { Competence, CompetenceUtilisateur, NiveauCompetence, ProfilPrive } from '../types'
+import type {
+  Competence,
+  CompetenceUtilisateur,
+  Domaine,
+  NiveauCompetence,
+  ProfilPrive,
+  Projet,
+  StatutProjet,
+  UtilisateurResume,
+} from '../types'
 
 /**
  * Jeu de démonstration — reflète le seeder décrit par le contrat (AGENTS.md § 2).
@@ -8,8 +17,8 @@ import type { Competence, CompetenceUtilisateur, NiveauCompetence, ProfilPrive }
  *     Réseaux, UI/UX — catalogue FERMÉ, alimenté par seeder, pas de création libre ;
  *   - ~10 profils multi-pays (CD, SN, CI, CM, BJ…) ;
  *   - un designer UI/UX au Sénégal (SN) ;
- *   - 5 à 8 projets dont « Smart Agriculture RDC » (module projets) ;
- *   - au moins un projet `termine` (module projets) ;
+ *   - 5 à 8 projets dont « Smart Agriculture RDC » ;
+ *   - au moins un projet `termine` ;
  *   - des comptes de démonstration pour le jury, mots de passe documentés ;
  *   - le compte d'Eliana N'EXISTE PAS : elle s'inscrit pendant la démo.
  */
@@ -49,6 +58,13 @@ function competence(id: number, niveau: NiveauCompetence): CompetenceUtilisateur
   const source = CATALOGUE_COMPETENCES.find((comp) => comp.id === id)
   if (!source) throw new Error(`Compétence ${id} absente du catalogue`)
   return { ...source, niveau }
+}
+
+/** Une compétence du CATALOGUE (sans niveau) à partir de son id. */
+function competenceCatalogue(id: number): Competence {
+  const source = CATALOGUE_COMPETENCES.find((comp) => comp.id === id)
+  if (!source) throw new Error(`Compétence ${id} absente du catalogue`)
+  return source
 }
 
 /** Fabrique un profil complet à partir du minimum, en appliquant les valeurs par défaut. */
@@ -107,5 +123,158 @@ export const profilsDemo: ProfilPrive[] = [
   }),
 ]
 
-/** Exporte la fabrique pour le handler d'inscription. */
-export { creerProfil }
+/* ══════════════════════════════════════════════════════════════════════════
+   PROJETS
+   ══════════════════════════════════════════════════════════════════════════ */
+
+function profilParId(id: number): ProfilPrive {
+  const profil = profilsDemo.find((profil) => profil.id === id)
+  if (!profil) throw new Error(`Profil ${id} absent du seed`)
+  return profil
+}
+
+/** Identité courte d'un créateur — `UtilisateurResume` (jamais d'email). */
+function resume(profil: ProfilPrive): UtilisateurResume {
+  return {
+    id: profil.id,
+    nom: profil.nom,
+    photo_url: profil.photo_url,
+    pays: profil.pays,
+    role_profil: profil.role_profil,
+  }
+}
+
+/**
+ * Membres par projet (id d'utilisateur). Le créateur y figure toujours.
+ * C'est cette liste qui permet au mock de calculer `is_member` par spectateur.
+ */
+export const membresParProjet: Record<number, number[]> = {
+  1: [3, 1], // Smart Agriculture RDC — Fatou (créatrice) + Aminata
+  2: [1], // E-Santé Mobile — Aminata
+  3: [2, 1, 3], // Éducation Connectée — Jean-Marc + Aminata + Fatou
+  4: [2], // Paiement Mobile Panafricain — Jean-Marc
+  5: [3, 2, 1], // Énergie Solaire Rurale (terminé) — Fatou + Jean-Marc + Aminata
+  6: [1], // Gestion des Déchets — Aminata
+}
+
+/** Fabrique un projet complet. `is_member`/`ma_demande_statut` sont posés à
+ *  `false`/`null` : ce sont des champs PAR SPECTATEUR, recalculés par le mock. */
+function creerProjet(
+  id: number,
+  nom: string,
+  domaines: Domaine[],
+  statut: StatutProjet,
+  progression: number,
+  nombreMembresSouhaite: number,
+  createurId: number,
+  competencesIds: number[],
+  description: string,
+  objectifs: string,
+  supplement: Partial<Projet> = {}
+): Projet {
+  const membres = membresParProjet[id] ?? [createurId]
+  return {
+    id,
+    nom,
+    domaines,
+    statut,
+    progression,
+    nombre_membres_souhaite: nombreMembresSouhaite,
+    nombre_membres_actuel: membres.length,
+    description,
+    objectifs,
+    competences_recherchees: competencesIds.map(competenceCatalogue),
+    createur: resume(profilParId(createurId)),
+    lien_realisation: null,
+    date_fin: null,
+    is_member: false,
+    ma_demande_statut: null,
+    created_at: '2026-01-12T10:00:00Z',
+    updated_at: '2026-01-12T10:00:00Z',
+    ...supplement,
+  }
+}
+
+/** Les 6 projets de démonstration, dont « Smart Agriculture RDC » et un `termine`. */
+export const projetsDemo: Projet[] = [
+  creerProjet(
+    1,
+    'Smart Agriculture RDC',
+    ['agriculture', 'iot'],
+    'recrutement',
+    30,
+    6,
+    3,
+    [1, 13, 7],
+    'Plateforme de capteurs IoT pour aider les exploitations familiales à optimiser irrigation et rendement.',
+    'Déployer 200 capteurs d’humidité dans la région de Kinshasa et fournir un tableau de bord de suivi aux agriculteurs.'
+  ),
+  creerProjet(
+    2,
+    'E-Santé Mobile',
+    ['sante'],
+    'recrutement',
+    15,
+    4,
+    1,
+    [8, 16],
+    'Application mobile de prise de rendez-vous et de télémédecine pour les zones rurales.',
+    'Réduire les délais de consultation en connectant les patients aux professionnels de santé via mobile.'
+  ),
+  creerProjet(
+    3,
+    'Éducation Connectée',
+    ['education'],
+    'en_cours',
+    60,
+    5,
+    2,
+    [7, 6, 16],
+    'Plateforme de cours en ligne hors-ligne pour les élèves sans connexion stable.',
+    'Diffuser des contenus pédagogiques téléchargeables et suivre la progression des élèves.'
+  ),
+  creerProjet(
+    4,
+    'Paiement Mobile Panafricain',
+    ['fintech'],
+    'recrutement',
+    10,
+    7,
+    2,
+    [6, 1, 15],
+    'Solution de paiement interopérable entre opérateurs mobiles et commerçants.',
+    'Faciliter les transferts et paiements sans compte bancaire, avec une sécurité renforcée.'
+  ),
+  creerProjet(
+    5,
+    'Énergie Solaire Rurale',
+    ['energie', 'environnement'],
+    'termine',
+    100,
+    3,
+    3,
+    [13, 1],
+    'Kits solaires autonomes pour électrifier les écoles et dispensaires isolés.',
+    'Électrifier 30 infrastructures publiques et former les techniciens locaux à la maintenance.',
+    {
+      lien_realisation: 'https://exemple.org/energie-solaire-rurale',
+      date_fin: '2025-11-20',
+      updated_at: '2025-11-20T16:00:00Z',
+    }
+  ),
+  creerProjet(
+    6,
+    'Gestion des Déchets',
+    ['environnement'],
+    'recrutement',
+    5,
+    3,
+    1,
+    [16, 12],
+    'Application de collecte et de tri sélectif des déchets avec cartographie des points de dépôt.',
+    'Améliorer le recyclage en ville grâce à une cartographie participative et des alertes de collecte.'
+  ),
+]
+
+/** Exporte les fabriques réutilisées par la base de données mockée. */
+export { competenceCatalogue, creerProfil, profilParId, resume }
