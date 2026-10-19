@@ -125,6 +125,26 @@ export type Membre = Omit<Required<Schemas['Membre']>, 'utilisateur'> & {
   utilisateur: UtilisateurResume
 }
 
+/* ── Messagerie ───────────────────────────────────────────────────────────── */
+
+/** Un message du fil de discussion — `auteur` est un objet complet. */
+export type Message = Omit<Required<Schemas['Message']>, 'auteur'> & {
+  auteur: UtilisateurResume
+}
+
+/** Corps de `POST /projects/{id}/messages` — `contenu` : 1 à 2000 caractères. */
+export type MessageCreate = Schemas['MessageCreate']
+
+/**
+ * Réponse de `GET /projects/{id}/messages`.
+ * `meta.server_time` est un CURSEUR : on le garde tel quel, en chaîne (A-5).
+ */
+export interface FilMessages {
+  data: Message[]
+  supprimes: number[]
+  meta: { server_time: string }
+}
+
 /* ── Énumérations partagées ───────────────────────────────────────────────────
    Générées depuis l'OpenAPI : ajouter une valeur au contrat doit CASSER la
    compilation des libellés (lib/labels.ts), pas produire un libellé vide. */

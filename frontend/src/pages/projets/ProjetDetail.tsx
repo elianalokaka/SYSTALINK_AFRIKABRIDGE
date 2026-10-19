@@ -21,6 +21,7 @@ import { useDemandesRecues } from '../../features/equipes/useDemandesRecues'
 import { oublierProjet, rafraichirProjets } from '../../lib/cache'
 import { LIBELLES_DOMAINE, LIBELLES_ROLE_PROFIL } from '../../lib/labels'
 import { libelleStatutDemande, varianteStatutDemande } from '../equipes/statutDemande'
+import { Discussion } from '../messagerie/Discussion'
 import { BoutonRejoindre } from './BoutonRejoindre'
 import { libelleStatut, varianteStatut } from './statut'
 import type { DemandeAdhesion, Projet } from '../../types'
@@ -109,6 +110,8 @@ export function ProjetDetail() {
   const onglets = [
     { id: 'vue', libelle: 'Vue' },
     { id: 'equipe', libelle: 'Équipe', compteur: projet.nombre_membres_actuel },
+    /* La discussion est réservée aux membres (le propriétaire en est un) : 403 sinon. */
+    ...(projet.is_member ? [{ id: 'discussion', libelle: 'Discussion' }] : []),
     ...(estProprietaire
       ? [{ id: 'demandes', libelle: 'Demandes', compteur: demandesRecues.data?.parProjet[projet.id] || undefined }]
       : []),
@@ -165,6 +168,9 @@ export function ProjetDetail() {
 
       {onglet === 'vue' && <VueProjet projet={projet} />}
       {onglet === 'equipe' && <OngletEquipe projetId={projet.id} estProprietaire={estProprietaire} />}
+      {onglet === 'discussion' && projet.is_member && (
+        <Discussion projetId={projet.id} proprietaireId={projet.createur.id} />
+      )}
       {onglet === 'demandes' && estProprietaire && <OngletDemandes projetId={projet.id} />}
     </div>
   )

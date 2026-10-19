@@ -34,39 +34,41 @@ export function AppShell() {
   return (
     <div className="flex min-h-dvh flex-col bg-surface-0">
       <header className="sticky top-0 z-10 border-b border-border-subtle bg-surface-1">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
-          <div className="flex min-w-0 items-center gap-4 sm:gap-6">
-            <Link to="/" className="shrink-0 text-sm font-semibold text-fg-1">
-              AfricaBridge
-            </Link>
-            <nav className="flex items-center gap-0.5 overflow-x-auto">
-              <NavLink to="/" end className={classeLien}>
-                Accueil
-              </NavLink>
-              <NavLink to="/projets" className={classeLien}>
-                Projets
-              </NavLink>
-              <NavLink to="/mes-projets" className={classeLien}>
-                Mes projets
-                {enAttente > 0 && (
-                  <span
-                    aria-label={`${enAttente} demande${enAttente > 1 ? 's' : ''} d'adhésion en attente`}
-                    className="ml-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-xs font-medium text-white"
-                  >
-                    {enAttente}
-                  </span>
-                )}
-              </NavLink>
-              <NavLink to="/mes-demandes" className={classeLien}>
-                Mes demandes
-              </NavLink>
-              <NavLink to="/profil" className={classeLien}>
-                Mon profil
-              </NavLink>
-            </nav>
-          </div>
+        {/* Mobile : marque + utilisateur sur la 1re ligne, navigation pleine largeur sur la 2e
+            (sinon 5 liens se battent pour la place et la plupart sont cachés).
+            À partir de md : tout tient sur une ligne. */}
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2.5 sm:px-6 md:flex-nowrap md:gap-x-6">
+          <Link to="/" className="order-1 shrink-0 text-sm font-semibold text-fg-1">
+            AfricaBridge
+          </Link>
 
-          <div className="flex shrink-0 items-center gap-2.5">
+          <nav className="order-3 -mx-1 flex w-full items-center gap-0.5 overflow-x-auto md:order-2 md:mx-0 md:w-auto md:flex-1">
+            <NavLink to="/" end className={classeLien}>
+              Accueil
+            </NavLink>
+            <NavLink to="/projets" className={classeLien}>
+              Projets
+            </NavLink>
+            <NavLink to="/mes-projets" className={classeLien}>
+              Mes projets
+              {enAttente > 0 && (
+                <span
+                  aria-label={`${enAttente} demande${enAttente > 1 ? 's' : ''} d'adhésion en attente`}
+                  className="ml-1.5 inline-flex min-w-5 items-center justify-center rounded-md bg-accent px-1.5 text-xs font-semibold text-accent-fg"
+                >
+                  {enAttente}
+                </span>
+              )}
+            </NavLink>
+            <NavLink to="/mes-demandes" className={classeLien}>
+              Mes demandes
+            </NavLink>
+            <NavLink to="/profil" className={classeLien}>
+              Mon profil
+            </NavLink>
+          </nav>
+
+          <div className="order-2 ml-auto flex shrink-0 items-center gap-2.5 md:order-3">
             <span className="hidden text-sm text-fg-2 md:inline">{profil?.nom}</span>
             <Avatar nom={profil?.nom ?? ''} taille="sm" />
             <Button taille="sm" variante="discret" onClick={onDeconnexion}>
