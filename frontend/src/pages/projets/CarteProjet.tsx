@@ -10,7 +10,14 @@ import { libelleStatut, varianteStatut } from './statut'
  * rend (lien `<Link>` autour). Ça la laisse réutilisable dans un contexte sans
  * route (ex. le futur tableau de bord).
  */
-export function CarteProjet({ projet }: { projet: ProjetCarte }) {
+export function CarteProjet({
+  projet,
+  demandesEnAttente = 0,
+}: {
+  projet: ProjetCarte
+  /** Demandes à traiter (propriétaire) : affiche une pastille d'alerte. */
+  demandesEnAttente?: number
+}) {
   return (
     <Card className="h-full transition-colors hover:border-border-strong">
       <CardCorps className="flex h-full flex-col gap-3">
@@ -26,6 +33,12 @@ export function CarteProjet({ projet }: { projet: ProjetCarte }) {
             </Badge>
           ))}
         </div>
+
+        {demandesEnAttente > 0 && (
+          <Badge variante="attente">
+            {demandesEnAttente} demande{demandesEnAttente > 1 ? 's' : ''} à traiter
+          </Badge>
+        )}
 
         <p className="line-clamp-2 text-sm text-fg-2">{projet.description_courte}</p>
 

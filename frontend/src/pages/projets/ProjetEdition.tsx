@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button, Card, CardCorps, EmptyState, FormField, Input, SkeletonTexte, Textarea } from '../../components/ui'
 import { detailProjet, modifierProjet } from '../../api/projets'
 import { ErreurApi } from '../../api/erreurs'
+import { rafraichirProjets } from '../../lib/cache'
 import type { Projet, StatutProjet } from '../../types'
 
 const CLASSE_SELECT = 'h-9 rounded-md border border-border-strong bg-surface-1 px-3 text-sm text-fg-1'
@@ -52,6 +53,7 @@ export function ProjetEdition() {
 }
 
 function FormulaireEdition({ projet, onEnregistre }: { projet: Projet; onEnregistre: () => void }) {
+  const queryClient = useQueryClient()
   const [nom, setNom] = useState(projet.nom)
   const [description, setDescription] = useState(projet.description)
   const [objectifs, setObjectifs] = useState(projet.objectifs)
@@ -75,6 +77,7 @@ function FormulaireEdition({ projet, onEnregistre }: { projet: Projet; onEnregis
         progression,
         lien_realisation: lien.trim() || null,
       })
+      rafraichirProjets(queryClient, projet.id)
       onEnregistre()
     } catch (erreur) {
       setErreurGlobale(erreur instanceof ErreurApi ? erreur.message : 'Une erreur est survenue.')

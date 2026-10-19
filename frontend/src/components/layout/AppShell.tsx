@@ -1,6 +1,7 @@
 import { Link, NavLink, Outlet, useNavigate } from 'react-router'
 import { Avatar, Button } from '../ui'
 import { useSession } from '../../features/auth/SessionProvider'
+import { useDemandesRecues } from '../../features/equipes/useDemandesRecues'
 import { cn } from '../../lib/cn'
 
 /**
@@ -16,6 +17,8 @@ import { cn } from '../../lib/cn'
 export function AppShell() {
   const { profil, seDeconnecter } = useSession()
   const navigate = useNavigate()
+  const demandesRecues = useDemandesRecues()
+  const enAttente = demandesRecues.data?.total ?? 0
 
   async function onDeconnexion() {
     await seDeconnecter()
@@ -36,12 +39,26 @@ export function AppShell() {
             <Link to="/" className="shrink-0 text-sm font-semibold text-fg-1">
               AfricaBridge
             </Link>
-            <nav className="flex items-center gap-0.5">
+            <nav className="flex items-center gap-0.5 overflow-x-auto">
               <NavLink to="/" end className={classeLien}>
                 Accueil
               </NavLink>
               <NavLink to="/projets" className={classeLien}>
                 Projets
+              </NavLink>
+              <NavLink to="/mes-projets" className={classeLien}>
+                Mes projets
+                {enAttente > 0 && (
+                  <span
+                    aria-label={`${enAttente} demande${enAttente > 1 ? 's' : ''} d'adhésion en attente`}
+                    className="ml-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-xs font-medium text-white"
+                  >
+                    {enAttente}
+                  </span>
+                )}
+              </NavLink>
+              <NavLink to="/mes-demandes" className={classeLien}>
+                Mes demandes
               </NavLink>
               <NavLink to="/profil" className={classeLien}>
                 Mon profil

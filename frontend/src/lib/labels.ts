@@ -4,6 +4,7 @@ import type {
   LienProfil,
   NiveauCompetence,
   RoleProfil,
+  StatutDemande,
   StatutProjet,
 } from '../types'
 
@@ -54,6 +55,12 @@ export const LIBELLES_STATUT_PROJET: Record<StatutProjet, string> = {
   recrutement: 'Ouvert',
   en_cours: 'En cours',
   termine: 'Terminé',
+}
+
+export const LIBELLES_STATUT_DEMANDE: Record<StatutDemande, string> = {
+  en_attente: 'En attente',
+  acceptee: 'Acceptée',
+  refusee: 'Refusée',
 }
 
 export const LIBELLES_CATEGORIE_COMPETENCE: Record<CategorieCompetence, string> = {

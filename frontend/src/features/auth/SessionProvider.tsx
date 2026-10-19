@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { connexion, deconnexion, inscription, profilCourant } from '../../api/auth'
 import { surExpirationSession } from '../../api/client'
 import { ErreurApi } from '../../api/erreurs'
+import { purgerCacheSession } from '../../lib/cache'
 import type { ProfilPrive, UserLogin, UserRegister } from '../../types'
 
 interface ValeurSession {
@@ -54,6 +55,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
      redirige. C'est l'interface qui décide, pas le transport. */
   useEffect(() => {
     return surExpirationSession(() => {
+      purgerCacheSession(queryClient)
       queryClient.setQueryData(['session'], null)
     })
   }, [queryClient])
@@ -61,6 +63,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const seConnecter = useCallback(
     async (corps: UserLogin) => {
       const profil = await connexion(corps)
+      /* Nouveau compte : le cache de l'utilisateur précédent ne doit pas survivre. */
+      purgerCacheSession(queryClient)
       queryClient.setQueryData(['session'], profil)
       return profil
     },
@@ -70,6 +74,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const sInscrire = useCallback(
     async (corps: UserRegister) => {
       const profil = await inscription(corps)
+      purgerCacheSession(queryClient)
       queryClient.setQueryData(['session'], profil)
       return profil
     },
@@ -78,6 +83,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const seDeconnecter = useCallback(async () => {
     await deconnexion()
+    purgerCacheSession(queryClient)
     queryClient.setQueryData(['session'], null)
   }, [queryClient])
 

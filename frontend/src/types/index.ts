@@ -100,6 +100,31 @@ export type ProjetUpdate = Schemas['ProjetUpdate']
 /** Statut autorisé à la création : `recrutement` ou `en_cours`, jamais `termine`. */
 export type StatutProjetCreation = Schemas['StatutProjetCreation']
 
+/* ── Équipes ──────────────────────────────────────────────────────────────── */
+
+/** Statut d'une demande d'adhésion : `en_attente` | `acceptee` | `refusee`. */
+export type StatutDemande = Required<Schemas['DemandeAdhesion']>['statut']
+
+/** Une demande d'adhésion — `projet` et `utilisateur` sont des objets complets. */
+export type DemandeAdhesion = Omit<
+  Required<Schemas['DemandeAdhesion']>,
+  'projet' | 'utilisateur'
+> & {
+  projet: ProjetResume
+  utilisateur: UtilisateurResume
+}
+
+/** Corps de `POST /projects/{id}/join-requests` — `message` facultatif. */
+export type DemandeAdhesionCreate = Schemas['DemandeAdhesionCreate']
+
+/** Corps de `PATCH /join-requests/{id}` — `decision` : `acceptee` | `refusee`. */
+export type DemandeDecision = Schemas['DemandeDecision']
+
+/** Un membre d'équipe — `utilisateur` est un objet complet. */
+export type Membre = Omit<Required<Schemas['Membre']>, 'utilisateur'> & {
+  utilisateur: UtilisateurResume
+}
+
 /* ── Énumérations partagées ───────────────────────────────────────────────────
    Générées depuis l'OpenAPI : ajouter une valeur au contrat doit CASSER la
    compilation des libellés (lib/labels.ts), pas produire un libellé vide. */

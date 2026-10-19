@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button, Card, CardCorps, FormField, Input, Textarea } from '../../components/ui'
 import { creerProjet } from '../../api/projets'
 import { listeCompetences } from '../../api/profil'
 import { ErreurApi } from '../../api/erreurs'
+import { rafraichirProjets } from '../../lib/cache'
 import { LISTE_DOMAINES } from '../../lib/labels'
 import type { Domaine, ProjetCreate, StatutProjetCreation } from '../../types'
 
@@ -22,6 +23,7 @@ const CLASSE_SELECT = 'h-9 rounded-md border border-border-strong bg-surface-1 p
  */
 export function ProjetCreation() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const catalogue = useQuery({ queryKey: ['skills'], queryFn: listeCompetences })
 
   const [nom, setNom] = useState('')
@@ -65,6 +67,8 @@ export function ProjetCreation() {
 
     try {
       const projet = await creerProjet(corps)
+      /* Sans ça, le nouveau projet resterait absent des listes pendant 30 s. */
+      rafraichirProjets(queryClient)
       navigate(`/projets/${projet.id}`, { replace: true })
     } catch (erreur) {
       if (erreur instanceof ErreurApi && erreur.validation) {

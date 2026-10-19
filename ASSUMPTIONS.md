@@ -73,6 +73,8 @@ ils servent de référence dans les échanges avec le backend et dans les tests.
 | `A-13` | 🟢 | Historique des messages | insertion en tête (`avant_id`) | faible |
 | `A-14` | 🟢 | Sérialisation des tableaux | brackets, clés vides omises | élevé |
 | `A-15` | 🟢 | Repli du dashboard | parallèle + tolérant à l'échec | moyen |
+| `A-16` | 🟢 | Alerte « demandes reçues » | compteur calculé (N appels) | moyen |
+| `A-17` | 🟢 | Fraîcheur du cache après écriture | invalidation explicite (`lib/cache.ts`) | **élevé** |
 | `V-1` | 🔴 | **Redemande après départ ou refus** | autorisée | **critique** |
 | `V-2` | 🔴 | `ma_demande_statut` après départ | redevient `null` | **critique** |
 | `V-3` | 🔴 | Tri réel des listes | confirmé par le backend | faible |
@@ -289,6 +291,36 @@ pas tomber tout le tableau de bord.
 **Conséquence assumée** : le repli coûte **N appels** (N = mes projets dont je suis propriétaire).
 C'est le seul endroit du front où une requête par élément est acceptable — et elle disparaît le
 jour où le P1 arrive, **sans qu'aucun composant ne change**.
+
+### A-16 — Alerte « demandes reçues » du propriétaire
+
+**Décision** : le contrat n'a ni notification ni e-mail (hors périmètre confirmé). Le propriétaire
+est donc alerté par un **compteur** : pastille sur « Mes projets » (barre de navigation), pastille
+« N demandes à traiter » sur chaque carte, compteur sur l'onglet « Demandes ». Il est calculé par
+`features/equipes/useDemandesRecues.ts` : `GET /me/projects?role_equipe=proprietaire`, puis
+`GET /projects/{id}/join-requests?statut=en_attente&per_page=1` **en parallèle** (seul `meta.total`
+compte), tolérant à l'échec projet par projet. Les projets `termine` sont ignorés.
+
+**Contrat** : fournit les routes, pas le total. `GET /me/dashboard` (P1) l'expose
+(`demandes_recues_en_attente`).
+
+**Conséquence assumée** : N appels, N = mes projets possédés non terminés (cache 30 s, rechargé
+après chaque écriture). Même logique que `A-15` : le jour où le P1 arrive, seul le hook change.
+
+### A-17 — Fraîcheur du cache après une écriture
+
+**Décision** : `staleTime = 30 s` sert une donnée en cache sans appel. Toute écriture sur un projet
+ou une équipe appelle `rafraichirProjets()` (`lib/cache.ts`) ; une suppression appelle en plus
+`oublierProjet()` ; chaque changement de compte (connexion, inscription, déconnexion, expiration)
+appelle `purgerCacheSession()` pour qu'un utilisateur ne lise jamais le cache du précédent.
+
+**Pourquoi** : sans cela, un projet créé restait absent des listes, un projet supprimé restait
+cliquable, et l'écran passait de « projet affiché » à « Projet introuvable » dès que le rechargement
+en arrière-plan répondait 404. Ce n'était **pas** un artefact du mock : le même scénario se
+produirait avec Laravel.
+
+**Règle d'affichage associée** : « Projet introuvable » n'apparaît que sur une vraie réponse **404**.
+Une panne réseau ou 5xx garde les données déjà affichées (ou propose « Réessayer »).
 
 ---
 

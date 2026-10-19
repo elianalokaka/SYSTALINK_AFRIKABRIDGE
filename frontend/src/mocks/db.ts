@@ -11,12 +11,15 @@ import {
 import type {
   Competence,
   CompetenceUtilisateur,
+  DemandeAdhesion,
+  Membre,
   Projet,
   ProjetCarte,
   ProjetCreate,
   ProjetUpdate,
   ProfilPrive,
   ProfilUpdate,
+  StatutDemande,
 } from '../types'
 
 /**
@@ -171,7 +174,7 @@ export function projetPour(projet: Projet, userId: number | null): Projet {
   return {
     ...projet,
     is_member: userId != null && estMembre(projet.id, userId),
-    ma_demande_statut: null, // arrive avec le module équipes
+    ma_demande_statut: maDemandeStatut(projet.id, userId),
   }
 }
 
@@ -189,12 +192,22 @@ export function cartePour(projet: Projet, userId: number | null): ProjetCarte {
     createur: projet.createur,
     competences_recherchees: projet.competences_recherchees,
     is_member: userId != null && estMembre(projet.id, userId),
-    ma_demande_statut: null,
+    ma_demande_statut: maDemandeStatut(projet.id, userId),
   }
 }
 
-export function mesProjets(userId: number): Projet[] {
-  return projets.filter((projet) => estMembre(projet.id, userId))
+export function mesProjets(
+  userId: number,
+  filtres: { role_equipe?: string | null; statut?: string | null } = {}
+): Projet[] {
+  return projets.filter((projet) => {
+    if (!estMembre(projet.id, userId)) return false
+    const proprietaire = projet.createur.id === userId
+    if (filtres.role_equipe === 'proprietaire' && !proprietaire) return false
+    if (filtres.role_equipe === 'membre' && proprietaire) return false
+    if (filtres.statut && projet.statut !== filtres.statut) return false
+    return true
+  })
 }
 
 /** Crée un projet. Le créateur devient automatiquement `proprietaire`. */
@@ -247,5 +260,156 @@ export function supprimerProjetDb(id: number): boolean {
   if (index === -1) return false
   projets.splice(index, 1)
   membres.delete(id)
+  /* Les demandes d'un projet supprimé disparaissent avec lui (cascade). */
+  for (let i = demandes.length - 1; i >= 0; i--) {
+    if (demandes[i].projet.id === id) demandes.splice(i, 1)
+  }
   return true
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ÉQUIPES — demandes d'adhésion et membres
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const demandes: DemandeAdhesion[] = []
+let prochainIdDemande = 1
+
+/** Statut de la DERNIÈRE demande de l'utilisateur sur ce projet. */
+export function maDemandeStatut(projetId: number, userId: number | null): StatutDemande | null {
+  if (userId == null) return null
+  const miennes = demandes
+    .filter((demande) => demande.projet.id === projetId && demande.utilisateur.id === userId)
+    .sort((a, b) => b.id - a.id)
+  return miennes[0]?.statut ?? null
+}
+
+/**
+ * Crée une demande. Les 4 cas de 409 du contrat reçoivent chacun SON message :
+ * déjà membre · demande déjà en attente · projet terminé · équipe complète.
+ * `'introuvable'` → 404.
+ */
+export function demanderAdhesionDb(
+  userId: number,
+  projetId: number,
+  message: string | null
+): DemandeAdhesion | { conflit: string } | 'introuvable' {
+  const projet = projetParId(projetId)
+  const utilisateur = profils.find((profil) => profil.id === userId)
+  if (!projet || !utilisateur) return 'introuvable'
+  if (estMembre(projetId, userId)) return { conflit: 'Tu fais déjà partie de ce projet.' }
+  if (maDemandeStatut(projetId, userId) === 'en_attente') {
+    return { conflit: 'Tu as déjà une demande en attente pour ce projet.' }
+  }
+  if (projet.statut === 'termine') return { conflit: 'Ce projet est terminé.' }
+  if (projet.nombre_membres_actuel >= projet.nombre_membres_souhaite) {
+    return { conflit: 'Ce projet a déjà son équipe complète.' }
+  }
+
+  const demande: DemandeAdhesion = {
+    id: prochainIdDemande++,
+    projet: {
+      id: projet.id,
+      nom: projet.nom,
+      domaines: projet.domaines,
+      statut: projet.statut,
+      progression: projet.progression,
+      nombre_membres_souhaite: projet.nombre_membres_souhaite,
+      nombre_membres_actuel: projet.nombre_membres_actuel,
+    },
+    utilisateur: resume(utilisateur),
+    message,
+    statut: 'en_attente',
+    created_at: new Date().toISOString(),
+    traitee_at: null,
+  }
+  demandes.push(demande)
+  return demande
+}
+
+/** Demandes d'un projet, filtrées par statut (le contrat : `en_attente` par défaut), les plus récentes d'abord. */
+export function demandesDuProjetDb(projetId: number, statut: StatutDemande = 'en_attente'): DemandeAdhesion[] {
+  return demandes
+    .filter((demande) => demande.projet.id === projetId && demande.statut === statut)
+    .sort((a, b) => b.id - a.id)
+}
+
+export function demandesDeDb(userId: number): DemandeAdhesion[] {
+  return demandes.filter((demande) => demande.utilisateur.id === userId).sort((a, b) => b.id - a.id)
+}
+
+export function demandeParIdDb(id: number): DemandeAdhesion | undefined {
+  return demandes.find((demande) => demande.id === id)
+}
+
+/** Accepte ou refuse. `acceptee` ajoute le membre dans la même transaction. */
+export function traiterDemandeDb(
+  id: number,
+  decision: 'acceptee' | 'refusee'
+): DemandeAdhesion | { conflit: string } | null {
+  const demande = demandeParIdDb(id)
+  if (!demande) return null
+  if (demande.statut !== 'en_attente') return { conflit: 'Cette demande a déjà été traitée.' }
+
+  if (decision === 'acceptee') {
+    const projet = projetParId(demande.projet.id)
+    if (projet && projet.nombre_membres_actuel >= projet.nombre_membres_souhaite) {
+      return { conflit: "L'équipe est complète : impossible d'accepter une personne de plus." }
+    }
+  }
+
+  demande.statut = decision
+  demande.traitee_at = new Date().toISOString()
+
+  if (decision === 'acceptee') {
+    const projet = projetParId(demande.projet.id)
+    if (projet) {
+      const ids = membres.get(projet.id) ?? []
+      if (!ids.includes(demande.utilisateur.id)) {
+        membres.set(projet.id, [...ids, demande.utilisateur.id])
+        projet.nombre_membres_actuel = (membres.get(projet.id) ?? []).length
+      }
+    }
+  }
+  return demande
+}
+
+/** Annulation par son AUTEUR, uniquement tant que la demande est en attente. */
+export function annulerDemandeDb(id: number, userId: number): 'ok' | 'introuvable' | 'interdit' | 'traitee' {
+  const index = demandes.findIndex((demande) => demande.id === id)
+  if (index === -1) return 'introuvable'
+  if (demandes[index].utilisateur.id !== userId) return 'interdit'
+  if (demandes[index].statut !== 'en_attente') return 'traitee'
+  demandes.splice(index, 1)
+  return 'ok'
+}
+
+export function retirerMembreDb(
+  projetId: number,
+  userId: number
+): 'ok' | 'introuvable' | 'proprietaire' {
+  const projet = projetParId(projetId)
+  if (!projet) return 'introuvable'
+  if (projet.createur.id === userId) return 'proprietaire'
+
+  const ids = membres.get(projetId) ?? []
+  if (!ids.includes(userId)) return 'introuvable'
+  membres.set(projetId, ids.filter((id) => id !== userId))
+  projet.nombre_membres_actuel = (membres.get(projetId) ?? []).length
+  return 'ok'
+}
+
+export function membresObjetsDb(projetId: number): Membre[] {
+  const projet = projetParId(projetId)
+  if (!projet) return []
+  return (membres.get(projetId) ?? [])
+    .map((userId) => {
+      const profil = profils.find((profil) => profil.id === userId)
+      if (!profil) return null
+      return {
+        utilisateur: resume(profil),
+        role_equipe: userId === projet.createur.id ? ('proprietaire' as const) : ('membre' as const),
+        rejoint_le: projet.created_at,
+      }
+    })
+    .filter((membre): membre is Membre => membre !== null)
 }

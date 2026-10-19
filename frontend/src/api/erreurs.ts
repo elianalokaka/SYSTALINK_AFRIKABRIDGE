@@ -114,3 +114,15 @@ export function messageParDefaut(statut: number): string {
       return 'Une erreur est survenue.'
   }
 }
+
+/**
+ * Message à afficher pour une erreur attrapée dans un composant.
+ *
+ * `parStatut` permet de remplacer le message du serveur par un message CONTEXTUEL
+ * pour un code donné — c'est ce que le contrat demande pour les 409 : « déjà
+ * membre », « équipe complète »… n'ont pas le même sens selon l'écran.
+ */
+export function messageErreur(erreur: unknown, parStatut: Partial<Record<number, string>> = {}): string {
+  if (erreur instanceof ErreurApi) return parStatut[erreur.statut] ?? erreur.message
+  return 'Une erreur est survenue.'
+}
