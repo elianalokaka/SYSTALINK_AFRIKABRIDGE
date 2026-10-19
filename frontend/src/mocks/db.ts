@@ -1,5 +1,5 @@
-import { creerProfil, MOT_DE_PASSE_DEMO, profilsDemo } from './seed'
-import type { ProfilPrive } from '../types'
+import { CATALOGUE_COMPETENCES, creerProfil, MOT_DE_PASSE_DEMO, profilsDemo } from './seed'
+import type { Competence, CompetenceUtilisateur, ProfilPrive, ProfilUpdate } from '../types'
 
 /**
  * Base de données en mémoire, STATEFUL.
@@ -87,4 +87,46 @@ export function verifierMotDePasse(email: string, motDePasse: string): boolean {
 /** Enregistre le mot de passe d'un compte fraîchement créé. */
 export function enregistrerMotDePasse(email: string, motDePasse: string): void {
   motsDePasse.set(email.trim().toLowerCase(), motDePasse)
+}
+
+/* ── Catalogue de compétences ─────────────────────────────────────────────── */
+
+/** Le catalogue fermé — c'est ce que renvoie `GET /skills`. */
+export function catalogueCompetences(): Competence[] {
+  return CATALOGUE_COMPETENCES
+}
+
+/* ── Édition du profil ────────────────────────────────────────────────────── */
+
+/** Applique un patch PATCH au profil. Retourne le profil, ou `null` si absent. */
+export function mettreAJourProfil(id: number, patch: ProfilUpdate): ProfilPrive | null {
+  const profil = profils.find((profil) => profil.id === id)
+  if (!profil) return null
+  Object.assign(profil, patch)
+  return profil
+}
+
+/**
+ * Remplace TOUTE la liste de compétences de l'utilisateur (règle `sync()` du
+ * contrat : ce n'est PAS un ajout, c'est un remplacement).
+ */
+export function definirCompetences(
+  id: number,
+  entrees: Array<{ competence_id: number; niveau?: string | null }>
+): void {
+  const profil = profils.find((profil) => profil.id === id)
+  if (!profil) return
+
+  profil.competences = entrees
+    .map((entree) => {
+      const source = CATALOGUE_COMPETENCES.find((comp) => comp.id === entree.competence_id)
+      return source ? { ...source, niveau: entree.niveau ?? null } : null
+    })
+    .filter((comp): comp is CompetenceUtilisateur => comp !== null)
+}
+
+/** Pose la nouvelle URL de photo (après un upload). */
+export function definirPhoto(id: number, url: string): void {
+  const profil = profils.find((profil) => profil.id === id)
+  if (profil) profil.photo_url = url
 }
