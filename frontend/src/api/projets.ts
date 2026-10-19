@@ -1,5 +1,5 @@
 import { client } from './client'
-import type { Projet, ProjetCarte, ProjetCreate, ProjetUpdate } from '../types'
+import type { Projet, ProjetCarte, ProjetCreate, ProjetUpdate, RoleEquipe, StatutProjet } from '../types'
 
 /**
  * Module « Projets ».
@@ -40,9 +40,18 @@ export async function listerProjets(filtres: FiltresProjets = {}): Promise<Page<
   return data
 }
 
+/** Filtres de `GET /me/projects` (tous facultatifs, définis par le contrat). */
+export interface FiltresMesProjets {
+  /** `proprietaire` = les projets que je possède · `membre` = ceux que j'ai rejoints. */
+  role_equipe?: RoleEquipe
+  statut?: StatutProjet
+  page?: number
+  per_page?: number
+}
+
 /** Mes projets (dont je suis membre). */
-export async function mesProjets(): Promise<Page<ProjetCarte>> {
-  const { data } = await client.get<Page<ProjetCarte>>('/me/projects')
+export async function mesProjets(filtres: FiltresMesProjets = {}): Promise<Page<ProjetCarte>> {
+  const { data } = await client.get<Page<ProjetCarte>>('/me/projects', { params: filtres })
   return data
 }
 

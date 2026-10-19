@@ -9,6 +9,7 @@ import { Inscription } from './pages/auth/Inscription'
 import { Atelier } from './pages/atelier/Atelier'
 import { MonProfil } from './pages/profil/MonProfil'
 import { ModifierProfil } from './pages/profil/ModifierProfil'
+import { MesDemandes } from './pages/equipes/MesDemandes'
 import { MesProjets } from './pages/projets/MesProjets'
 import { ProjetCreation } from './pages/projets/ProjetCreation'
 import { ProjetDetail } from './pages/projets/ProjetDetail'
@@ -59,6 +60,7 @@ function App() {
               <Route path="projets/:id" element={<ProjetDetail />} />
               <Route path="projets/:id/modifier" element={<ProjetEdition />} />
               <Route path="mes-projets" element={<MesProjets />} />
+              <Route path="mes-demandes" element={<MesDemandes />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />

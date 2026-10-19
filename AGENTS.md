@@ -5,7 +5,7 @@
 > Il porte le contexte et les décisions prises en amont, pour qu'aucune session ne reparte de zéro.
 > **Ne pas le supprimer.**
 >
-> **Dernière mise à jour** : après livraison et fusion du module 0 (`feat/design-system`).
+> **Dernière mise à jour** : module 4 (`feat/equipes`) **codé, corrigé (cache, alerte propriétaire, mocks alignés) et type-checké (tsc 0)** — à valider à la main puis fusionner. Prochain module : `feat/messagerie`.
 
 ---
 
@@ -253,24 +253,24 @@ C'est ce qui découple le kit du set d'icônes.
 ```
 frontend/
 ├── src/
-│   ├── api/                    # client HTTP typé, un module par domaine (À VENIR)
-│   │                           #   client.ts : 2 racines, brackets, intercepteurs 401/419 bornés
+│   ├── api/                    # ✅ client.ts (2 racines, 401/419 bornés) + auth.ts, profil.ts, projets.ts, equipes.ts
 │   ├── components/
-│   │   ├── ui/                 # ✅ PRIMITIVES du design system (livrées)
-│   │   └── layout/             # ⬜ ossature : AppShell, Sidebar, Topbar (À VENIR)
-│   ├── pages/                  # Écrans — un dossier par domaine
-│   │   └── atelier/            # ✅ page de validation du design system
-│   ├── hooks/                  # TanStack Query, un hook par ressource (À VENIR)
-│   ├── lib/                    # ✅ cn.ts · ⬜ labels.ts, constants.ts, priorites.ts
-│   ├── types/                  # types GÉNÉRÉS depuis l'OpenAPI (À VENIR)
-│   ├── mocks/                  # MSW : browser, server, db, seed, handlers (À VENIR)
+│   │   ├── ui/                 # ✅ PRIMITIVES du design system (11 composants)
+│   │   └── layout/             # ✅ AppShell (barre supérieure + <Outlet/>)
+│   ├── pages/                  # ✅ atelier · auth · accueil · profil · projets · equipes
+│   ├── lib/                    # ✅ cn.ts · labels.ts · constants.ts · priorites.ts
+│   ├── types/                  # ✅ api.types.ts (GÉNÉRÉ) + index.ts (alias Required/Omit)
+│   ├── mocks/                  # ✅ browser · server · db · seed · handlers/{auth,profil,projets,equipes}
 │   ├── styles/                 # (non utilisé : les tokens vivent dans index.css)
 │   ├── index.css               # ✅ @theme + base + focus global
-│   ├── main.tsx                # ✅ + imports Poppins
-│   └── App.tsx                 # ✅ rend l'Atelier (temporaire)
+│   ├── main.tsx                # ✅ imports Poppins + démarrage MSW conditionnel
+│   └── App.tsx                 # ✅ routes complètes (publiques + protégées sous AppShell)
 ├── index.html                  # ✅ lang="fr", titre AfricaBridge
 └── vite.config.ts              # ✅ plugin react + @tailwindcss/vite
 ```
+
+> Note : TanStack Query est utilisé directement dans les pages (pas de dossier `hooks/` dédié).
+> Les composants propres à un domaine vivent **dans** `pages/<domaine>/` (ex. `BoutonRejoindre.tsx`).
 
 **Convention de nommage** : dossiers et fichiers **techniques en anglais** (`components`, `pages`,
 `hooks`, `api`, `Button.tsx`) · **composants en PascalCase**, un composant par fichier ·
@@ -385,12 +385,12 @@ qu'aucun `node_modules` n'apparaît** avant de commiter.
 
 | # | Branche | Contenu | État |
 |---|---|---|---|
-| **0** | `feat/design-system` | Poppins, icônes Lucide, tokens, 11 primitives, page atelier | ✅ **LIVRÉ ET FUSIONNÉ** |
-| **1** | `feat/api-et-auth` | client axios (2 racines, 401/419 bornés), mocks MSW, **module Auth** complet (connexion, inscription, session, routes protégées) | ⬜ suivant |
-| **2** | `feat/profil` | mon profil, modification, compétences, photo | ⬜ |
-| **3** | `feat/projets` | explorer, créer, détail projet (5 onglets) | ⬜ |
-| **4** | `feat/equipes` | demandes d'adhésion, membres | ⬜ |
-| **5** | `feat/messagerie` | discussion + **polling 5 s** + curseur | ⬜ |
+| **0** | `feat/design-system` | Poppins, icônes Lucide, tokens, 11 primitives, page atelier | ✅ fusionné |
+| **1** | `feat/api-et-auth` | client axios (2 racines, 401/419 bornés), mocks MSW, **module Auth** complet | ✅ fusionné |
+| **2** | `feat/profil` | mon profil, modification, compétences, photo | ✅ fusionné |
+| **3** | `feat/projets` | explorer, créer, détail (onglets), modifier, mes projets | ✅ fusionné |
+| **4** | `feat/equipes` | bouton « Rejoindre » (machine à états), onglets Équipe/Demandes, mes demandes | ✅ **code prêt · à tester puis fusionner** |
+| **5** | `feat/messagerie` | discussion + **polling 5 s** + curseur | ⬜ **suivant** |
 | **6** | `feat/ressources` | bibliothèque, partage | ⬜ |
 | **7** | `feat/talents` | recherche de talents, profil public | ⬜ |
 | **8** | `feat/dashboard` | tableau de bord (repli P0) + portfolio | ⬜ |
@@ -408,16 +408,23 @@ racines, le curseur). Prouver ça tôt évite de découvrir le problème la veil
 - Contrat API lu et **analysé intégralement** (1 847 lignes) → `docs/ANALYSE-CONTRAT.md`.
 - `ASSUMPTIONS.md` (26 hypothèses) et `INTEGRATION.md` (runbook + Règle des écarts) écrits.
 - Outillage de conformité OpenAPI écrit et **auto-testé** (`scripts/conformite/`).
-- **Design system livré** : tokens, Poppins, Lucide, 11 primitives, page atelier.
-- Socle React 19 + TS + Vite 8 + Tailwind v4 en place, `index.html` en français.
-- Branche `frontend` à jour, dépôt propre, fusion PR #4 effectuée.
+- Types générés depuis l'OpenAPI (`npm run types:api`) + alias `Required`/`Omit` dans `types/index.ts`.
+- `lib/labels.ts`, `lib/constants.ts`, `lib/priorites.ts` écrits.
+- **Modules 0 à 3 livrés et fusionnés** (PR #4 → #7) : design-system, api-et-auth, profil, projets.
+- **Module 4 (`feat/equipes`) codé + `tsc` 0** — sur la branche locale `feat/equipes`, **pas encore commité**.
+  - Correction du bug « Projet introuvable » (cache périmé, `ASSUMPTIONS.md` A-17) : `lib/cache.ts`.
+  - Le propriétaire est alerté des demandes reçues (A-16) : pastille « Mes projets », carte, onglet.
+  - Message facultatif à l'envoi d'une demande ; erreurs 409 affichées partout (`messageErreur`).
+  - Mocks alignés sur le contrat : filtre `statut`, 409 par cas, 404/403 sur l'annulation, cascade
+    à la suppression, `role_equipe` sur `/me/projects`.
+  - Règle : **toute nouvelle écriture appelle `rafraichirProjets()`** ; les clés de cache sont
+    documentées en tête de `lib/cache.ts`.
 
 ### À faire, dans l'ordre
-1. **Module 1 : `feat/api-et-auth`** — client API, mocks MSW, module Auth.
-2. Vérifier les hypothèses 🔴 d'`ASSUMPTIONS.md` auprès du backend (2 sont **critiques** :
-   `V-1` redemande après refus, `V-2` `ma_demande_statut` après un départ).
-3. Générer les types depuis l'OpenAPI (`openapi-typescript`).
-4. Écrire `lib/labels.ts` (libellés des 10 `RoleProfil` et 12 `Domaine`, absents du contrat).
+1. **Tester puis fusionner `feat/equipes`** (bouton « Rejoindre », onglets Équipe/Demandes, mes demandes).
+2. **Module 5 : `feat/messagerie`** — discussion + **polling 5 s** + curseur (le code le plus risqué après l'auth).
+3. Puis `feat/ressources`, `feat/talents`, `feat/dashboard`, enfin le P1.
+4. Vérifier les hypothèses 🔴 d'`ASSUMPTIONS.md` auprès du backend (2 critiques : `V-1`, `V-2`).
 
 ### Info utile
 Le dev backend a des branches distantes actives : `feat/authentification-sanctum` et
@@ -479,3 +486,12 @@ donner à l'utilisateur la commande exacte à lancer — jamais prétendre avoir
   Les noms bruts de Lucide (`Check`) n'existent pas → erreur de chargement du module.
 - Les modifications parallèles sur un **même fichier** s'annulent : une seule édition à la fois.
 - Toujours vérifier dans le paquet installé plutôt que de supposer une convention.
+- **Après TOUTE modification d'un fichier de `mocks/`, redémarrer `npm run dev` + recharger
+  (`Ctrl+Shift+R`)** : MSW fige sa liste de handlers au démarrage, le HMR ne la reconstruit pas.
+  Sinon → « 404 storm » sur `/api/v1/*`.
+- **Types générés LÂCHES** (le contrat déclare rarement `required`) : `Required<Schéma>` ne
+  corrige que le niveau supérieur. Pour un champ imbriqué de type **TABLEAU**, l'intersection
+  `& { x: T[] }` ne se réduit pas — utiliser `Omit<Required<S>, 'x'> & { x: T[] }`. Pour un
+  **OBJET** imbriqué, l'intersection suffit.
+- **Le bouton « Rejoindre » est LA machine à états du front** — voir
+  `frontend/src/pages/projets/BoutonRejoindre.tsx` (tableau `is_member` × `ma_demande_statut` × `statut`).

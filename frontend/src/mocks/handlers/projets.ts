@@ -99,7 +99,12 @@ export const handlersProjets = [
     if (!userId) return HttpResponse.json({ message: 'Unauthenticated.' }, { status: 401 })
 
     const { page, perPage } = paginationDepuis(request)
-    const pagee = paginer(mesProjets(userId), page, perPage)
+    const sp = new URL(request.url).searchParams
+    const pagee = paginer(
+      mesProjets(userId, { role_equipe: sp.get('role_equipe'), statut: sp.get('statut') }),
+      page,
+      perPage
+    )
     return HttpResponse.json(
       { data: pagee.data.map((projet) => cartePour(projet, userId)), meta: pagee.meta },
       { status: 200 }
@@ -152,6 +157,22 @@ export const handlersProjets = [
     }
 
     const patch = (await request.json()) as ProjetUpdate
+    if (
+      patch.nombre_membres_souhaite !== undefined &&
+      patch.nombre_membres_souhaite < projet.nombre_membres_actuel
+    ) {
+      return HttpResponse.json(
+        {
+          message: 'The given data was invalid.',
+          errors: {
+            nombre_membres_souhaite: [
+              `L'équipe compte déjà ${projet.nombre_membres_actuel} membres : l'effectif souhaité ne peut pas être inférieur.`,
+            ],
+          },
+        },
+        { status: 422 }
+      )
+    }
     const maj = mettreAJourProjetDb(id, patch)
     return HttpResponse.json(maj, { status: 200 })
   }),

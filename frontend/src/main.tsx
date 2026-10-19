@@ -25,8 +25,8 @@ import App from './App.tsx'
  */
 async function demarrer() {
   if (import.meta.env.VITE_USE_MOCKS === 'true') {
-    const { worker } = await import('./mocks/browser')
-    await worker.start()
+    const { demarrerMocks } = await import('./mocks/browser')
+    await demarrerMocks()
   }
 
   createRoot(document.getElementById('root')!).render(

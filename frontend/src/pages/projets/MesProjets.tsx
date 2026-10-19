@@ -1,17 +1,29 @@
+import { useState } from 'react'
 import { Link } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
-import { Button, Card, CardCorps, EmptyState, SkeletonTexte } from '../../components/ui'
+import { Button, Card, CardCorps, EmptyState, SkeletonTexte, Tabs } from '../../components/ui'
 import { mesProjets } from '../../api/projets'
+import { useDemandesRecues } from '../../features/equipes/useDemandesRecues'
+import type { RoleEquipe } from '../../types'
 import { CarteProjet } from './CarteProjet'
+
+type Filtre = 'tous' | RoleEquipe
 
 /**
  * « Mes projets » — les projets dont je suis membre.
  *
- * Le contrat (`GET /me/projects`) accepte un filtre `role_equipe`, mais le
- * concept de rôle d'équipe arrive avec le module équipes : ici on liste tout.
+ * Le filtre « Que je possède / Que j'ai rejoints » est le paramètre `role_equipe`
+ * de `GET /me/projects`. Sur les projets que je possède, une pastille signale
+ * les demandes d'adhésion EN ATTENTE : c'est l'endroit où le propriétaire voit
+ * qu'une décision l'attend.
  */
 export function MesProjets() {
-  const requete = useQuery({ queryKey: ['mes-projets'], queryFn: mesProjets })
+  const [filtre, setFiltre] = useState<Filtre>('tous')
+  const requete = useQuery({
+    queryKey: ['mes-projets', filtre],
+    queryFn: () => mesProjets(filtre === 'tous' ? {} : { role_equipe: filtre }),
+  })
+  const demandesRecues = useDemandesRecues()
 
   return (
     <div className="flex flex-col gap-5">
@@ -27,6 +39,16 @@ export function MesProjets() {
         </Link>
       </div>
 
+      <Tabs
+        onglets={[
+          { id: 'tous', libelle: 'Tous' },
+          { id: 'proprietaire', libelle: 'Que je possède' },
+          { id: 'membre', libelle: "Que j'ai rejoints" },
+        ]}
+        actif={filtre}
+        onChange={(id) => setFiltre(id as Filtre)}
+      />
+
       {requete.isPending ? (
         <Card>
           <CardCorps>
@@ -37,7 +59,10 @@ export function MesProjets() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {requete.data.data.map((projet) => (
             <Link key={projet.id} to={`/projets/${projet.id}`}>
-              <CarteProjet projet={projet} />
+              <CarteProjet
+                projet={projet}
+                demandesEnAttente={demandesRecues.data?.parProjet[projet.id] ?? 0}
+              />
             </Link>
           ))}
         </div>
