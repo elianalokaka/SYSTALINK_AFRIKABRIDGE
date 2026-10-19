@@ -92,7 +92,8 @@ T3.3 : Portfolio & Suggestions
 T2.5
 Vérifie que les projets terminés s'affichent sur les profils, et que les suggestions ciblent les bons talents.
 - GET /users/{id}/portfolio ne renvoie que les projets termine.
-- GET /users/suggestions?projet_id=X renvoie les talents hors équipe avec les bonnes compétences.
+- GET /users/suggestions?limit=N renvoie les talents ayant des compétences recherchées par les projets de l'utilisateur connecté ou complémentaires aux siennes.
+- Exclut l'utilisateur connecté et les membres de ses équipes, trie par nombre de compétences requises correspondantes et accepte limit de 1 à 20 (10 par défaut).
 P1
 T3.4 : Dashboard & Stats d'impact
 Toutes

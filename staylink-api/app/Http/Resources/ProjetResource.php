@@ -43,7 +43,9 @@ class ProjetResource extends JsonResource
             ],
             'lien_realisation' => $this->lien_realisation,
             'date_fin' => $this->date_fin?->toDateString(),
-            'is_member' => true,
+            'is_member' => $this->relationLoaded('membres')
+                ? $this->membres->contains('id', $request->user()?->id)
+                : true,
             'ma_demande_statut' => null,
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),

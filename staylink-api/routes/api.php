@@ -14,7 +14,9 @@ use App\Http\Controllers\Api\V1\Projet\DeposerDemandeAdhesionController;
 use App\Http\Controllers\Api\V1\Projet\EnvoyerMessageController;
 use App\Http\Controllers\Api\V1\Projet\LireMessagesController;
 use App\Http\Controllers\Api\V1\Projet\ModifierProjetController;
+use App\Http\Controllers\Api\V1\Projet\PortfolioUtilisateurController;
 use App\Http\Controllers\Api\V1\Projet\RetirerMembreProjetController;
+use App\Http\Controllers\Api\V1\Projet\SuggestionsTalentsController;
 use App\Http\Controllers\Api\V1\Projet\SupprimerMessageController;
 use App\Http\Controllers\Api\V1\Ressource\PublierRessourceController;
 use App\Http\Controllers\Api\V1\Suivi\NePlusSuivreMembreController;
@@ -47,6 +49,13 @@ Route::prefix('v1')->group(function () {
         Route::post('/users/me/photo', UploadPhotoProfilController::class)
             ->name('users.me.photo.update');
 
+        Route::get('/users/suggestions', SuggestionsTalentsController::class)
+            ->name('users.suggestions');
+
+        Route::get('/users/{id}/portfolio', PortfolioUtilisateurController::class)
+            ->whereNumber('id')
+            ->name('users.portfolio');
+
         Route::get('/users/{id}', VoirProfilController::class)
             ->whereNumber('id')
             ->name('users.show');
@@ -58,6 +67,7 @@ Route::prefix('v1')->group(function () {
         Route::delete('/users/{id}/follow', NePlusSuivreMembreController::class)
             ->whereNumber('id')
             ->name('users.unfollow');
+
         Route::post('/projects', CreerProjetController::class)
             ->name('projects.store');
         Route::patch('/projects/{id}', ModifierProjetController::class)
