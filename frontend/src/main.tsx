@@ -12,8 +12,28 @@ import '@fontsource/poppins/700.css'
 import './index.css'
 import App from './App.tsx'
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+/**
+ * Démarrage de l'application.
+ *
+ * MSW démarre AVANT le rendu, et uniquement si `VITE_USE_MOCKS === 'true'`.
+ * C'est le SEUL endroit du projet qui connaît l'existence des mocks : aucun
+ * composant ne sait qu'une simulation existe.
+ *
+ * MSW v3 : plus d'option `onUnhandledRequest`. Les requêtes non mockées
+ * (fichiers de police, HMR) sont traversées automatiquement — et les assets
+ * courants sont ignorés d'office par `isCommonAssetRequest`.
+ */
+async function demarrer() {
+  if (import.meta.env.VITE_USE_MOCKS === 'true') {
+    const { worker } = await import('./mocks/browser')
+    await worker.start()
+  }
+
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <App />
+    </StrictMode>
+  )
+}
+
+void demarrer()
