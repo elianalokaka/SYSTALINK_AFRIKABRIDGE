@@ -149,7 +149,7 @@ export function Accueil() {
                         className="flex flex-col gap-2 border-b border-border-subtle pb-4 last:border-b-0 last:pb-0"
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <Link to={`/projets/${projet.id}`} className="min-w-0 text-sm font-semibold text-fg-1 hover:text-accent">
+                          <Link to={`/projets/${projet.id}`} className="min-w-0 py-1 text-sm font-semibold text-fg-1 hover:text-accent">
                             {projet.nom}
                           </Link>
                           <div className="flex items-center gap-2">
@@ -207,12 +207,12 @@ export function Accueil() {
                 const realisation = lienSur(projet.lien_realisation)
                 return (
                   <li key={projet.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                    <Link to={`/projets/${projet.id}`} className="font-medium text-fg-1 hover:text-accent">
+                    <Link to={`/projets/${projet.id}`} className="py-1 font-medium text-fg-1 hover:text-accent">
                       {projet.nom}
                     </Link>
                     <span className="flex items-center gap-3 text-xs text-fg-3">
                       {realisation && (
-                        <a href={realisation} target="_blank" rel="noopener noreferrer" className="text-accent hover:text-accent-hover">
+                        <a href={realisation} target="_blank" rel="noopener noreferrer" className="py-1 text-accent hover:text-accent-hover">
                           Voir la réalisation
                         </a>
                       )}

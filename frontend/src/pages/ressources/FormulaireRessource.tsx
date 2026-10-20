@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { useNavigate, useSearchParams } from 'react-router'
+import { Link, useNavigate, useSearchParams } from 'react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Badge, Button, Card, CardCorps, FormField, Input, Textarea } from '../../components/ui'
 import { creerRessource, modifierRessource } from '../../api/ressources'
@@ -131,13 +131,9 @@ export function FormulaireRessource({ ressource }: { ressource?: Ressource }) {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <button
-          type="button"
-          onClick={() => navigate(edition ? `/ressources/${ressource.id}` : '/ressources')}
-          className="mb-3 text-sm text-fg-2 hover:text-fg-1"
-        >
+        <Link to={edition ? `/ressources/${ressource.id}` : '/ressources'} className="mb-3 inline-flex min-h-9 items-center text-sm text-fg-2 hover:text-fg-1">
           ← {edition ? 'Retour à la ressource' : 'Bibliothèque'}
-        </button>
+        </Link>
         <h1 className="text-lg font-semibold text-fg-1">
           {edition ? 'Modifier la ressource' : 'Partager une ressource'}
         </h1>

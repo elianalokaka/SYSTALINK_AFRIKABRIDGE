@@ -42,7 +42,7 @@ export function ProfilPublic() {
   if (moi && String(moi.id) === id) return <Navigate to="/profil" replace />
 
   const retour = (
-    <Link to="/talents" className="text-sm text-fg-2 hover:text-fg-1">
+    <Link to="/talents" className="inline-flex min-h-9 items-center text-sm text-fg-2 hover:text-fg-1">
       ← Talents
     </Link>
   )
@@ -206,7 +206,7 @@ export function ProfilPublic() {
                     className="flex flex-col gap-2 border-b border-border-subtle pb-3 last:border-b-0 last:pb-0"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <Link to={`/projets/${projet.id}`} className="text-sm font-semibold text-fg-1 hover:text-accent">
+                      <Link to={`/projets/${projet.id}`} className="py-1 text-sm font-semibold text-fg-1 hover:text-accent">
                         {projet.nom}
                       </Link>
                       {projet.date_fin && (
@@ -225,7 +225,7 @@ export function ProfilPublic() {
                         href={realisation}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="truncate text-sm text-accent hover:text-accent-hover"
+                        className="truncate py-1 text-sm text-accent hover:text-accent-hover"
                       >
                         Voir la réalisation · {domaineDe(realisation)}
                       </a>

@@ -117,13 +117,9 @@ export function RessourceDetail() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <button
-          type="button"
-          onClick={() => navigate('/ressources')}
-          className="mb-3 text-sm text-fg-2 hover:text-fg-1"
-        >
+        <Link to={'/ressources'} className="mb-3 inline-flex min-h-9 items-center text-sm text-fg-2 hover:text-fg-1">
           ← Bibliothèque
-        </button>
+        </Link>
 
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">

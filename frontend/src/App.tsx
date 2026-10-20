@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
+import { BrowserRouter, Route, Routes } from 'react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AppShell } from './components/layout/AppShell'
 import { RequiertSession } from './features/auth/RequiertSession'
@@ -21,6 +21,7 @@ import { ProjetCreation } from './pages/projets/ProjetCreation'
 import { ProjetDetail } from './pages/projets/ProjetDetail'
 import { ProjetEdition } from './pages/projets/ProjetEdition'
 import { Projets } from './pages/projets/Projets'
+import { PageIntrouvable } from './pages/PageIntrouvable'
 
 /**
  * Configuration globale de TanStack Query.
@@ -38,7 +39,7 @@ const queryClient = new QueryClient({
 /**
  * Racine de l'application.
  *
- * Routes publiques : /connexion, /inscription, /atelier (page de développement).
+ * Routes publiques : /connexion, /inscription, /atelier (page de développement, absente du build de production).
  * Routes protégées : un layout `RequiertSession` → `AppShell` → les pages.
  */
 function App() {
@@ -49,7 +50,7 @@ function App() {
           <Routes>
             <Route path="/connexion" element={<Connexion />} />
             <Route path="/inscription" element={<Inscription />} />
-            <Route path="/atelier" element={<Atelier />} />
+            {import.meta.env.DEV && <Route path="/atelier" element={<Atelier />} />}
 
             <Route
               element={
@@ -73,9 +74,9 @@ function App() {
               <Route path="ressources/:id/modifier" element={<RessourceEdition />} />
               <Route path="talents" element={<Talents />} />
               <Route path="talents/:id" element={<ProfilPublic />} />
+              <Route path="*" element={<PageIntrouvable />} />
             </Route>
 
-            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </SessionProvider>
       </BrowserRouter>
