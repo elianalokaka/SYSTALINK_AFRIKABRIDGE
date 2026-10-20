@@ -74,7 +74,7 @@ export function Accueil() {
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="break-words text-lg font-semibold text-fg-1">Bonjour {prenom}</h1>
-        <p className="mt-1 text-sm text-fg-2">Voici où en sont tes projets et tes demandes.</p>
+        <p className="mt-1 text-sm text-fg-2">Voici où en sont tes projets et tes demandes bien.</p>
       </div>
 
       {profilIncomplet && (
