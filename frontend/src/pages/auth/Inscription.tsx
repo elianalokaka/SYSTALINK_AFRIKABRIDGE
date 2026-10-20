@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { Button, Card, CardCorps, FormField, Input } from '../../components/ui'
+import { useTitreDocument } from '../../components/layout/useSuiviDeRoute'
 import { ErreurApi } from '../../api/erreurs'
 import { useSession } from '../../features/auth/SessionProvider'
 import { PAYS } from '../../lib/constants'
@@ -18,6 +19,7 @@ import type { UserRegister } from '../../types'
  * pas de seconde étape de connexion.
  */
 export function Inscription() {
+  useTitreDocument('Créer un compte')
   const { sInscrire } = useSession()
   const navigate = useNavigate()
   const [chargement, setChargement] = useState(false)

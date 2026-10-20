@@ -18,7 +18,7 @@ export function CarteRessource({ ressource }: { ressource: Ressource }) {
           )}
         </div>
 
-        <h3 className="line-clamp-2 break-words text-sm font-semibold text-fg-1">{ressource.titre}</h3>
+        <h2 className="line-clamp-2 break-words text-sm font-semibold text-fg-1">{ressource.titre}</h2>
 
         {ressource.description && (
           <p className="line-clamp-2 break-words text-sm text-fg-2">{ressource.description}</p>

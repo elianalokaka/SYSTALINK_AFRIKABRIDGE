@@ -126,13 +126,9 @@ export function ProjetDetail() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <button
-          type="button"
-          onClick={() => navigate('/projets')}
-          className="mb-3 text-sm text-fg-2 hover:text-fg-1"
-        >
+        <Link to={'/projets'} className="mb-3 inline-flex min-h-9 items-center text-sm text-fg-2 hover:text-fg-1">
           ← Tous les projets
-        </button>
+        </Link>
 
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -170,8 +166,9 @@ export function ProjetDetail() {
         </p>
       )}
 
-      <Tabs onglets={onglets} actif={onglet} onChange={setOnglet} />
+      <Tabs onglets={onglets} actif={onglet} onChange={setOnglet} avecPanneaux />
 
+      <div role="tabpanel" id={`panneau-${onglet}`} aria-labelledby={`onglet-${onglet}`} className="flex flex-col gap-6">
       {onglet === 'vue' && <VueProjet projet={projet} />}
       {onglet === 'equipe' && <OngletEquipe projetId={projet.id} estProprietaire={estProprietaire} />}
       {onglet === 'discussion' && projet.is_member && (
@@ -179,6 +176,7 @@ export function ProjetDetail() {
       )}
       {onglet === 'ressources' && projet.is_member && <OngletRessources projetId={projet.id} />}
       {onglet === 'demandes' && estProprietaire && <OngletDemandes projetId={projet.id} />}
+      </div>
     </div>
   )
 }
@@ -240,7 +238,7 @@ function VueProjet({ projet }: { projet: Projet }) {
         <CardCorps className="flex items-center gap-3">
           <Avatar nom={projet.createur.nom} photoUrl={projet.createur.photo_url} taille="md" />
           <div className="min-w-0">
-            <Link to={`/talents/${projet.createur.id}`} className="block truncate text-sm font-medium text-fg-1 hover:text-accent">{projet.createur.nom}</Link>
+            <Link to={`/talents/${projet.createur.id}`} className="block truncate py-1 text-sm font-medium text-fg-1 hover:text-accent">{projet.createur.nom}</Link>
             <p className="truncate text-xs text-fg-2">
               {LIBELLES_ROLE_PROFIL[projet.createur.role_profil]}
             </p>
@@ -324,7 +322,7 @@ function OngletEquipe({ projetId, estProprietaire }: { projetId: number; estProp
               <div className="flex min-w-0 items-center gap-3">
                 <Avatar nom={membre.utilisateur.nom} photoUrl={membre.utilisateur.photo_url} taille="sm" />
                 <div className="min-w-0">
-                  <Link to={`/talents/${membre.utilisateur.id}`} className="block truncate text-sm font-medium text-fg-1 hover:text-accent">{membre.utilisateur.nom}</Link>
+                  <Link to={`/talents/${membre.utilisateur.id}`} className="block truncate py-1 text-sm font-medium text-fg-1 hover:text-accent">{membre.utilisateur.nom}</Link>
                   <p className="truncate text-xs text-fg-2">
                     {LIBELLES_ROLE_PROFIL[membre.utilisateur.role_profil]}
                   </p>

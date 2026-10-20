@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { Button, Card, CardCorps, FormField, Input } from '../../components/ui'
+import { useTitreDocument } from '../../components/layout/useSuiviDeRoute'
 import { ErreurApi } from '../../api/erreurs'
 import { useSession } from '../../features/auth/SessionProvider'
 import type { UserLogin } from '../../types'
@@ -17,6 +18,7 @@ import type { UserLogin } from '../../types'
  * C'est un hors-périmètre confirmé — on ne l'ajoute pas discrètement.
  */
 export function Connexion() {
+  useTitreDocument('Connexion')
   const { seConnecter } = useSession()
   const navigate = useNavigate()
   const [chargement, setChargement] = useState(false)

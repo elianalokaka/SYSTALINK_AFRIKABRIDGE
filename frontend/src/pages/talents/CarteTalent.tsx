@@ -19,7 +19,7 @@ export function CarteTalent({ talent }: { talent: Talent }) {
         <div className="flex items-center gap-3">
           <Avatar nom={talent.nom} photoUrl={talent.photo_url} taille="md" />
           <div className="min-w-0">
-            <h3 className="truncate text-sm font-semibold text-fg-1">{talent.nom}</h3>
+            <h2 className="truncate text-sm font-semibold text-fg-1">{talent.nom}</h2>
             <p className="truncate text-xs text-fg-2">{lieu}</p>
           </div>
         </div>

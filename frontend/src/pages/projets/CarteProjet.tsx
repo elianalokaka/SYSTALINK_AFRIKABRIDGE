@@ -22,7 +22,7 @@ export function CarteProjet({
     <Card className="h-full transition-colors hover:border-border-strong">
       <CardCorps className="flex h-full flex-col gap-3">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="min-w-0 truncate text-sm font-semibold text-fg-1">{projet.nom}</h3>
+          <h2 className="min-w-0 truncate text-sm font-semibold text-fg-1">{projet.nom}</h2>
           <Badge variante={varianteStatut(projet.statut)}>{libelleStatut(projet.statut)}</Badge>
         </div>
 

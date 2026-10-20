@@ -92,6 +92,45 @@
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
+   Cibles tactiles : 44 px minimum sur mobile / écran tactile (loi de Fitts,
+   WCAG 2.5.5). Les contrôles font 36 px sur ordinateur (souris précise).
+   Les boutons à bascule (puces de filtre, `aria-pressed`) gardent 36 px : une
+   liste de 19 compétences en 44 px deviendrait un mur.
+   ────────────────────────────────────────────────────────────────────────── */
+@media (max-width: 639px), (pointer: coarse) {
+  button:not([aria-pressed]),
+  select,
+  input:not([type='checkbox']):not([type='radio']):not([type='file']),
+  [role='tab'] {
+    min-height: 44px;
+  }
+  button[aria-pressed] {
+    min-height: 36px;
+  }
+  label:has(> input[type='checkbox']),
+  label:has(> input[type='radio']) {
+    min-height: 44px;
+  }
+  input[type='checkbox'],
+  input[type='radio'] {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+}
+
+/* Mouvement réduit : les animations décoratives (pulsation, transitions) s'arrêtent. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
    Police : Poppins, auto-hébergée.
    Les fichiers de police sont importés dans `main.tsx`
    (`@fontsource/poppins/...`) — pas ici, pour que Vite les traite avec le

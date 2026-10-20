@@ -27,7 +27,8 @@ export interface SkeletonTexteProps {
 /** Plusieurs lignes de texte factices, la dernière plus courte (naturel). */
 export function SkeletonTexte({ lignes = 3, className }: SkeletonTexteProps) {
   return (
-    <div className={cn('flex flex-col gap-2', className)}>
+    <div role="status" className={cn('flex flex-col gap-2', className)}>
+      <span className="sr-only">Chargement…</span>
       {Array.from({ length: lignes }).map((_, index) => (
         <Skeleton
           key={index}

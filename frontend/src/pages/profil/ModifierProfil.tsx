@@ -375,6 +375,7 @@ export function ModifierProfil() {
 
           <input
             type="file"
+            aria-label="Choisir une photo de profil"
             accept="image/jpeg,image/png,image/webp"
             onChange={onChoisirFichier}
             className="text-sm text-fg-2 file:mr-3 file:cursor-pointer file:rounded-md file:border file:border-border file:bg-surface-2 file:px-3 file:py-1.5 file:text-sm file:text-fg-1 file:transition-colors hover:file:bg-surface-3"

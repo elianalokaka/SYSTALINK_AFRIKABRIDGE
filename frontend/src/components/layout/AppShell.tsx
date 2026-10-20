@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router'
 import { Avatar, Button } from '../ui'
 import { useSession } from '../../features/auth/SessionProvider'
 import { useDemandesRecues } from '../../features/equipes/useDemandesRecues'
 import { cn } from '../../lib/cn'
+import { useSuiviDeRoute } from './useSuiviDeRoute'
 
 /**
  * OSSATURE de l'application — le cadre commun à toutes les pages protégées.
@@ -43,6 +44,8 @@ export function AppShell() {
   const demandesRecues = useDemandesRecues()
   const enAttente = demandesRecues.data?.total ?? 0
   const [menuOuvert, setMenuOuvert] = useState(false)
+  const principal = useRef<HTMLElement>(null)
+  useSuiviDeRoute(principal)
 
   /* Choisir un lien referme le menu ; Échap aussi ; passer en grand écran aussi. */
   useEffect(() => {
@@ -88,9 +91,20 @@ export function AppShell() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-surface-0">
+      {/* Premier élément focalisable : visible seulement au clavier (WCAG 2.4.1). */}
+      <a
+        href="#contenu"
+        onClick={(e) => {
+          e.preventDefault()
+          principal.current?.focus()
+        }}
+        className="sr-only z-20 rounded-md border border-border-strong bg-surface-3 text-sm text-fg-1 focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:px-3 focus:py-2"
+      >
+        Aller au contenu
+      </a>
       <header className="sticky top-0 z-10 border-b border-border-subtle bg-surface-1">
         <div className="mx-auto flex max-w-6xl items-center gap-x-4 px-4 py-2.5 sm:px-6 lg:gap-x-6">
-          <Link to="/" className="shrink-0 text-sm font-semibold text-fg-1">
+          <Link to="/" className="inline-flex shrink-0 items-center py-2 text-sm font-semibold text-fg-1">
             AfricaBridge
           </Link>
 
@@ -155,7 +169,7 @@ export function AppShell() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6">
+      <main id="contenu" ref={principal} tabIndex={-1} className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 outline-none sm:px-6">
         <Outlet />
       </main>
     </div>

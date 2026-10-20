@@ -427,7 +427,7 @@ racines, le curseur). Prouver ça tôt évite de découvrir le problème la veil
     documentées en tête de `lib/cache.ts`.
 
 ### À faire, dans l'ordre
-1. **Tester puis fusionner `feat/dashboard`** (accueil : chiffres, projets récents, demandes à traiter).
+1. **Tester puis fusionner `feat/audit-ux`** (rapport : `docs/AUDIT-UX.md` ; corrections : titres de page, lien d'évitement, onglets clavier, 404, cibles tactiles). Restent à faire : focus sur le 1er champ en erreur, dialogue de confirmation maison, test lecteur d'écran.
 2. Puis le P1 si le backend le livre (suivi, commentaires, suggestions, `/stats`), ou passage final (audit UX/accessibilité, `INTEGRATION.md`, bascule vers le vrai backend).
 4. Vérifier les hypothèses 🔴 d'`ASSUMPTIONS.md` auprès du backend (2 critiques : `V-1`, `V-2`).
 
