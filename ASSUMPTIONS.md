@@ -75,6 +75,7 @@ ils servent de référence dans les échanges avec le backend et dans les tests.
 | `A-15` | 🟢 | Repli du dashboard | parallèle + tolérant à l'échec | moyen |
 | `A-16` | 🟢 | Alerte « demandes reçues » | compteur calculé (N appels) | moyen |
 | `A-17` | 🟢 | Fraîcheur du cache après écriture | invalidation explicite (`lib/cache.ts`) | **élevé** |
+| `A-18` | 🟢 | Polling de la discussion | `refetchInterval` 5 s, curseur monotone | **élevé** |
 | `V-1` | 🔴 | **Redemande après départ ou refus** | autorisée | **critique** |
 | `V-2` | 🔴 | `ma_demande_statut` après départ | redevient `null` | **critique** |
 | `V-3` | 🔴 | Tri réel des listes | confirmé par le backend | faible |
@@ -86,6 +87,7 @@ ils servent de référence dans les échanges avec le backend et dans les tests.
 | `V-9` | 🔴 | Langue des messages de validation | français | moyen |
 | `V-10` | 🔴 | Compteurs d'agrégats | cohérents avec les listes | faible |
 | `V-11` | 🔴 | Identité « c'est moi » | comparaison d'`id` fiable | moyen |
+| `V-12` | 🔴 | Premier appel de la discussion (sans curseur) | renvoie les `limit` DERNIERS messages | **élevé** |
 
 ---
 
@@ -321,6 +323,34 @@ produirait avec Laravel.
 
 **Règle d'affichage associée** : « Projet introuvable » n'apparaît que sur une vraie réponse **404**.
 Une panne réseau ou 5xx garde les données déjà affichées (ou propose « Réessayer »).
+
+### A-18 — Polling de la discussion
+
+**Décision** : l'état de la discussion (messages + curseurs) vit dans le cache TanStack Query sous
+`['discussion', projetId]`. Le polling est le `refetchInterval` (5 s, valeur du contrat) de cette
+requête : il se **met en pause** quand l'onglet du navigateur est masqué, **reprend avec un poll
+immédiat** au retour, et **s'arrête** sur un 403/404 (plus membre, projet supprimé). Les règles de
+fusion sont des fonctions pures dans `features/messagerie/fil.ts`.
+
+**Règles de curseur** (en plus de `A-5` et `A-13`) :
+1. `apres_id` = plus grand id **jamais vu par un appel serveur**.
+2. **Envoyer un message n'avance PAS le curseur** : si un coéquipier a écrit juste avant moi,
+   avancer jusqu'à mon id lui ferait sauter son message. Mon message est ajouté à l'écran, et le
+   poll suivant le renverra en doublon, absorbé par la fusion par id.
+3. La fusion se fait sur l'état le plus récent **relu après** l'attente réseau (un poll lent ne
+   doit pas écraser l'historique chargé ou le message envoyé entre-temps).
+4. Poll plein (≥ 50 messages) ⇒ on rattrape immédiatement au lieu d'attendre 5 s.
+
+**Conséquence assumée** : un poll toutes les 5 s **par discussion ouverte**, uniquement tant que
+l'onglet « Discussion » est affiché.
+
+### V-12 — Premier appel sans curseur 🔴
+
+Le contrat dit que les messages sont « triés du plus ancien au plus récent » mais ne dit pas quels
+messages renvoie un appel **sans** `apres_id` ni `avant_id`. Hypothèse du front : **les `limit`
+derniers** (donc la fin de la conversation), l'historique se chargeant ensuite avec `avant_id`.
+Si le backend renvoie les `limit` **premiers**, le fil s'ouvrirait sur le début de la conversation.
+**À confirmer** (question prête : « sans curseur, `GET /messages` renvoie-t-il les 50 derniers ? »).
 
 ---
 

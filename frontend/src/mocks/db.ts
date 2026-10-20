@@ -13,6 +13,7 @@ import type {
   CompetenceUtilisateur,
   DemandeAdhesion,
   Membre,
+  Message,
   Projet,
   ProjetCarte,
   ProjetCreate,
@@ -413,3 +414,111 @@ export function membresObjetsDb(projetId: number): Membre[] {
     })
     .filter((membre): membre is Membre => membre !== null)
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MESSAGERIE — fil de discussion par projet
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/** Ligne « en base » : le `deleted_at` n'est jamais exposé, il alimente `supprimes`. */
+interface LigneMessage {
+  id: number
+  projet_id: number
+  auteur_id: number
+  contenu: string
+  created_at: string
+  deleted_at: string | null
+}
+
+const lignesMessages: LigneMessage[] = []
+let prochainIdMessage = 1
+
+function enMessage(ligne: LigneMessage): Message {
+  const auteur = profils.find((profil) => profil.id === ligne.auteur_id)
+  if (!auteur) throw new Error('Auteur introuvable')
+  return {
+    id: ligne.id,
+    projet_id: ligne.projet_id,
+    auteur: resume(auteur),
+    contenu: ligne.contenu,
+    created_at: ligne.created_at,
+  }
+}
+
+/**
+ * Messages visibles (non supprimés) d'un projet, du plus ancien au plus récent.
+ *   - `apres_id` : ceux dont l'id est supérieur — les PLUS ANCIENS d'abord (on rattrape dans l'ordre) ;
+ *   - `avant_id` : ceux dont l'id est inférieur — les `limit` plus RÉCENTS d'entre eux ;
+ *   - sans curseur : les `limit` derniers du fil.
+ */
+export function messagesDuProjetDb(
+  projetId: number,
+  filtres: { apres_id?: number; avant_id?: number; limit: number }
+): Message[] {
+  let lignes = lignesMessages
+    .filter((ligne) => ligne.projet_id === projetId && ligne.deleted_at === null)
+    .sort((a, b) => a.id - b.id)
+
+  if (filtres.apres_id !== undefined) {
+    lignes = lignes.filter((ligne) => ligne.id > filtres.apres_id!).slice(0, filtres.limit)
+  } else {
+    if (filtres.avant_id !== undefined) lignes = lignes.filter((ligne) => ligne.id < filtres.avant_id!)
+    lignes = lignes.slice(-filtres.limit)
+  }
+  return lignes.map(enMessage)
+}
+
+/** Ids supprimés (soft delete) dont `deleted_at >= depuis`. */
+export function supprimesDepuisDb(projetId: number, depuis: string): number[] {
+  const seuil = Date.parse(depuis)
+  return lignesMessages
+    .filter(
+      (ligne) =>
+        ligne.projet_id === projetId &&
+        ligne.deleted_at !== null &&
+        Date.parse(ligne.deleted_at) >= seuil
+    )
+    .map((ligne) => ligne.id)
+}
+
+export function creerMessageDb(projetId: number, auteurId: number, contenu: string, creeLe?: string): Message {
+  const ligne: LigneMessage = {
+    id: prochainIdMessage++,
+    projet_id: projetId,
+    auteur_id: auteurId,
+    contenu,
+    created_at: creeLe ?? new Date().toISOString(),
+    deleted_at: null,
+  }
+  lignesMessages.push(ligne)
+  return enMessage(ligne)
+}
+
+export function messageParIdDb(projetId: number, id: number): Message | undefined {
+  const ligne = lignesMessages.find(
+    (l) => l.id === id && l.projet_id === projetId && l.deleted_at === null
+  )
+  return ligne ? enMessage(ligne) : undefined
+}
+
+export function supprimerMessageDb(id: number): void {
+  const ligne = lignesMessages.find((l) => l.id === id)
+  if (ligne) ligne.deleted_at = new Date().toISOString()
+}
+
+/* Messages de démonstration, répartis sur hier et aujourd'hui. */
+function amorcerMessages(): void {
+  const il_y_a = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString()
+  const seed: Array<[number, number, string, number]> = [
+    [3, 2, "Bienvenue dans la discussion d'Éducation Connectée ! On cale le premier sprint cette semaine.", 1700],
+    [3, 1, "Super. Je prends la maquette de l'espace élève.", 1690],
+    [3, 3, "De mon côté je prépare le jeu de données pour le suivi de progression.", 1650],
+    [3, 2, "Parfait. Point rapide jeudi à 17h ?", 90],
+    [3, 1, 'Ça me va 👍', 85],
+    [1, 3, 'Salut ! Smart Agriculture RDC cherche encore des profils backend et IoT.', 300],
+    [1, 1, "Je peux aider sur l'interface du tableau de bord agriculteur.", 280],
+  ]
+  for (const [projetId, auteurId, contenu, minutes] of seed) {
+    creerMessageDb(projetId, auteurId, contenu, il_y_a(minutes))
+  }
+}
+amorcerMessages()

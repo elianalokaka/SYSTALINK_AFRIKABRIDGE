@@ -22,6 +22,7 @@ import type { QueryClient } from '@tanstack/react-query'
  *   ['demandes-projet', id, statut] onglet Demandes (propriétaire)
  *   ['mes-demandes']                demandes que j'ai envoyées
  *   ['demandes-recues']             demandes en attente sur MES projets (badge)
+ *   ['discussion', id: number]      fil de messages d'un projet (état de polling, cf. features/messagerie)
  */
 
 /**
@@ -53,6 +54,7 @@ export function oublierProjet(queryClient: QueryClient, projetId: number): void 
   queryClient.removeQueries({ queryKey: ['projet', String(projetId)] })
   queryClient.removeQueries({ queryKey: ['membres', projetId] })
   queryClient.removeQueries({ queryKey: ['demandes-projet', projetId] })
+  queryClient.removeQueries({ queryKey: ['discussion', projetId] })
 }
 
 /**

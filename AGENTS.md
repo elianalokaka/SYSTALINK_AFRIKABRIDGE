@@ -390,7 +390,7 @@ qu'aucun `node_modules` n'apparaît** avant de commiter.
 | **2** | `feat/profil` | mon profil, modification, compétences, photo | ✅ fusionné |
 | **3** | `feat/projets` | explorer, créer, détail (onglets), modifier, mes projets | ✅ fusionné |
 | **4** | `feat/equipes` | bouton « Rejoindre » (machine à états), onglets Équipe/Demandes, mes demandes | ✅ **code prêt · à tester puis fusionner** |
-| **5** | `feat/messagerie` | discussion + **polling 5 s** + curseur | ⬜ **suivant** |
+| **5** | `feat/messagerie` | discussion + **polling 5 s** + curseur | ✅ **code prêt · à tester puis fusionner** |
 | **6** | `feat/ressources` | bibliothèque, partage | ⬜ |
 | **7** | `feat/talents` | recherche de talents, profil public | ⬜ |
 | **8** | `feat/dashboard` | tableau de bord (repli P0) + portfolio | ⬜ |
@@ -417,13 +417,18 @@ racines, le curseur). Prouver ça tôt évite de découvrir le problème la veil
   - Message facultatif à l'envoi d'une demande ; erreurs 409 affichées partout (`messageErreur`).
   - Mocks alignés sur le contrat : filtre `statut`, 409 par cas, 404/403 sur l'annulation, cascade
     à la suppression, `role_equipe` sur `/me/projects`.
+- **Module 5 (`feat/messagerie`) codé + `tsc` 0** : onglet « Discussion » (membres uniquement), polling 5 s
+  par `refetchInterval`, curseurs `apres_id`/`depuis` (A-5, A-13, A-18), historique `avant_id`, suppression
+  (auteur ou propriétaire). Mocks avec **coéquipier simulé** : il répond ~6-9 s après ton message ; un
+  message commençant par `/bot` poste un message éphémère puis le supprime 8 s plus tard (pour VOIR `supprimes`).
+- **Règles permanentes** : le site est **toujours responsive** (vérifier 320 / 375 / 768 px) · à la fin de
+  chaque module, **rappeler à l'utilisateur de mettre le dépôt à jour** (commit, push, PR, fusion, `git pull`).
   - Règle : **toute nouvelle écriture appelle `rafraichirProjets()`** ; les clés de cache sont
     documentées en tête de `lib/cache.ts`.
 
 ### À faire, dans l'ordre
-1. **Tester puis fusionner `feat/equipes`** (bouton « Rejoindre », onglets Équipe/Demandes, mes demandes).
-2. **Module 5 : `feat/messagerie`** — discussion + **polling 5 s** + curseur (le code le plus risqué après l'auth).
-3. Puis `feat/ressources`, `feat/talents`, `feat/dashboard`, enfin le P1.
+1. **Tester puis fusionner `feat/messagerie`** (onglet « Discussion » : envoi, polling 5 s, suppression, historique).
+2. Puis `feat/ressources`, `feat/talents`, `feat/dashboard`, enfin le P1.
 4. Vérifier les hypothèses 🔴 d'`ASSUMPTIONS.md` auprès du backend (2 critiques : `V-1`, `V-2`).
 
 ### Info utile
