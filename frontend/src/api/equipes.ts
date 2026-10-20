@@ -46,8 +46,10 @@ export async function demandesDuProjet(
 }
 
 /** Mes demandes d'adhésion envoyées. */
-export async function mesDemandes(): Promise<Page<DemandeAdhesion>> {
-  const { data } = await client.get<Page<DemandeAdhesion>>('/me/join-requests')
+export async function mesDemandes(
+  filtres: { statut?: StatutDemande; page?: number; per_page?: number } = {}
+): Promise<Page<DemandeAdhesion>> {
+  const { data } = await client.get<Page<DemandeAdhesion>>('/me/join-requests', { params: filtres })
   return data
 }
 

@@ -15,7 +15,7 @@ import { libelleStatutDemande, varianteStatutDemande } from './statutDemande'
  */
 export function MesDemandes() {
   const queryClient = useQueryClient()
-  const requete = useQuery({ queryKey: ['mes-demandes'], queryFn: mesDemandes })
+  const requete = useQuery({ queryKey: ['mes-demandes'], queryFn: () => mesDemandes() })
 
   const [erreur, setErreur] = useState<string | null>(null)
 

@@ -291,6 +291,11 @@ pas tomber tout le tableau de bord.
 `GET /projects/{id}/join-requests` projet par projet) et annonce la bascule
 *« dès qu'il est livré »*.
 
+**Mise en œuvre (module 8)** : `chargerTableauDeBord()` ; `priorites.dashboard` vaut `false` tant que le P1
+n'est pas livré. Une réponse de `GET /me/dashboard` sans la forme du contrat (ou un 404) retombe sur le
+repli. Un chiffre indisponible s'affiche « — », jamais « 0 ». Les appels « demandes reçues » partagent
+le cache `['demandes-recues']` avec le badge de navigation.
+
 **Conséquence assumée** : le repli coûte **N appels** (N = mes projets dont je suis propriétaire).
 C'est le seul endroit du front où une requête par élément est acceptable — et elle disparaît le
 jour où le P1 arrive, **sans qu'aucun composant ne change**.

@@ -213,7 +213,7 @@ export function mesProjets(
     if (filtres.role_equipe === 'membre' && proprietaire) return false
     if (filtres.statut && projet.statut !== filtres.statut) return false
     return true
-  })
+  }).sort((a, b) => b.updated_at.localeCompare(a.updated_at) || b.id - a.id) /* V-5 : updated_at DESC */
 }
 
 /** Crée un projet. Le créateur devient automatiquement `proprietaire`. */
