@@ -5,7 +5,7 @@
 > Il porte le contexte et les décisions prises en amont, pour qu'aucune session ne reparte de zéro.
 > **Ne pas le supprimer.**
 >
-> **Dernière mise à jour** : module 4 (`feat/equipes`) **codé, corrigé (cache, alerte propriétaire, mocks alignés) et type-checké (tsc 0)** — à valider à la main puis fusionner. Modules 5 et 6 codés ensuite ; prochain module : `feat/talents`.
+> **Dernière mise à jour** : module 4 (`feat/equipes`) **codé, corrigé (cache, alerte propriétaire, mocks alignés) et type-checké (tsc 0)** — à valider à la main puis fusionner. Modules 5 et 6 codés ensuite ; prochain module : `feat/dashboard`.
 
 ---
 
@@ -391,8 +391,8 @@ qu'aucun `node_modules` n'apparaît** avant de commiter.
 | **3** | `feat/projets` | explorer, créer, détail (onglets), modifier, mes projets | ✅ fusionné |
 | **4** | `feat/equipes` | bouton « Rejoindre » (machine à états), onglets Équipe/Demandes, mes demandes | ✅ **code prêt · à tester puis fusionner** |
 | **5** | `feat/messagerie` | discussion + **polling 5 s** + curseur | ✅ **code prêt · à tester puis fusionner** |
-| **6** | `feat/ressources` | bibliothèque (filtres, pagination), partage lien/document/code, détail, onglet « Ressources » d'un projet | ✅ **code prêt · à tester puis fusionner** |
-| **7** | `feat/talents` | recherche de talents, profil public | ⬜ |
+| **6** | `feat/ressources` | bibliothèque (filtres, pagination), partage lien/document/code, détail, onglet « Ressources » d'un projet | ✅ fusionné |
+| **7** | `feat/talents` | recherche de talents (filtres, any/all), profil public, projets réalisés | ✅ **code prêt · à tester puis fusionner** |
 | **8** | `feat/dashboard` | tableau de bord (repli P0) + portfolio | ⬜ |
 | **9+** | `feat/follow`, `feat/commentaires` | le P1, si le planning tient | ⬜ |
 
@@ -427,8 +427,8 @@ racines, le curseur). Prouver ça tôt évite de découvrir le problème la veil
     documentées en tête de `lib/cache.ts`.
 
 ### À faire, dans l'ordre
-1. **Tester puis fusionner `feat/ressources`** (bibliothèque, partage, détail, onglet projet).
-2. Puis `feat/talents`, `feat/dashboard`, enfin le P1 (suivi, commentaires).
+1. **Tester puis fusionner `feat/talents`** (recherche, profil public, portfolio).
+2. Puis `feat/dashboard`, enfin le P1 (suivi, commentaires, suggestions).
 4. Vérifier les hypothèses 🔴 d'`ASSUMPTIONS.md` auprès du backend (2 critiques : `V-1`, `V-2`).
 
 ### Info utile

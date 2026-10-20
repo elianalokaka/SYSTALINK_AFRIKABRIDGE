@@ -44,6 +44,9 @@ export type ProfilPrive = Required<Schemas['ProfilPrive']>
 /** Profil PUBLIC. Ne contient JAMAIS la clé `email`. */
 export type Profil = Required<Schemas['Profil']>
 
+/** Carte de la recherche de talents (`GET /users`). Pas d'email. */
+export type Talent = Required<Schemas['Talent']>
+
 /** Corps PATCH de `/users/me` : TOUT est optionnel — donc PAS de `Required<>`. */
 export type ProfilUpdate = Schemas['ProfilUpdate']
 

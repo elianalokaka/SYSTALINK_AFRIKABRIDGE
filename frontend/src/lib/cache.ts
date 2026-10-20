@@ -25,6 +25,9 @@ import type { QueryClient } from '@tanstack/react-query'
  *   ['ressources', filtres]         bibliothèque
  *   ['ressource', id: string]       détail d'une ressource (id issu de l'URL)
  *   ['ressources-projet', id]       onglet « Ressources » d'un projet
+ *   ['talents', filtres]            recherche de talents
+ *   ['talent', id: string]          profil public (id issu de l'URL)
+ *   ['portfolio', id: string]       projets réalisés d'un membre
  *   ['discussion', id: number]      fil de messages d'un projet (état de polling, cf. features/messagerie)
  */
 
@@ -57,6 +60,13 @@ export function rafraichirRessources(queryClient: QueryClient): void {
   void queryClient.invalidateQueries({ queryKey: ['ressources'] })
   void queryClient.invalidateQueries({ queryKey: ['ressource'] })
   void queryClient.invalidateQueries({ queryKey: ['ressources-projet'] })
+}
+
+/** Après une modification de MON profil : les fiches que les autres voient changent. */
+export function rafraichirTalents(queryClient: QueryClient): void {
+  void queryClient.invalidateQueries({ queryKey: ['talents'] })
+  void queryClient.invalidateQueries({ queryKey: ['talent'] })
+  void queryClient.invalidateQueries({ queryKey: ['portfolio'] })
 }
 
 /** Retire du cache tout ce qui concerne un projet supprimé. */

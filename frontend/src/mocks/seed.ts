@@ -121,6 +121,61 @@ export const profilsDemo: ProfilPrive[] = [
     competences: [competence(1, 'avance')],
     domaines: ['agriculture', 'environnement'],
   }),
+  /* Profils supplémentaires : le contrat prévoit ~10 profils multi-pays, ce qui
+     donne de la matière à la recherche de talents (filtres, pagination). */
+  creerProfil(4, 'Kwame Mensah', 'kwame@example.com', 'CI', 'developpeur_frontend', {
+    region: 'Abidjan',
+    bio: 'Développeur frontend React/TypeScript, attentif à l’accessibilité et aux performances sur réseaux lents.',
+    bio_courte: 'Frontend React/TypeScript à Abidjan.',
+    competences: [competence(7, 'avance'), competence(3, 'avance'), competence(2, 'avance'), competence(10, 'intermediaire')],
+    domaines: ['education', 'commerce'],
+    liens: [{ type: 'github', url: 'https://github.com/kwame-mensah' }],
+  }),
+  creerProfil(5, 'Chantal Mbarga', 'chantal@example.com', 'CM', 'ingenieur_iot', {
+    region: 'Douala',
+    bio: 'Ingénieure IoT : capteurs, passerelles LoRa et supervision. J’ai déployé des réseaux de capteurs agricoles.',
+    bio_courte: 'Ingénieure IoT à Douala.',
+    competences: [competence(13, 'avance'), competence(14, 'intermediaire'), competence(1, 'intermediaire')],
+    domaines: ['agriculture', 'iot', 'energie'],
+    liens: [{ type: 'linkedin', url: 'https://www.linkedin.com/in/chantal-mbarga' }],
+  }),
+  creerProfil(6, 'Olivier Adjovi', 'olivier@example.com', 'BJ', 'fullstack', {
+    region: 'Cotonou',
+    bio: 'Full-stack Laravel et React, je livre des MVP rapidement et proprement.',
+    bio_courte: 'Full-stack Laravel/React à Cotonou.',
+    competences: [competence(6, 'avance'), competence(7, 'intermediaire'), competence(4, 'avance'), competence(11, 'debutant')],
+    domaines: ['fintech', 'commerce'],
+    liens: [{ type: 'portfolio', url: 'https://olivier-adjovi.example.org' }],
+  }),
+  creerProfil(7, 'Sarah Lukusa', 'sarah@example.com', 'CD', 'chef_de_projet', {
+    region: 'Lubumbashi',
+    bio: 'Cheffe de projet certifiée Scrum, j’aide les équipes à livrer des projets à impact social.',
+    bio_courte: 'Cheffe de projet Agile à Lubumbashi.',
+    competences: [competence(18, 'avance'), competence(19, 'avance')],
+    domaines: ['sante', 'administration'],
+  }),
+  creerProfil(8, 'Moussa Traoré', 'moussa@example.com', 'ML', 'developpeur_backend', {
+    region: 'Bamako',
+    bio: 'Backend Python/Django, API et sécurité. Intéressé par la fintech et l’identité numérique.',
+    bio_courte: 'Backend Python/Django à Bamako.',
+    competences: [competence(9, 'avance'), competence(1, 'avance'), competence(15, 'intermediaire'), competence(11, 'intermediaire')],
+    domaines: ['fintech', 'administration'],
+    liens: [{ type: 'gitlab', url: 'https://gitlab.com/moussa-traore' }],
+  }),
+  creerProfil(9, 'Nadia Benali', 'nadia@example.com', 'MA', 'data_scientist', {
+    region: 'Casablanca',
+    bio: 'Data scientist : prévision de rendements, vision par ordinateur et NLP.',
+    bio_courte: 'Data scientist à Casablanca.',
+    competences: [competence(1, 'avance'), competence(13, 'debutant')],
+    domaines: ['agriculture', 'intelligence_artificielle', 'environnement'],
+  }),
+  creerProfil(10, 'Eric Habimana', 'eric@example.com', 'RW', 'etudiant', {
+    region: 'Kigali',
+    bio: 'Étudiant en génie logiciel, je cherche un premier projet collaboratif pour progresser.',
+    bio_courte: 'Étudiant en génie logiciel à Kigali.',
+    competences: [competence(2, 'debutant'), competence(8, 'debutant'), competence(5, 'debutant')],
+    domaines: ['education', 'transport'],
+  }),
 ]
 
 /* ══════════════════════════════════════════════════════════════════════════
