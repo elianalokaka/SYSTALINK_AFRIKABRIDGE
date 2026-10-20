@@ -6,6 +6,8 @@ import type {
   RoleProfil,
   StatutDemande,
   StatutProjet,
+  TypeRessource,
+  VisibiliteRessource,
 } from '../types'
 
 /**
@@ -88,8 +90,24 @@ export const LIBELLES_TYPE_LIEN: Record<TypeLien, string> = {
   autre: 'Autre',
 }
 
+export const LIBELLES_TYPE_RESSOURCE: Record<TypeRessource, string> = {
+  code: 'Code',
+  lien: 'Lien',
+  tutoriel: 'Tutoriel',
+  api: 'API',
+  document: 'Document',
+  article: 'Article',
+  autre: 'Autre',
+}
+
+export const LIBELLES_VISIBILITE_RESSOURCE: Record<VisibiliteRessource, string> = {
+  projet: "Réservée à l'équipe",
+  publique: 'Publique',
+}
+
 /** Listes ordonnées pour les menus déroulants (l'ordre d'affichage est un choix d'UI). */
 export const LISTE_ROLES_PROFIL = Object.entries(LIBELLES_ROLE_PROFIL) as Array<[RoleProfil, string]>
 export const LISTE_DOMAINES = Object.entries(LIBELLES_DOMAINE) as Array<[Domaine, string]>
 export const LISTE_NIVEAUX = Object.entries(LIBELLES_NIVEAU) as Array<[NiveauCompetence, string]>
+export const LISTE_TYPES_RESSOURCE = Object.entries(LIBELLES_TYPE_RESSOURCE) as Array<[TypeRessource, string]>
 export const LISTE_TYPES_LIEN = Object.entries(LIBELLES_TYPE_LIEN) as Array<[TypeLien, string]>

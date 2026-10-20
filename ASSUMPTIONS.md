@@ -76,6 +76,7 @@ ils servent de référence dans les échanges avec le backend et dans les tests.
 | `A-16` | 🟢 | Alerte « demandes reçues » | compteur calculé (N appels) | moyen |
 | `A-17` | 🟢 | Fraîcheur du cache après écriture | invalidation explicite (`lib/cache.ts`) | **élevé** |
 | `A-18` | 🟢 | Polling de la discussion | `refetchInterval` 5 s, curseur monotone | **élevé** |
+| `A-19` | 🟢 | Visibilité d'une ressource | `visibilite` omis par défaut ; `publique` seulement si case cochée | moyen |
 | `V-1` | 🔴 | **Redemande après départ ou refus** | autorisée | **critique** |
 | `V-2` | 🔴 | `ma_demande_statut` après départ | redevient `null` | **critique** |
 | `V-3` | 🔴 | Tri réel des listes | confirmé par le backend | faible |
@@ -323,6 +324,13 @@ produirait avec Laravel.
 
 **Règle d'affichage associée** : « Projet introuvable » n'apparaît que sur une vraie réponse **404**.
 Une panne réseau ou 5xx garde les données déjà affichées (ou propose « Réessayer »).
+
+### A-19 — Visibilité d'une ressource à la création
+
+**Décision** : `visibilite` n'est **jamais envoyé** par défaut (le serveur applique sa règle :
+ressource de projet ⇒ équipe, sinon publique). Il n'est envoyé (`publique`) que si l'auteur coche
+« Rendre aussi publique » sur une ressource de projet. Onglet « Ressources » d'un projet :
+`403` ⇒ section vide (cf. `A-8`). Commentaires (P1) non affichés : `commentaires_count` ignoré.
 
 ### A-18 — Polling de la discussion
 

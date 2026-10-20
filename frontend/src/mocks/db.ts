@@ -20,7 +20,10 @@ import type {
   ProjetUpdate,
   ProfilPrive,
   ProfilUpdate,
+  Ressource,
   StatutDemande,
+  TypeRessource,
+  VisibiliteRessource,
 } from '../types'
 
 /**
@@ -261,6 +264,7 @@ export function supprimerProjetDb(id: number): boolean {
   if (index === -1) return false
   projets.splice(index, 1)
   membres.delete(id)
+  supprimerRessourcesDuProjetDb(id)
   /* Les demandes d'un projet supprimé disparaissent avec lui (cascade). */
   for (let i = demandes.length - 1; i >= 0; i--) {
     if (demandes[i].projet.id === id) demandes.splice(i, 1)
@@ -522,3 +526,154 @@ function amorcerMessages(): void {
   }
 }
 amorcerMessages()
+
+/* ══════════════════════════════════════════════════════════════════════════
+   RESSOURCES — bibliothèque partagée
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const ressources: Ressource[] = []
+let prochainIdRessource = 1
+
+/** Données d'une création, déjà VALIDÉES par le handler. */
+export interface DonneesRessource {
+  type: TypeRessource
+  titre: string
+  description: string | null
+  url: string | null
+  contenu_code: string | null
+  langage: string | null
+  fichier_url: string | null
+  projet_id: number | null
+  visibilite: VisibiliteRessource
+  competence_ids: number[]
+}
+
+export function creerRessourceDb(auteurId: number, donnees: DonneesRessource, creeLe?: string): Ressource {
+  const auteur = profils.find((profil) => profil.id === auteurId)
+  if (!auteur) throw new Error('Auteur introuvable')
+  const ressource: Ressource = {
+    id: prochainIdRessource++,
+    type: donnees.type,
+    titre: donnees.titre,
+    description: donnees.description,
+    url: donnees.url,
+    contenu_code: donnees.contenu_code,
+    langage: donnees.langage,
+    fichier_url: donnees.fichier_url,
+    visibilite: donnees.visibilite,
+    projet_id: donnees.projet_id,
+    auteur: resume(auteur),
+    competences: donnees.competence_ids.map(competenceCatalogue),
+    commentaires_count: 0,
+    created_at: creeLe ?? new Date().toISOString(),
+  }
+  ressources.push(ressource)
+  return ressource
+}
+
+export function ressourceParIdDb(id: number): Ressource | undefined {
+  return ressources.find((ressource) => ressource.id === id)
+}
+
+/** Publique, OU réservée à un projet dont je suis membre. */
+export function peutVoirRessource(userId: number, ressource: Ressource): boolean {
+  if (ressource.visibilite === 'publique') return true
+  return ressource.projet_id !== null && estMembre(ressource.projet_id, userId)
+}
+
+/** Auteur de la ressource, ou propriétaire du projet lié. */
+export function peutGererRessource(userId: number, ressource: Ressource): boolean {
+  if (ressource.auteur.id === userId) return true
+  const projet = ressource.projet_id !== null ? projetParId(ressource.projet_id) : undefined
+  return projet?.createur.id === userId
+}
+
+export function listerRessourcesDb(
+  userId: number,
+  filtres: { q?: string; type?: string; competence_ids: number[]; projet_id?: number; auteur_id?: number }
+): Ressource[] {
+  const q = filtres.q?.trim().toLowerCase()
+  return ressources
+    .filter((ressource) => {
+      if (!peutVoirRessource(userId, ressource)) return false
+      if (filtres.projet_id !== undefined && ressource.projet_id !== filtres.projet_id) return false
+      if (filtres.type && ressource.type !== filtres.type) return false
+      if (filtres.auteur_id !== undefined && ressource.auteur.id !== filtres.auteur_id) return false
+      if (
+        filtres.competence_ids.length > 0 &&
+        !ressource.competences.some((comp) => filtres.competence_ids.includes(comp.id))
+      ) {
+        return false
+      }
+      if (q && !`${ressource.titre} ${ressource.description ?? ''}`.toLowerCase().includes(q)) return false
+      return true
+    })
+    .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || b.id - a.id)
+}
+
+export function modifierRessourceDb(
+  id: number,
+  patch: Partial<Pick<Ressource, 'titre' | 'description' | 'url' | 'contenu_code' | 'langage'>> & {
+    competence_ids?: number[]
+  }
+): Ressource | null {
+  const ressource = ressourceParIdDb(id)
+  if (!ressource) return null
+  const { competence_ids, ...champs } = patch
+  Object.assign(ressource, champs)
+  if (competence_ids) ressource.competences = competence_ids.map(competenceCatalogue)
+  return ressource
+}
+
+export function supprimerRessourceDb(id: number): void {
+  const index = ressources.findIndex((ressource) => ressource.id === id)
+  if (index !== -1) ressources.splice(index, 1)
+}
+
+/** Cascade : les ressources d'un projet supprimé disparaissent avec lui (contrat : suppression logique). */
+function supprimerRessourcesDuProjetDb(projetId: number): void {
+  for (let i = ressources.length - 1; i >= 0; i--) {
+    if (ressources[i].projet_id === projetId) ressources.splice(i, 1)
+  }
+}
+
+function amorcerRessources(): void {
+  const il_y_a = (jours: number) => new Date(Date.now() - jours * 86_400_000).toISOString()
+  const base = {
+    description: null, url: null, contenu_code: null, langage: null, fichier_url: null,
+    projet_id: null, visibilite: 'publique' as const, competence_ids: [] as number[],
+  }
+  creerRessourceDb(2, {
+    ...base, type: 'code', titre: 'Pagination Laravel avec filtres', langage: 'php', competence_ids: [6],
+    description: 'Un scope Eloquent réutilisable pour paginer et filtrer une liste.',
+    contenu_code: "public function scopeFiltre($query, array $f)\n{\n    return $query\n        ->when($f['q'] ?? null, fn ($q, $v) => $q->where('nom', 'like', \"%{$v}%\"))\n        ->latest();\n}",
+  }, il_y_a(6))
+  creerRessourceDb(1, {
+    ...base, type: 'tutoriel', titre: 'Git pour travailler à plusieurs', competence_ids: [10],
+    description: 'Le livre officiel, en français : branches, fusions, pull requests.',
+    url: 'https://git-scm.com/book/fr/v2',
+  }, il_y_a(5))
+  creerRessourceDb(3, {
+    ...base, type: 'api', titre: 'Open-Meteo — météo gratuite', competence_ids: [],
+    description: "API météo sans clé, pratique pour des prototypes agricoles ou IoT.",
+    url: 'https://open-meteo.com/en/docs',
+  }, il_y_a(4))
+  creerRessourceDb(1, {
+    ...base, type: 'document', titre: 'Charte graphique AfricaBridge (brouillon)', competence_ids: [16, 17],
+    description: 'Couleurs, typographies et règles d\'usage du logo.',
+    fichier_url: 'data:text/plain;base64,Q2hhcnRlIGdyYXBoaXF1ZSAtIGJyb3VpbGxvbg==',
+  }, il_y_a(3))
+  creerRessourceDb(3, {
+    ...base, type: 'lien', titre: 'Jeu de données : capteurs agricoles (échantillon)', projet_id: 1,
+    visibilite: 'publique', competence_ids: [13],
+    description: 'Partagé hors équipe par Smart Agriculture RDC.',
+    url: 'https://example.org/datasets/capteurs-agricoles',
+  }, il_y_a(2))
+  creerRessourceDb(2, {
+    ...base, type: 'article', titre: "Cahier des charges — Éducation Connectée", projet_id: 3,
+    visibilite: 'projet', competence_ids: [18],
+    description: "Réservé à l'équipe du projet.",
+    url: 'https://example.org/education-connectee/cahier-des-charges',
+  }, il_y_a(1))
+}
+amorcerRessources()

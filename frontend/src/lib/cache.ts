@@ -22,6 +22,9 @@ import type { QueryClient } from '@tanstack/react-query'
  *   ['demandes-projet', id, statut] onglet Demandes (propriétaire)
  *   ['mes-demandes']                demandes que j'ai envoyées
  *   ['demandes-recues']             demandes en attente sur MES projets (badge)
+ *   ['ressources', filtres]         bibliothèque
+ *   ['ressource', id: string]       détail d'une ressource (id issu de l'URL)
+ *   ['ressources-projet', id]       onglet « Ressources » d'un projet
  *   ['discussion', id: number]      fil de messages d'un projet (état de polling, cf. features/messagerie)
  */
 
@@ -49,12 +52,22 @@ export function rafraichirProjets(queryClient: QueryClient, projetId?: number): 
   }
 }
 
+/** Après avoir créé, modifié ou supprimé une ressource. */
+export function rafraichirRessources(queryClient: QueryClient): void {
+  void queryClient.invalidateQueries({ queryKey: ['ressources'] })
+  void queryClient.invalidateQueries({ queryKey: ['ressource'] })
+  void queryClient.invalidateQueries({ queryKey: ['ressources-projet'] })
+}
+
 /** Retire du cache tout ce qui concerne un projet supprimé. */
 export function oublierProjet(queryClient: QueryClient, projetId: number): void {
   queryClient.removeQueries({ queryKey: ['projet', String(projetId)] })
   queryClient.removeQueries({ queryKey: ['membres', projetId] })
   queryClient.removeQueries({ queryKey: ['demandes-projet', projetId] })
   queryClient.removeQueries({ queryKey: ['discussion', projetId] })
+  queryClient.removeQueries({ queryKey: ['ressources-projet', projetId] })
+  /* Les ressources du projet supprimé disparaissent aussi de la bibliothèque. */
+  void queryClient.invalidateQueries({ queryKey: ['ressources'] })
 }
 
 /**

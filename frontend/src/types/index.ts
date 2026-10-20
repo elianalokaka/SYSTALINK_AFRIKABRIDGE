@@ -145,6 +145,41 @@ export interface FilMessages {
   meta: { server_time: string }
 }
 
+/* ── Ressources ───────────────────────────────────────────────────────────── */
+
+/** `code` | `lien` | `tutoriel` | `api` | `document` | `article` | `autre`. */
+export type TypeRessource = Schemas['TypeRessource']
+
+/** `projet` (membres uniquement) | `publique`. */
+export type VisibiliteRessource = NonNullable<Schemas['RessourceCreate']['visibilite']>
+
+/** Une ressource — `auteur` et `competences` sont des objets complets. */
+export type Ressource = Omit<Required<Schemas['Ressource']>, 'auteur' | 'competences'> & {
+  auteur: UtilisateurResume
+  competences: Competence[]
+}
+
+/**
+ * Données du formulaire « Partager une ressource ».
+ * Le contrat décrit `fichier` comme une chaîne binaire ; côté navigateur c'est un `File`.
+ */
+export interface RessourceCreation {
+  type: TypeRessource
+  titre: string
+  description?: string | null
+  url?: string | null
+  contenu_code?: string | null
+  langage?: string | null
+  fichier?: File | null
+  projet_id?: number | null
+  /** À OMETTRE pour laisser le serveur décider (`projet` si `projet_id`, sinon `publique`). */
+  visibilite?: VisibiliteRessource
+  competence_ids?: number[]
+}
+
+/** Corps de `PATCH /resources/{id}` : ni `type`, ni `fichier`, ni `visibilite` (contrat). */
+export type RessourceUpdate = Schemas['RessourceUpdate']
+
 /* ── Énumérations partagées ───────────────────────────────────────────────────
    Générées depuis l'OpenAPI : ajouter une valeur au contrat doit CASSER la
    compilation des libellés (lib/labels.ts), pas produire un libellé vide. */

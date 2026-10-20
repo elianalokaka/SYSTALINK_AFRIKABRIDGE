@@ -10,6 +10,10 @@ import { Atelier } from './pages/atelier/Atelier'
 import { MonProfil } from './pages/profil/MonProfil'
 import { ModifierProfil } from './pages/profil/ModifierProfil'
 import { MesDemandes } from './pages/equipes/MesDemandes'
+import { Bibliotheque } from './pages/ressources/Bibliotheque'
+import { RessourceCreation } from './pages/ressources/RessourceCreation'
+import { RessourceDetail } from './pages/ressources/RessourceDetail'
+import { RessourceEdition } from './pages/ressources/RessourceEdition'
 import { MesProjets } from './pages/projets/MesProjets'
 import { ProjetCreation } from './pages/projets/ProjetCreation'
 import { ProjetDetail } from './pages/projets/ProjetDetail'
@@ -61,6 +65,10 @@ function App() {
               <Route path="projets/:id/modifier" element={<ProjetEdition />} />
               <Route path="mes-projets" element={<MesProjets />} />
               <Route path="mes-demandes" element={<MesDemandes />} />
+              <Route path="ressources" element={<Bibliotheque />} />
+              <Route path="ressources/nouveau" element={<RessourceCreation />} />
+              <Route path="ressources/:id" element={<RessourceDetail />} />
+              <Route path="ressources/:id/modifier" element={<RessourceEdition />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />

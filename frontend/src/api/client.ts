@@ -38,9 +38,9 @@ export const client: AxiosInstance = axios.create({
 
   /* Sérialisation des tableaux exigée par le contrat :
        competence_ids[]=1&competence_ids[]=2
-     `indexes: null` produit exactement cette forme (sans index numérique).
+     `indexes: false` produit exactement cette forme. (`indexes: null` donne `competence_ids=1&competence_ids=2`, SANS crochets : piège vérifié sur axios 1.x.)
      Le contrat le répète quatre fois — c'est un point de rupture du filtrage. */
-  paramsSerializer: { indexes: null },
+  paramsSerializer: { indexes: false },
 })
 
 /* ══════════════════════════════════════════════════════════════════════════

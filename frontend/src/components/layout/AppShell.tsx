@@ -63,6 +63,9 @@ export function AppShell() {
             <NavLink to="/mes-demandes" className={classeLien}>
               Mes demandes
             </NavLink>
+            <NavLink to="/ressources" className={classeLien}>
+              Bibliothèque
+            </NavLink>
             <NavLink to="/profil" className={classeLien}>
               Mon profil
             </NavLink>
