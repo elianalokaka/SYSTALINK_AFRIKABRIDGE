@@ -37,7 +37,7 @@ export function BoutonRejoindre({ projet }: { projet: Projet }) {
      « mes demandes » (clé partagée avec l'écran MesDemandes). */
   const demandes = useQuery({
     queryKey: ['mes-demandes'],
-    queryFn: mesDemandes,
+    queryFn: () => mesDemandes(),
     enabled: projet.ma_demande_statut === 'en_attente',
   })
   const demandeEnAttente = demandes.data?.data.find(

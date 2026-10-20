@@ -5,7 +5,7 @@
 > Il porte le contexte et les décisions prises en amont, pour qu'aucune session ne reparte de zéro.
 > **Ne pas le supprimer.**
 >
-> **Dernière mise à jour** : module 4 (`feat/equipes`) **codé, corrigé (cache, alerte propriétaire, mocks alignés) et type-checké (tsc 0)** — à valider à la main puis fusionner. Modules 5 et 6 codés ensuite ; prochain module : `feat/dashboard`.
+> **Dernière mise à jour** : module 4 (`feat/equipes`) **codé, corrigé (cache, alerte propriétaire, mocks alignés) et type-checké (tsc 0)** — à valider à la main puis fusionner. Modules 5 et 6 codés ensuite ; les 8 modules P0 sont codés.
 
 ---
 
@@ -392,8 +392,8 @@ qu'aucun `node_modules` n'apparaît** avant de commiter.
 | **4** | `feat/equipes` | bouton « Rejoindre » (machine à états), onglets Équipe/Demandes, mes demandes | ✅ **code prêt · à tester puis fusionner** |
 | **5** | `feat/messagerie` | discussion + **polling 5 s** + curseur | ✅ **code prêt · à tester puis fusionner** |
 | **6** | `feat/ressources` | bibliothèque (filtres, pagination), partage lien/document/code, détail, onglet « Ressources » d'un projet | ✅ fusionné |
-| **7** | `feat/talents` | recherche de talents (filtres, any/all), profil public, projets réalisés | ✅ **code prêt · à tester puis fusionner** |
-| **8** | `feat/dashboard` | tableau de bord (repli P0) + portfolio | ⬜ |
+| **7** | `feat/talents` | recherche de talents (filtres, any/all), profil public, projets réalisés | ✅ fusionné |
+| **8** | `feat/dashboard` | tableau de bord (repli P0, bascule P1 prête) + projets réalisés | ✅ **code prêt · à tester puis fusionner** |
 | **9+** | `feat/follow`, `feat/commentaires` | le P1, si le planning tient | ⬜ |
 
 **Pourquoi cet ordre** : le design system d'abord (sinon chaque module réinvente ses boutons) ;
@@ -427,8 +427,8 @@ racines, le curseur). Prouver ça tôt évite de découvrir le problème la veil
     documentées en tête de `lib/cache.ts`.
 
 ### À faire, dans l'ordre
-1. **Tester puis fusionner `feat/talents`** (recherche, profil public, portfolio).
-2. Puis `feat/dashboard`, enfin le P1 (suivi, commentaires, suggestions).
+1. **Tester puis fusionner `feat/dashboard`** (accueil : chiffres, projets récents, demandes à traiter).
+2. Puis le P1 si le backend le livre (suivi, commentaires, suggestions, `/stats`), ou passage final (audit UX/accessibilité, `INTEGRATION.md`, bascule vers le vrai backend).
 4. Vérifier les hypothèses 🔴 d'`ASSUMPTIONS.md` auprès du backend (2 critiques : `V-1`, `V-2`).
 
 ### Info utile

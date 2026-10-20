@@ -21,7 +21,8 @@ import type { QueryClient } from '@tanstack/react-query'
  *   ['membres', id: number]         onglet Équipe
  *   ['demandes-projet', id, statut] onglet Demandes (propriétaire)
  *   ['mes-demandes']                demandes que j'ai envoyées
- *   ['demandes-recues']             demandes en attente sur MES projets (badge)
+ *   ['demandes-recues']             demandes en attente sur MES projets (badge + tableau de bord)
+ *   ['dashboard']                   tableau de bord (accueil)
  *   ['ressources', filtres]         bibliothèque
  *   ['ressource', id: string]       détail d'une ressource (id issu de l'URL)
  *   ['ressources-projet', id]       onglet « Ressources » d'un projet
@@ -43,6 +44,7 @@ export function rafraichirProjets(queryClient: QueryClient, projetId?: number): 
   invalider(['mes-projets'])
   invalider(['mes-demandes'])
   invalider(['demandes-recues'])
+  invalider(['dashboard'])
 
   if (projetId === undefined) {
     invalider(['projet'])
