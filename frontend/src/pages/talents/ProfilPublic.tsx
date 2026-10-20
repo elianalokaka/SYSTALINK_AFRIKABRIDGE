@@ -1,0 +1,244 @@
+import { Link, Navigate, useParams } from 'react-router'
+import { useQuery } from '@tanstack/react-query'
+import { Avatar, Badge, Button, Card, CardCorps, CardEntete, EmptyState, SkeletonTexte } from '../../components/ui'
+import { portfolio, profilPublic } from '../../api/talents'
+import { ErreurApi } from '../../api/erreurs'
+import { useSession } from '../../features/auth/SessionProvider'
+import { nomDePays } from '../../lib/constants'
+import {
+  LIBELLES_DOMAINE,
+  LIBELLES_NIVEAU,
+  LIBELLES_ROLE_PROFIL,
+  LIBELLES_TYPE_LIEN,
+} from '../../lib/labels'
+import { dateCourte, domaineDe, lienSur } from '../ressources/outils'
+
+/**
+ * Profil PUBLIC d'un membre (`GET /users/{id}`) + « Projets réalisés » (`GET /users/{id}/portfolio`).
+ *
+ * - Jamais d'e-mail (le contrat ne le renvoie pas) ;
+ * - mon propre id redirige vers « Mon profil » (c'est là qu'on modifie) ;
+ * - liens externes : http(s) uniquement, `rel="noopener noreferrer"` ;
+ * - les compteurs de suivi sont des champs fantômes (P1) : non affichés.
+ *
+ * Le portfolio est une section indépendante : s'il échoue, le profil reste lisible.
+ */
+export function ProfilPublic() {
+  const { id } = useParams()
+  const { profil: moi } = useSession()
+
+  const requete = useQuery({
+    queryKey: ['talent', id],
+    queryFn: () => profilPublic(Number(id)),
+    enabled: id != null && Number.isFinite(Number(id)),
+    retry: (tentatives, e) => !(e instanceof ErreurApi && e.introuvable) && tentatives < 1,
+  })
+  const projets = useQuery({
+    queryKey: ['portfolio', id],
+    queryFn: () => portfolio(Number(id)),
+    enabled: requete.isSuccess,
+  })
+
+  if (moi && String(moi.id) === id) return <Navigate to="/profil" replace />
+
+  const retour = (
+    <Link to="/talents" className="text-sm text-fg-2 hover:text-fg-1">
+      ← Talents
+    </Link>
+  )
+
+  if (requete.isPending && requete.fetchStatus !== 'idle') {
+    return (
+      <div className="flex flex-col gap-4">
+        {retour}
+        <Card>
+          <CardCorps>
+            <SkeletonTexte lignes={5} />
+          </CardCorps>
+        </Card>
+      </div>
+    )
+  }
+
+  if (requete.isError || !requete.data) {
+    const introuvable = requete.error instanceof ErreurApi && requete.error.introuvable
+    return (
+      <div className="flex flex-col gap-4">
+        {retour}
+        <Card>
+          <EmptyState
+            titre={introuvable ? 'Membre introuvable' : 'Impossible de charger ce profil'}
+            description={introuvable ? "Ce membre n'existe pas ou n'est plus disponible." : 'Vérifie ta connexion puis réessaie.'}
+            action={
+              introuvable ? (
+                <Link to="/talents">
+                  <Button variante="secondaire">Voir les talents</Button>
+                </Link>
+              ) : (
+                <Button variante="secondaire" onClick={() => void requete.refetch()}>
+                  Réessayer
+                </Button>
+              )
+            }
+          />
+        </Card>
+      </div>
+    )
+  }
+
+  const membre = requete.data
+  const lieu = [membre.region, nomDePays(membre.pays)].filter(Boolean).join(', ')
+
+  return (
+    <div className="flex flex-col gap-6">
+      {retour}
+
+      <Card>
+        <CardCorps className="flex flex-col gap-4 sm:flex-row sm:items-start">
+          <Avatar nom={membre.nom} photoUrl={membre.photo_url} taille="lg" className="self-start" />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="break-words text-lg font-semibold text-fg-1">{membre.nom}</h1>
+              <Badge variante="info">{LIBELLES_ROLE_PROFIL[membre.role_profil]}</Badge>
+            </div>
+            <p className="mt-1 text-sm text-fg-2">{lieu}</p>
+            {membre.bio ? (
+              <p className="mt-3 whitespace-pre-line break-words text-sm text-fg-1">{membre.bio}</p>
+            ) : (
+              <p className="mt-3 text-sm text-fg-3">Ce membre n’a pas encore de bio.</p>
+            )}
+            <p className="mt-3 text-xs text-fg-3">Membre depuis le {dateCourte(membre.created_at)}</p>
+          </div>
+        </CardCorps>
+      </Card>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardEntete titre="Compétences" compteur={membre.competences.length} />
+          <CardCorps>
+            {membre.competences.length > 0 ? (
+              <ul className="flex flex-col gap-2">
+                {membre.competences.map((comp) => (
+                  <li
+                    key={comp.id}
+                    className="flex items-center justify-between gap-3 border-b border-border-subtle pb-2 text-sm last:border-b-0 last:pb-0"
+                  >
+                    <span className="text-fg-1">{comp.nom}</span>
+                    <Badge variante="neutre">{comp.niveau ? LIBELLES_NIVEAU[comp.niveau] : 'Non précisé'}</Badge>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-fg-3">Aucune compétence renseignée.</p>
+            )}
+          </CardCorps>
+        </Card>
+
+        <div className="flex flex-col gap-6">
+          <Card>
+            <CardEntete titre="Domaines d’intérêt" compteur={membre.domaines.length} />
+            <CardCorps>
+              {membre.domaines.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {membre.domaines.map((d) => (
+                    <Badge key={d} variante="neutre">
+                      {LIBELLES_DOMAINE[d]}
+                    </Badge>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-fg-3">Aucun domaine d’intérêt.</p>
+              )}
+            </CardCorps>
+          </Card>
+
+          <Card>
+            <CardEntete titre="Liens" compteur={membre.liens.length} />
+            <CardCorps className="flex flex-col gap-2">
+              {membre.liens.length > 0 ? (
+                membre.liens.map((lien) => {
+                  const sur = lienSur(lien.url)
+                  return (
+                    <div key={lien.url} className="flex items-center justify-between gap-3 text-sm">
+                      <span className="shrink-0 text-fg-2">{LIBELLES_TYPE_LIEN[lien.type]}</span>
+                      {sur ? (
+                        <a
+                          href={sur}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="truncate text-accent hover:text-accent-hover"
+                        >
+                          {domaineDe(sur)}
+                        </a>
+                      ) : (
+                        <span className="truncate text-fg-3">Lien non valide</span>
+                      )}
+                    </div>
+                  )
+                })
+              ) : (
+                <p className="text-sm text-fg-3">Aucun lien.</p>
+              )}
+            </CardCorps>
+          </Card>
+        </div>
+      </div>
+
+      <Card>
+        <CardEntete titre="Projets réalisés" compteur={projets.data?.length ?? membre.projets_realises_count} />
+        <CardCorps>
+          {projets.isPending ? (
+            <SkeletonTexte lignes={2} />
+          ) : projets.isError ? (
+            <p className="text-sm text-fg-3">
+              Projets réalisés indisponibles pour le moment.{' '}
+              <button type="button" onClick={() => void projets.refetch()} className="text-accent hover:text-accent-hover">
+                Réessayer
+              </button>
+            </p>
+          ) : projets.data.length > 0 ? (
+            <ul className="flex flex-col gap-3">
+              {projets.data.map((projet) => {
+                const realisation = lienSur(projet.lien_realisation)
+                return (
+                  <li
+                    key={projet.id}
+                    className="flex flex-col gap-2 border-b border-border-subtle pb-3 last:border-b-0 last:pb-0"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <Link to={`/projets/${projet.id}`} className="text-sm font-semibold text-fg-1 hover:text-accent">
+                        {projet.nom}
+                      </Link>
+                      {projet.date_fin && (
+                        <span className="text-xs tabular-nums text-fg-3">Terminé le {dateCourte(projet.date_fin)}</span>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {projet.domaines.map((d) => (
+                        <Badge key={d} variante="neutre">
+                          {LIBELLES_DOMAINE[d]}
+                        </Badge>
+                      ))}
+                    </div>
+                    {realisation && (
+                      <a
+                        href={realisation}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="truncate text-sm text-accent hover:text-accent-hover"
+                      >
+                        Voir la réalisation · {domaineDe(realisation)}
+                      </a>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
+          ) : (
+            <p className="text-sm text-fg-3">Aucun projet terminé pour l’instant.</p>
+          )}
+        </CardCorps>
+      </Card>
+    </div>
+  )
+}

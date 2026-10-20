@@ -14,6 +14,8 @@ import { Bibliotheque } from './pages/ressources/Bibliotheque'
 import { RessourceCreation } from './pages/ressources/RessourceCreation'
 import { RessourceDetail } from './pages/ressources/RessourceDetail'
 import { RessourceEdition } from './pages/ressources/RessourceEdition'
+import { Talents } from './pages/talents/Talents'
+import { ProfilPublic } from './pages/talents/ProfilPublic'
 import { MesProjets } from './pages/projets/MesProjets'
 import { ProjetCreation } from './pages/projets/ProjetCreation'
 import { ProjetDetail } from './pages/projets/ProjetDetail'
@@ -69,6 +71,8 @@ function App() {
               <Route path="ressources/nouveau" element={<RessourceCreation />} />
               <Route path="ressources/:id" element={<RessourceDetail />} />
               <Route path="ressources/:id/modifier" element={<RessourceEdition />} />
+              <Route path="talents" element={<Talents />} />
+              <Route path="talents/:id" element={<ProfilPublic />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Avatar,
@@ -240,7 +240,7 @@ function VueProjet({ projet }: { projet: Projet }) {
         <CardCorps className="flex items-center gap-3">
           <Avatar nom={projet.createur.nom} photoUrl={projet.createur.photo_url} taille="md" />
           <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-fg-1">{projet.createur.nom}</p>
+            <Link to={`/talents/${projet.createur.id}`} className="block truncate text-sm font-medium text-fg-1 hover:text-accent">{projet.createur.nom}</Link>
             <p className="truncate text-xs text-fg-2">
               {LIBELLES_ROLE_PROFIL[projet.createur.role_profil]}
             </p>
@@ -324,7 +324,7 @@ function OngletEquipe({ projetId, estProprietaire }: { projetId: number; estProp
               <div className="flex min-w-0 items-center gap-3">
                 <Avatar nom={membre.utilisateur.nom} photoUrl={membre.utilisateur.photo_url} taille="sm" />
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-fg-1">{membre.utilisateur.nom}</p>
+                  <Link to={`/talents/${membre.utilisateur.id}`} className="block truncate text-sm font-medium text-fg-1 hover:text-accent">{membre.utilisateur.nom}</Link>
                   <p className="truncate text-xs text-fg-2">
                     {LIBELLES_ROLE_PROFIL[membre.utilisateur.role_profil]}
                   </p>

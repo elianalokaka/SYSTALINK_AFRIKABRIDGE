@@ -18,10 +18,12 @@ import type {
   ProjetCarte,
   ProjetCreate,
   ProjetUpdate,
+  Profil,
   ProfilPrive,
   ProfilUpdate,
   Ressource,
   StatutDemande,
+  Talent,
   TypeRessource,
   VisibiliteRessource,
 } from '../types'
@@ -677,3 +679,93 @@ function amorcerRessources(): void {
   }, il_y_a(1))
 }
 amorcerRessources()
+
+/* ══════════════════════════════════════════════════════════════════════════
+   TALENTS (recherche, profil public, portfolio)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/** Projets terminés dont le membre fait partie de l'équipe, du plus récent au plus ancien. */
+export function portfolioDb(userId: number): Projet[] {
+  return projets
+    .filter((projet) => projet.statut === 'termine' && estMembre(projet.id, userId))
+    .sort((a, b) => (b.date_fin ?? '').localeCompare(a.date_fin ?? ''))
+}
+
+/**
+ * Le profil PUBLIC d'un compte : tout sauf l'email (règle de sécurité du contrat).
+ * On RECONSTRUIT l'objet champ par champ plutôt que de supprimer `email` d'une
+ * copie : un nouveau champ privé ajouté plus tard ne fuitera pas par défaut.
+ * `followers_count`/`is_following` valent 0/false : le follow est P1 (non livré).
+ */
+export function profilPublicDb(id: number): Profil | null {
+  const p = profils.find((profil) => profil.id === id)
+  if (!p) return null
+  return {
+    id: p.id,
+    nom: p.nom,
+    photo_url: p.photo_url,
+    pays: p.pays,
+    role_profil: p.role_profil,
+    region: p.region,
+    bio_courte: p.bio ? p.bio.slice(0, 160) : p.bio_courte,
+    competences: p.competences,
+    domaines: p.domaines,
+    followers_count: 0,
+    is_following: false,
+    bio: p.bio,
+    liens: p.liens,
+    following_count: 0,
+    projets_realises_count: portfolioDb(p.id).length,
+    created_at: p.created_at,
+  }
+}
+
+export interface FiltresTalentsDb {
+  q: string | null
+  competenceIds: number[]
+  competenceMatch: 'any' | 'all'
+  domaine: string | null
+  pays: string | null
+  region: string | null
+  roleProfil: string | null
+}
+
+/** `GET /users` : l'utilisateur connecté est EXCLU des résultats ; tri par nom. */
+export function listerTalentsDb(userId: number | null, f: FiltresTalentsDb): Talent[] {
+  const terme = f.q?.trim().toLowerCase() ?? ''
+  const resultats = profils.filter((p) => {
+    if (p.id === userId) return false
+    if (terme && !(p.nom.toLowerCase().includes(terme) || (p.bio ?? '').toLowerCase().includes(terme))) return false
+    if (f.domaine && !p.domaines.includes(f.domaine as never)) return false
+    if (f.pays && p.pays.toLowerCase() !== f.pays.toLowerCase()) return false
+    if (f.region && !(p.region ?? '').toLowerCase().includes(f.region.toLowerCase())) return false
+    if (f.roleProfil && p.role_profil !== f.roleProfil) return false
+    if (f.competenceIds.length > 0) {
+      const siennes = p.competences.map((comp) => comp.id)
+      const ok =
+        f.competenceMatch === 'all'
+          ? f.competenceIds.every((id) => siennes.includes(id))
+          : f.competenceIds.some((id) => siennes.includes(id))
+      if (!ok) return false
+    }
+    return true
+  })
+  return resultats
+    .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
+    .map((p) => {
+      const pub = profilPublicDb(p.id) as Profil
+      return {
+        id: pub.id,
+        nom: pub.nom,
+        photo_url: pub.photo_url,
+        pays: pub.pays,
+        role_profil: pub.role_profil,
+        region: pub.region,
+        bio_courte: pub.bio_courte,
+        competences: pub.competences,
+        domaines: pub.domaines,
+        followers_count: 0,
+        is_following: false,
+      }
+    })
+}

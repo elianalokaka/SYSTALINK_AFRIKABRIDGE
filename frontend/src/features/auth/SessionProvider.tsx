@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { connexion, deconnexion, inscription, profilCourant } from '../../api/auth'
 import { surExpirationSession } from '../../api/client'
 import { ErreurApi } from '../../api/erreurs'
-import { purgerCacheSession } from '../../lib/cache'
+import { purgerCacheSession, rafraichirTalents } from '../../lib/cache'
 import type { ProfilPrive, UserLogin, UserRegister } from '../../types'
 
 interface ValeurSession {
@@ -92,6 +92,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       queryClient.setQueryData<ProfilPrive | null>(['session'], (ancien) =>
         ancien ? { ...ancien, ...partiel } : ancien
       )
+      rafraichirTalents(queryClient)
     },
     [queryClient]
   )
