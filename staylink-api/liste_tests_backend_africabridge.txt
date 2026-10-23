@@ -98,5 +98,6 @@ P1
 T3.4 : Dashboard & Stats d'impact
 Toutes
 Vérifie les chiffres d'impact publics (pour le jury) et le tableau de bord personnel.
-- GET /stats (public) renvoie membres_count, projets_count, etc. (Cache 5 min).
-- GET /me/dashboard renvoie les agrégats personnels (repli P0 si non livré).
+- GET /me/dashboard (authentifié) renvoie les agrégats définis dans le schéma OpenAPI `Dashboard`.
+- GET /stats (public) renvoie membres_count, pays_count, projets_count et equipes_formees_count conformément au schéma OpenAPI `Stats`.
+- Résultats mis en cache 5 minutes ; limite de 60 requêtes par minute ; aucun détail personnel dans la réponse.

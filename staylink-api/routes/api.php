@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\Auth\ConnexionController;
 use App\Http\Controllers\Api\V1\Auth\DeconnexionController;
 use App\Http\Controllers\Api\V1\Auth\InscriptionController;
 use App\Http\Controllers\Api\V1\Auth\ProfilConnecteController;
+use App\Http\Controllers\Api\V1\Dashboard\DashboardController;
 use App\Http\Controllers\Api\V1\Profil\ModifierProfilController;
 use App\Http\Controllers\Api\V1\Profil\RemplacerCompetencesController;
 use App\Http\Controllers\Api\V1\Profil\UploadPhotoProfilController;
@@ -19,6 +20,7 @@ use App\Http\Controllers\Api\V1\Projet\RetirerMembreProjetController;
 use App\Http\Controllers\Api\V1\Projet\SuggestionsTalentsController;
 use App\Http\Controllers\Api\V1\Projet\SupprimerMessageController;
 use App\Http\Controllers\Api\V1\Ressource\PublierRessourceController;
+use App\Http\Controllers\Api\V1\Statistiques\StatistiquesPubliquesController;
 use App\Http\Controllers\Api\V1\Suivi\NePlusSuivreMembreController;
 use App\Http\Controllers\Api\V1\Suivi\SuivreMembreController;
 use Illuminate\Support\Facades\Route;
@@ -32,6 +34,10 @@ Route::prefix('v1')->group(function () {
         ->middleware('throttle:connexion')
         ->name('auth.login');
 
+    Route::get('/stats', StatistiquesPubliquesController::class)
+        ->middleware('throttle:60,1')
+        ->name('stats.index');
+
     Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/auth/me', ProfilConnecteController::class)
@@ -39,6 +45,9 @@ Route::prefix('v1')->group(function () {
 
         Route::post('/auth/logout', DeconnexionController::class)
             ->name('auth.logout');
+
+        Route::get('/me/dashboard', DashboardController::class)
+            ->name('me.dashboard');
 
         Route::patch('/users/me', ModifierProfilController::class)
             ->name('users.me.update');
