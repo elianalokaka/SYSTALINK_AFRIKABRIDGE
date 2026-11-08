@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { cn } from '../../lib/cn'
 
 export interface FormFieldProps {
@@ -33,6 +33,11 @@ export interface FormFieldProps {
  *   </FormField>
  *
  * Les identifiants suivent la convention : `<id>-erreur` et `<id>-aide`.
+ *
+ * FOCUS SUR LA PREMIÈRE ERREUR : quand une erreur apparaît, le focus va au PREMIER
+ * champ invalide du formulaire (ordre du DOM). Le lecteur d'écran l'annonce avec
+ * son message, et l'utilisateur au clavier est déjà au bon endroit. Rien à câbler
+ * dans les pages : tout formulaire qui utilise ce composant en bénéficie.
  * ───────────────────────────────────────────────────────────────────────────
  */
 export function FormField({
@@ -44,6 +49,15 @@ export function FormField({
   obligatoire = false,
   className,
 }: FormFieldProps) {
+  useEffect(() => {
+    if (!erreur) return
+    const champ = document.getElementById(id)
+    if (!champ) return
+    const premier = champ.closest('form')?.querySelector<HTMLElement>('[aria-invalid="true"]') ?? champ
+    /* Seul le premier champ invalide prend le focus : les suivants se taisent. */
+    if (premier === champ) champ.focus()
+  }, [erreur, id])
+
   return (
     <div className={cn('flex flex-col gap-1.5', className)}>
       <label htmlFor={id} className="text-sm font-medium text-fg-1">

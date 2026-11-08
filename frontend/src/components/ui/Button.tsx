@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import type { ButtonHTMLAttributes, ReactNode, Ref } from 'react'
 import { cn } from '../../lib/cn'
 import { Spinner } from './Spinner'
 
@@ -43,6 +43,8 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   iconeGauche?: ReactNode
   iconeDroite?: ReactNode
   pleineLargeur?: boolean
+  /** React 19 : `ref` est une prop ordinaire (pas de `forwardRef`). */
+  ref?: Ref<HTMLButtonElement>
 }
 
 /**
