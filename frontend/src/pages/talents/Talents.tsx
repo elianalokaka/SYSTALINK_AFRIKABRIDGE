@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Link } from 'react-router'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { Button, Card, CardCorps, EmptyState, Input, SkeletonTexte } from '../../components/ui'
 import { listeCompetences } from '../../api/profil'
@@ -219,9 +218,7 @@ export function Talents() {
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {requete.data.data.map((talent) => (
-              <Link key={talent.id} to={`/talents/${talent.id}`}>
-                <CarteTalent talent={talent} />
-              </Link>
+              <CarteTalent key={talent.id} talent={talent} />
             ))}
           </div>
 

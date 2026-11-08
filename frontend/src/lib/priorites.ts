@@ -18,8 +18,11 @@
  *   C — fonctionnalités visibles : des pans d'interface entiers disparaissent
  */
 export const priorites = {
-  /** `POST`/`DELETE /users/{id}/follow` + listes abonnés/abonnements */
-  follow: false,
+  /** `POST`/`DELETE /users/{id}/follow` + listes abonnés/abonnements.
+   *  `true` pendant le développement avec les mocks (module `feat/follow`).
+   *  Si le backend ne livre pas le suivi : repasser à `false`, tout disparaît
+   *  (bouton, compteurs, listes) sans rien casser. */
+  follow: true,
   /** `GET /users/suggestions` et `GET /projects/suggestions` */
   suggestions: false,
   /** `GET`/`POST /resources/{id}/comments` + `DELETE /comments/{id}` */

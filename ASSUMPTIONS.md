@@ -67,7 +67,7 @@ ils servent de référence dans les échanges avec le backend et dans les tests.
 | `A-7` | 🟢 | Sémantique 403 / 401 | 403 = contexte, 401 = déconnexion | moyen |
 | `A-8` | 🟢 | 403 sur les ressources | pas une erreur d'accès | moyen |
 | `A-9` | 🟢 | Messages d'erreur | afficher `errors` de Laravel tel quel | moyen |
-| `A-10` | 🟢 | Compteurs P1 à zéro | **masquer**, jamais afficher `0` | moyen |
+| `A-10` | 🟢 | Compteurs P1 à zéro | **masquer** tant que non livré ; **afficher** quand `priorites.follow` | moyen |
 | `A-11` | 🟢 | Fuseau d'affichage | conversion à l'affichage, UTC en données | moyen |
 | `A-12` | 🟢 | Suggestion sans projet | ne pas appeler la route | moyen |
 | `A-13` | 🟢 | Historique des messages | insertion en tête (`avant_id`) | faible |
@@ -77,6 +77,7 @@ ils servent de référence dans les échanges avec le backend et dans les tests.
 | `A-17` | 🟢 | Fraîcheur du cache après écriture | invalidation explicite (`lib/cache.ts`) | **élevé** |
 | `A-18` | 🟢 | Polling de la discussion | `refetchInterval` 5 s, curseur monotone | **élevé** |
 | `A-19` | 🟢 | Visibilité d'une ressource | `visibilite` omis par défaut ; `publique` seulement si case cochée | moyen |
+| `A-20` | 🟢 | Suivi entre développeurs | 409 = succès, optimiste, listes sans bouton, « mon » réseau via `GET /users/{moi}` | moyen |
 | `V-1` | 🔴 | **Redemande après départ ou refus** | autorisée | **critique** |
 | `V-2` | 🔴 | `ma_demande_statut` après départ | redevient `null` | **critique** |
 | `V-3` | 🔴 | Tri réel des listes | confirmé par le backend | faible |
@@ -89,6 +90,8 @@ ils servent de référence dans les échanges avec le backend et dans les tests.
 | `V-10` | 🔴 | Compteurs d'agrégats | cohérents avec les listes | faible |
 | `V-11` | 🔴 | Identité « c'est moi » | comparaison d'`id` fiable | moyen |
 | `V-12` | 🔴 | Premier appel de la discussion (sans curseur) | renvoie les `limit` DERNIERS messages | **élevé** |
+| `V-13` | 🔴 | `is_following` relatif à l'utilisateur connecté | sur `GET /users` ET `GET /users/{id}` | **élevé** |
+| `V-14` | 🔴 | `GET /users/{id}` avec MON id | autorisé, compteurs exacts | moyen |
 
 ---
 
@@ -234,6 +237,12 @@ faux. On masque la ligne entière.
 **Pilotage** : via `lib/priorites.ts`, pour que la bascule soit une **constante**, pas dix
 composants.
 
+**Mise à jour (module `feat/follow`)** : la règle de masquage reste vraie *tant que le suivi n'est
+pas livré*. Dès que `priorites.follow` vaut `true` (mocks, puis backend qui livre vraiment le
+suivi), les compteurs sont **affichés** : ils ne sont plus des champs fantômes. Si le backend ne
+livre pas le suivi, on repasse la constante à `false` et tout (bouton, compteurs, onglets
+Abonnés / Abonnements) disparaît sans rien casser. Voir `A-20`.
+
 ### A-11 — Dates : UTC en données, local à l'affichage
 
 **Décision** : les dates du contrat (ISO 8601 UTC) sont **stockées et transmises telles quelles** ;
@@ -357,6 +366,30 @@ fusion sont des fonctions pures dans `features/messagerie/fil.ts`.
 **Conséquence assumée** : un poll toutes les 5 s **par discussion ouverte**, uniquement tant que
 l'onglet « Discussion » est affiché.
 
+### A-20 — Suivi entre développeurs (follow, P1)
+
+**Décision** : le module `feat/follow` applique le contrat à la lettre, avec quatre choix là où il
+est silencieux ou ouvert :
+
+1. **`409` « déjà suivi » = succès** (le contrat le dit) : `api/suivi.ts` laisse passer le 409 et
+   utilise son corps (`FollowState`) tel quel. Aucun autre fichier ne connaît ce cas.
+2. **Mise à jour optimiste** (le contrat le demande) : au clic, `is_following` et `followers_count`
+   changent dans le profil public et dans les pages de la recherche de talents ; en cas d'échec on
+   restaure l'état d'avant et on affiche l'erreur ; à la réponse, la valeur du serveur remplace
+   la valeur optimiste (`features/suivi/useSuivi.ts`).
+3. **Les listes Abonnés / Abonnements n'ont pas de bouton « Suivre »** : le contrat y renvoie des
+   `UtilisateurResume`, qui n'ont pas `is_following`. On ouvre le profil pour suivre. Aucune requête
+   supplémentaire n'est inventée pour combler ce manque.
+4. **Mon réseau** : la session (`GET /auth/me`) n'est pas rafraîchie quand je suis quelqu'un ; les
+   compteurs de « Mon profil » viennent donc de `GET /users/{mon id}` (voir `V-14`), rafraîchi par
+   `rafraichirSuivi`.
+
+**Pilotage** : `priorites.follow`. À `false` : aucun bouton, aucun compteur, aucune requête `/follow*`.
+
+**Bouton** : orange = action → « Suivre » est plein ; « Suivi » est un état (secondaire).
+Accessibilité : `aria-pressed`, nom accessible constant « Suivre <nom> », annonce du résultat dans
+une région `status`. Sur les cartes, le bouton n'est jamais dans le lien (lien étiré sur le nom).
+
 ### V-12 — Premier appel sans curseur 🔴
 
 Le contrat dit que les messages sont « triés du plus ancien au plus récent » mais ne dit pas quels
@@ -473,6 +506,21 @@ booléen `is_owner` global.
 **Point d'attention** : `GET /users/{id}` **ne contient jamais d'`email`** — y compris pour
 soi-même. L'identité « moi » se lit donc **exclusivement** via `GET /auth/me` (`A-7`, et
 `ANALYSE-CONTRAT.md` §7). Comparer des e-mails est **impossible** : ne jamais l'écrire.
+
+### V-13 — `is_following` est-il relatif à l'utilisateur connecté ? 🔴
+
+`GET /users` (`Talent`) et `GET /users/{id}` (`Profil`) portent `is_following`. Hypothèse du front :
+c'est **« l'utilisateur connecté suit-il ce membre ? »** sur **les deux** routes (le contrat le dit
+pour `Talent`). Si le backend ne le calcule que sur l'une, les boutons « Suivre » afficheraient un
+état faux. **À confirmer** (question prête : « `is_following` est-il calculé pour l'utilisateur
+connecté sur `GET /users` et sur `GET /users/{id}` ? »).
+
+### V-14 — `GET /users/{id}` avec son propre id 🔴
+
+« Mon profil » lit ses compteurs de suivi via `GET /users/{mon id}`. Le contrat ne l'interdit pas ;
+le backend doit renvoyer le profil public (sans e-mail) avec des `followers_count` /
+`following_count` **exacts**. S'il le refuse (403/404), les compteurs de « Mon profil » retombent sur
+ceux de la session (`/auth/me`), qui peuvent être périmés après un suivi. **À confirmer.**
 
 ---
 

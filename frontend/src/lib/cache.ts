@@ -30,6 +30,8 @@ import type { QueryClient } from '@tanstack/react-query'
  *   ['talent', id: string]          profil public (id issu de l'URL)
  *   ['portfolio', id: string]       projets réalisés d'un membre
  *   ['discussion', id: number]      fil de messages d'un projet (état de polling, cf. features/messagerie)
+ *   ['abonnes', id: string, page]      liste des abonnés d'un membre (P1)
+ *   ['abonnements', id: string, page]  liste des abonnements d'un membre (P1)
  */
 
 /**
@@ -69,6 +71,17 @@ export function rafraichirTalents(queryClient: QueryClient): void {
   void queryClient.invalidateQueries({ queryKey: ['talents'] })
   void queryClient.invalidateQueries({ queryKey: ['talent'] })
   void queryClient.invalidateQueries({ queryKey: ['portfolio'] })
+}
+
+/**
+ * Après un suivi / un désabonnement : les compteurs et `is_following` des
+ * profils, des cartes de talents et des listes d'abonnés / abonnements changent.
+ */
+export function rafraichirSuivi(queryClient: QueryClient): void {
+  void queryClient.invalidateQueries({ queryKey: ['talents'] })
+  void queryClient.invalidateQueries({ queryKey: ['talent'] })
+  void queryClient.invalidateQueries({ queryKey: ['abonnes'] })
+  void queryClient.invalidateQueries({ queryKey: ['abonnements'] })
 }
 
 /** Retire du cache tout ce qui concerne un projet supprimé. */

@@ -9,8 +9,9 @@ import type { Domaine, Profil, Projet, RoleProfil, Talent } from '../types'
  *   - `GET /users` exclut l'utilisateur connecté ; `q` cherche le nom et la bio ;
  *   - `competence_ids` en brackets (A-14), `competence_match` = any (défaut) | all ;
  *   - `GET /users/{id}` ne contient JAMAIS d'e-mail ;
- *   - `followers_count`, `following_count`, `is_following` sont des champs
- *     fantômes (follow = P1) : valent 0/false et NE SONT PAS affichés.
+ *   - `followers_count`, `following_count`, `is_following` : P1 (suivi). Valent 0/false
+ *     tant que le suivi n'est pas livré — affichés SEULEMENT si `priorites.follow`
+ *     est vrai (cf. `api/suivi.ts`, ASSUMPTIONS.md A-10).
  */
 
 export interface FiltresTalents {

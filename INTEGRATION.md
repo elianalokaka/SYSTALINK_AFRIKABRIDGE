@@ -548,7 +548,94 @@ Aucun composant ne change dans les deux sens. Si ce n'est pas le cas, l'architec
 | 5 | Bascule `VITE_USE_MOCKS=false` | front |
 | 6 | Conformité contre l'API réelle ⇒ **0 divergence** exigé | front + backend |
 | 7 | Levée des hypothèses 🔴 d'`ASSUMPTIONS.md` | front + backend |
-| 8 | Recette P1 (follow, commentaires, suggestions, dashboard) | front |
+| 8 | Recette P1 (follow : voir §8 ; commentaires, suggestions, dashboard) | front |
+
+---
+
+## 8. Brancher une fonctionnalité P1 : le suivi (follow)
+
+> Le suivi est une opération **P1** : le backend peut ne pas la livrer. Le front est construit pour
+> les deux cas. **Rien dans les composants ne dépend des mocks** ; la bascule est une constante.
+
+### 8.1 Ce que le backend doit fournir (contrat v1.2.0)
+
+| Route | Succès | Cas d'erreur | Détail attendu par le front |
+|---|---|---|---|
+| `POST /users/{id}/follow` | `201` | `409` déjà suivi · `422` soi-même · `404` · `401` · `419` | corps `{ is_following: true, followers_count }` **y compris sur le 409** (le front le traite comme un succès et lit ce corps) |
+| `DELETE /users/{id}/follow` | `200` | `404` · `401` · `419` | **idempotent** : `200` même si on ne suivait pas ; corps `{ is_following: false, followers_count }` |
+| `GET /users/{id}/followers` | `200` | `404` · `401` | `{ data: UtilisateurResume[], meta }`, **du plus récent au plus ancien**, paginé (`page`, `per_page`) |
+| `GET /users/{id}/following` | `200` | `404` · `401` | idem |
+
+`followers_count` du corps = abonnés **du membre ciblé après l'opération**.
+
+Champs à **calculer vraiment** (et non plus renvoyer à `0`/`false`) :
+
+| Schéma / route | Champ | Valeur attendue |
+|---|---|---|
+| `Talent` (`GET /users`) | `followers_count`, `is_following` | abonnés du membre ; l'**utilisateur connecté** le suit-il ? |
+| `Profil` (`GET /users/{id}`) | `followers_count`, `following_count`, `is_following` | idem + nombre de membres suivis. **Accepter son propre id** |
+| `ProfilPrive` (`GET /auth/me`, login, register) | `followers_count`, `following_count` | compteurs du compte connecté |
+
+Base : table `follows (follower_id, followed_id, created_at)` avec `UNIQUE(follower_id, followed_id)`.
+Se suivre soi-même → `422`. Voir `ASSUMPTIONS.md` A-20, **V-13** et **V-14** (à confirmer avec le dev backend).
+
+### 8.2 Vérifier le serveur avant de toucher au front
+
+```bash
+# 1. suivre (session ouverte, jeton CSRF dans l'en-tête X-XSRF-TOKEN) → 201 puis 409 avec le MÊME corps
+curl -i -X POST   http://localhost:8000/api/v1/users/2/follow   --cookie cookies.txt -H "X-XSRF-TOKEN: <jeton>" -H "Accept: application/json"
+# 2. ne plus suivre → 200, répété → 200 (idempotent)
+curl -i -X DELETE http://localhost:8000/api/v1/users/2/follow   --cookie cookies.txt -H "X-XSRF-TOKEN: <jeton>" -H "Accept: application/json"
+# 3. listes paginées
+curl -i "http://localhost:8000/api/v1/users/2/followers?per_page=2&page=1" --cookie cookies.txt -H "Accept: application/json"
+```
+
+Puis lancer le script de conformité (§3) : toute divergence se traite selon la **Règle des écarts** (§2),
+jamais par une rustine dans le front.
+
+### 8.3 La bascule côté front : UNE ligne
+
+Le flux « mocks → vrai backend » du §1 (`VITE_USE_MOCKS=false`, `VITE_API_BASE_URL=…`) suffit pour que les
+appels partent vers Laravel. Il reste à décider si le suivi est affiché :
+
+| Situation | `frontend/src/lib/priorites.ts` |
+|---|---|
+| Le backend **livre** le suivi | `follow: true` (valeur actuelle) |
+| Le backend **ne livre pas** le suivi | `follow: false` → plus de bouton, de compteurs, d'onglets Abonnés / Abonnements, **aucune** requête `/follow*` |
+
+### 8.4 Où vit le code du suivi (rien d'autre à modifier)
+
+| Fichier | Rôle |
+|---|---|
+| `src/api/suivi.ts` | **les 4 appels** + règle « 409 = succès ». Seul fichier qui connaît les routes |
+| `src/features/suivi/useSuivi.ts` | mise à jour optimiste, restauration en cas d'échec, invalidation |
+| `src/lib/cache.ts` (`rafraichirSuivi`) | clés de cache : `['talent', id]`, `['talents', …]`, `['abonnes', id, page]`, `['abonnements', id, page]` |
+| `src/pages/talents/BoutonSuivre.tsx` | bouton (invisible sur son propre profil) |
+| `src/pages/talents/ListeReseau.tsx` | onglets Abonnés / Abonnements + compteurs |
+| `src/pages/talents/{CarteTalent,ProfilPublic}.tsx`, `src/pages/profil/MonProfil.tsx` | affichage |
+| `src/mocks/handlers/suivi.ts`, `src/mocks/db.ts` (section « SUIVI ») | **mocks uniquement** : plus chargés avec `VITE_USE_MOCKS=false` |
+
+### 8.5 Si ça casse
+
+| Symptôme | Cause probable | Vérification |
+|---|---|---|
+| Le bouton affiche « Suivre » pour un membre déjà suivi | `is_following` non calculé pour l'utilisateur connecté | `V-13` : le calculer sur `GET /users` **et** `GET /users/{id}` |
+| Erreur au clic sur « Suivre » alors que le membre était déjà suivi | le serveur renvoie `409` **sans corps** `FollowState`, ou un autre code | le contrat exige le corps sur le 409 |
+| Erreur au désabonnement d'un membre non suivi | `DELETE` non idempotent (404 ou 409) | doit renvoyer `200` |
+| « Mon profil » ne montre pas le bon nombre d'abonnements | `GET /users/{mon id}` refusé ou compteurs faux | `V-14` |
+| Les listes d'abonnés ne sont pas dans l'ordre attendu | tri non appliqué | du plus récent au plus ancien (contrat) |
+| Les compteurs restent à `0` partout | le serveur renvoie encore les valeurs par défaut du contrat | passer `follow: false` ou livrer le calcul |
+| 419 sur les clics | jeton CSRF absent | voir §5 |
+
+### 8.6 Recette contre le vrai backend
+
+1. Compte A : ouvrir `Talents`, cliquer **Suivre** sur un membre → le bouton devient **Suivi**, le compteur du membre augmente, requête `POST … 201`.
+2. Recharger la page : l'état est conservé (`is_following` vient du serveur).
+3. Ouvrir le profil du membre : onglet **Abonnés** contient le compte A, en tête de liste.
+4. **Mon profil** : « abonnements » a augmenté de 1 ; onglet **Abonnements** contient le membre.
+5. Cliquer **Suivi** → **Suivre** : compteurs et listes reviennent à l'état d'avant (`DELETE … 200`).
+6. Ouvrir son propre profil depuis `/talents/<mon id>` : redirection vers `Mon profil`, pas de bouton.
+7. Aucun e-mail dans aucune réponse des listes.
 
 ---
 

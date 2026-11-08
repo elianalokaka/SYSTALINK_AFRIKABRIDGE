@@ -394,7 +394,8 @@ qu'aucun `node_modules` n'apparaît** avant de commiter.
 | **6** | `feat/ressources` | bibliothèque (filtres, pagination), partage lien/document/code, détail, onglet « Ressources » d'un projet | ✅ fusionné |
 | **7** | `feat/talents` | recherche de talents (filtres, any/all), profil public, projets réalisés | ✅ fusionné |
 | **8** | `feat/dashboard` | tableau de bord (repli P0, bascule P1 prête) + projets réalisés | ✅ **code prêt · à tester puis fusionner** |
-| **9+** | `feat/follow`, `feat/commentaires` | le P1, si le planning tient | ⬜ |
+| **9** | `feat/follow` | suivi entre développeurs : bouton Suivre (optimiste), compteurs, carte « Réseau » (Abonnés / Abonnements) ; P1 simulé comme livré, interrupteur `priorites.follow` | ✅ **code prêt · à tester puis fusionner** |
+| **10+** | `feat/commentaires` | le reste du P1 (commentaires, suggestions, `/stats`), si le planning tient | ⬜ |
 
 **Pourquoi cet ordre** : le design system d'abord (sinon chaque module réinvente ses boutons) ;
 puis `api-et-auth` (c'est là que vit le code le plus risqué du projet — le rejeu 419, les deux
@@ -421,6 +422,11 @@ racines, le curseur). Prouver ça tôt évite de découvrir le problème la veil
   par `refetchInterval`, curseurs `apres_id`/`depuis` (A-5, A-13, A-18), historique `avant_id`, suppression
   (auteur ou propriétaire). Mocks avec **coéquipier simulé** : il répond ~6-9 s après ton message ; un
   message commençant par `/bot` poste un message éphémère puis le supprime 8 s plus tard (pour VOIR `supprimes`).
+- **Module 9 (`feat/follow`) codé + `tsc` 0** : `api/suivi.ts` (409 = succès), `features/suivi/useSuivi.ts`
+  (mise à jour optimiste), `BoutonSuivre`, `ListeReseau`, compteurs sur profil public / « Mon profil » / cartes
+  de talents (lien étiré, bouton hors du lien). Mocks : table `suivis` + `mocks/handlers/suivi.ts` (201/409/422/404).
+  Interrupteur `lib/priorites.ts` → `follow: true` (repasser à `false` si le backend ne livre pas). Branchement :
+  `INTEGRATION.md` §8 · hypothèses : `ASSUMPTIONS.md` A-20, V-13, V-14.
 - **Règles permanentes** : le site est **toujours responsive** (vérifier 320 / 375 / 768 px) · à la fin de
   chaque module, **rappeler à l'utilisateur de mettre le dépôt à jour** (commit, push, PR, fusion, `git pull`).
   - Règle : **toute nouvelle écriture appelle `rafraichirProjets()`** ; les clés de cache sont
@@ -428,7 +434,7 @@ racines, le curseur). Prouver ça tôt évite de découvrir le problème la veil
 
 ### À faire, dans l'ordre
 1. **Tester puis fusionner `feat/audit-ux`** (rapport : `docs/AUDIT-UX.md` ; corrections : titres de page, lien d'évitement, onglets clavier, 404, cibles tactiles). Restent à faire : focus sur le 1er champ en erreur, dialogue de confirmation maison, test lecteur d'écran.
-2. Puis le P1 si le backend le livre (suivi, commentaires, suggestions, `/stats`), ou passage final (audit UX/accessibilité, `INTEGRATION.md`, bascule vers le vrai backend).
+2. **Tester puis fusionner `feat/follow`** (scénario dans le récap du module). Puis le reste du P1 si le backend le livre (commentaires, suggestions, `/stats`), ou passage final (audit UX/accessibilité, `INTEGRATION.md`, bascule vers le vrai backend).
 4. Vérifier les hypothèses 🔴 d'`ASSUMPTIONS.md` auprès du backend (2 critiques : `V-1`, `V-2`).
 
 ### Info utile

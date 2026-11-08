@@ -1,7 +1,11 @@
 import { useNavigate } from 'react-router'
+import { useQuery } from '@tanstack/react-query'
 import { Avatar, Badge, Button, Card, CardCorps, CardEntete } from '../../components/ui'
 import { useSession } from '../../features/auth/SessionProvider'
 import { nomDePays } from '../../lib/constants'
+import { profilPublic } from '../../api/talents'
+import { estLivre } from '../../lib/priorites'
+import { CompteursSuivi, ListeReseau } from '../talents/ListeReseau'
 import {
   LIBELLES_DOMAINE,
   LIBELLES_NIVEAU,
@@ -22,8 +26,20 @@ import {
 export function MonProfil() {
   const { profil } = useSession()
   const navigate = useNavigate()
+  const suiviLivre = estLivre('follow')
+
+  /* Les compteurs de suivi viennent du profil PUBLIC de MON id (`GET /users/{id}`,
+     autorisé par le contrat) : la session (`/auth/me`) ne bouge pas quand je
+     suis quelqu'un, alors que cette requête est rafraîchie par `rafraichirSuivi`. */
+  const reseau = useQuery({
+    queryKey: ['talent', String(profil?.id)],
+    queryFn: () => profilPublic(profil!.id),
+    enabled: suiviLivre && profil != null,
+  })
 
   if (!profil) return null
+  const nbAbonnes = reseau.data?.followers_count ?? profil.followers_count
+  const nbAbonnements = reseau.data?.following_count ?? profil.following_count
 
   const regionPays = [nomDePays(profil.pays), profil.region].filter(Boolean).join(' · ')
 
@@ -48,6 +64,11 @@ export function MonProfil() {
             )}
 
             <p className="mt-3 text-xs text-fg-3">{profil.email}</p>
+            {suiviLivre && (
+              <div className="mt-3">
+                <CompteursSuivi nbAbonnes={nbAbonnes} nbAbonnements={nbAbonnements} />
+              </div>
+            )}
           </div>
 
           <div className="shrink-0">
@@ -99,6 +120,8 @@ export function MonProfil() {
           </CardCorps>
         </Card>
       </div>
+
+      {suiviLivre && <ListeReseau membreId={profil.id} nbAbonnes={nbAbonnes} nbAbonnements={nbAbonnements} />}
 
       <Card>
         <CardEntete titre="Compétences" compteur={profil.competences.length} />
