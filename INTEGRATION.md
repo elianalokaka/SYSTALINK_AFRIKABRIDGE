@@ -548,7 +548,7 @@ Aucun composant ne change dans les deux sens. Si ce n'est pas le cas, l'architec
 | 5 | Bascule `VITE_USE_MOCKS=false` | front |
 | 6 | Conformité contre l'API réelle ⇒ **0 divergence** exigé | front + backend |
 | 7 | Levée des hypothèses 🔴 d'`ASSUMPTIONS.md` | front + backend |
-| 8 | Recette P1 (follow : voir §8 ; commentaires, suggestions, dashboard) | front |
+| 8 | Recette P1 (follow : §8 ; commentaires : §9 ; suggestions, dashboard) | front |
 
 ---
 
@@ -636,6 +636,83 @@ appels partent vers Laravel. Il reste à décider si le suivi est affiché :
 5. Cliquer **Suivi** → **Suivre** : compteurs et listes reviennent à l'état d'avant (`DELETE … 200`).
 6. Ouvrir son propre profil depuis `/talents/<mon id>` : redirection vers `Mon profil`, pas de bouton.
 7. Aucun e-mail dans aucune réponse des listes.
+
+---
+
+## 9. Brancher une fonctionnalité P1 : les commentaires d'une ressource
+
+> Même principe que le suivi (§8) : opération **P1**, aucun composant ne connaît les mocks, la bascule est une constante.
+
+### 9.1 Ce que le backend doit fournir (contrat v1.2.0)
+
+| Route | Succès | Cas d'erreur | Détail attendu par le front |
+|---|---|---|---|
+| `GET /resources/{id}/comments` | `200` | `401` · `403` · `404` | `{ data: Commentaire[], meta }`, paginé (`page`, `per_page`). `403` = ressource réservée à une équipe dont on n'est pas membre |
+| `POST /resources/{id}/comments` | `201` + `Commentaire` | `401` · `403` · `404` · `419` · `422` | corps `{ contenu }` (1 à 1000 caractères). `422` avec `errors.contenu[0]` (affiché sous le champ). Tout membre connecté si la ressource est **publique** ; membres du projet si elle est **réservée** |
+| `DELETE /comments/{id}` | `204` | `401` · `403` · `404` · `419` | autorisé pour **l'auteur du commentaire ou l'auteur de la ressource** (pas le propriétaire du projet, sauf s'il est l'auteur) |
+
+`Commentaire` = `{ id, ressource_id, auteur: UtilisateurResume, contenu, created_at }` (jamais d'e-mail).
+
+Champ à **calculer vraiment** : `Ressource.commentaires_count` (détail, liste `GET /resources`, création, modification) —
+exact et mis à jour après chaque `POST` / `DELETE` de commentaire (`ASSUMPTIONS.md` **V-16**).
+Ordre des commentaires : **le plus récent en premier** (`A-21`, à confirmer : **V-15**).
+Base : table `resource_comments`. Le contrat n'a pas de modification (`PATCH`) de commentaire : le front n'en propose pas.
+
+### 9.2 Vérifier le serveur avant de toucher au front
+
+```bash
+# 1. lire (200) ; sur une ressource d'équipe sans en être membre → 403
+curl -i "http://localhost:8000/api/v1/resources/1/comments?per_page=10&page=1" --cookie cookies.txt -H "Accept: application/json"
+# 2. publier → 201 ; contenu vide ou > 1000 caractères → 422 avec errors.contenu
+curl -i -X POST http://localhost:8000/api/v1/resources/1/comments --cookie cookies.txt \
+  -H "X-XSRF-TOKEN: <jeton>" -H "Content-Type: application/json" -H "Accept: application/json" -d '{"contenu":"Bonne base !"}'
+# 3. supprimer : son commentaire → 204 ; celui d'un autre (sans être auteur de la ressource) → 403
+curl -i -X DELETE http://localhost:8000/api/v1/comments/1 --cookie cookies.txt -H "X-XSRF-TOKEN: <jeton>" -H "Accept: application/json"
+```
+
+Puis le script de conformité (§3). Toute divergence se traite selon la **Règle des écarts** (§2), jamais par une rustine dans le front.
+
+### 9.3 La bascule côté front
+
+Le flux « mocks → vrai backend » du §1 suffit pour que les appels partent vers Laravel. Reste à décider si la fonction est affichée :
+
+| Situation | `frontend/src/lib/priorites.ts` |
+|---|---|
+| Le backend **livre** les commentaires | `commentaires: true` (valeur actuelle) |
+| Le backend **ne livre pas** les commentaires | `commentaires: false` → ni section, ni compteur sur les cartes, **aucune** requête `/comments` |
+
+### 9.4 Où vit le code (rien d'autre à modifier)
+
+| Fichier | Rôle |
+|---|---|
+| `src/api/commentaires.ts` | **les 3 appels**. Seul fichier qui connaît les routes |
+| `src/pages/ressources/FilCommentaires.tsx` | fil, formulaire, suppression en deux temps, pagination |
+| `src/pages/ressources/commentaires.ts` | limite (1000) et libellés pluriel |
+| `src/lib/cache.ts` (`rafraichirCommentaires`) | clé `['commentaires', id, page]` + rafraîchit aussi le détail / la liste des ressources (`commentaires_count`) |
+| `src/pages/ressources/{RessourceDetail,CarteRessource}.tsx` | affichage (section + compteur) |
+| `src/mocks/handlers/commentaires.ts`, `src/mocks/db.ts` (section « COMMENTAIRES ») | **mocks uniquement** : plus chargés avec `VITE_USE_MOCKS=false` |
+
+### 9.5 Si ça casse
+
+| Symptôme | Cause probable | Vérification |
+|---|---|---|
+| Mon commentaire n'apparaît pas après « Publier » (au-delà de 10 commentaires) | le serveur renvoie le plus ancien d'abord | **V-15** : plus récent en premier |
+| Le compteur de la carte ne bouge pas | `commentaires_count` figé | **V-16** : le recalculer à chaque écriture et dans `GET /resources` |
+| « Les commentaires… sont réservés à son équipe » sur une ressource publique | `403` à tort | règle d'autorisation de lecture : publique = tout membre connecté |
+| Message sous le champ « Certains champs sont invalides. » au lieu du détail | `422` sans `errors.contenu` | le contrat impose `errors` par champ |
+| Un auteur de ressource ne peut pas supprimer un commentaire d'autrui | `403` à tort | contrat : l'auteur de la ressource peut supprimer |
+| Le propriétaire d'un projet (non auteur) peut supprimer | autorisation trop large | contrat : auteur du commentaire **ou** auteur de la ressource |
+| 419 à la publication | jeton CSRF absent | voir §5 |
+
+### 9.6 Recette contre le vrai backend
+
+1. Compte A : ouvrir une ressource, écrire un commentaire, **Publier** → il apparaît en tête, le champ se vide (`POST … 201`).
+2. Retour à la **Bibliothèque** : la carte affiche « N commentaires » (compteur à jour).
+3. Compte B (autre membre) : voir le commentaire de A ; **pas** de bouton Supprimer dessus, sauf si B est l'auteur de la ressource.
+4. Compte A : **Supprimer** → **Confirmer la suppression** → le commentaire disparaît (`DELETE … 204`) et le compteur baisse.
+5. Contenu vide ou de plus de 1000 caractères : message d'erreur sous le champ (`422`).
+6. Ressource d'équipe, compte non membre : pas d'accès à la ressource ; appel direct à `/comments` → `403`.
+7. Plus de 10 commentaires : pagination « Page 1 / 2 » ; supprimer le dernier de la page 2 ramène à la page 1.
 
 ---
 

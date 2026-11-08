@@ -78,6 +78,7 @@ ils servent de référence dans les échanges avec le backend et dans les tests.
 | `A-18` | 🟢 | Polling de la discussion | `refetchInterval` 5 s, curseur monotone | **élevé** |
 | `A-19` | 🟢 | Visibilité d'une ressource | `visibilite` omis par défaut ; `publique` seulement si case cochée | moyen |
 | `A-20` | 🟢 | Suivi entre développeurs | 409 = succès, optimiste, listes sans bouton, « mon » réseau via `GET /users/{moi}` | moyen |
+| `A-21` | 🟢 | Commentaires d'une ressource | récents d'abord, suppression en 2 temps en ligne, 403 = section réservée | moyen |
 | `V-1` | 🔴 | **Redemande après départ ou refus** | autorisée | **critique** |
 | `V-2` | 🔴 | `ma_demande_statut` après départ | redevient `null` | **critique** |
 | `V-3` | 🔴 | Tri réel des listes | confirmé par le backend | faible |
@@ -92,6 +93,8 @@ ils servent de référence dans les échanges avec le backend et dans les tests.
 | `V-12` | 🔴 | Premier appel de la discussion (sans curseur) | renvoie les `limit` DERNIERS messages | **élevé** |
 | `V-13` | 🔴 | `is_following` relatif à l'utilisateur connecté | sur `GET /users` ET `GET /users/{id}` | **élevé** |
 | `V-14` | 🔴 | `GET /users/{id}` avec MON id | autorisé, compteurs exacts | moyen |
+| `V-15` | 🔴 | Ordre des commentaires | plus récent d'abord | moyen |
+| `V-16` | 🔴 | `commentaires_count` d'une ressource | exact après chaque écriture, aussi dans `GET /resources` | moyen |
 
 ---
 
@@ -225,7 +228,8 @@ et masquerait les messages précis du backend. Voir `V-9` pour la langue.
 ### A-10 — Les compteurs P1 valent zéro : on les masque
 
 **Décision** : tant que le P1 n'est pas livré, `followers_count`, `following_count` et
-`commentaires_count` (présents dans des schémas **P0**) sont **masqués**, jamais affichés à `0`.
+`commentaires_count` (présents dans des schémas **P0**) sont **masqués**, jamais affichés à `0`
+(*tant que la fonction n'est pas livrée* : voir la mise à jour ci-dessous, `A-20` et `A-21`).
 
 **Contrat** : *« Tant que le follow n'est pas livré, renvoyer 0 »* et *« Ne rien construire
 dessus. »*
@@ -344,7 +348,7 @@ Une panne réseau ou 5xx garde les données déjà affichées (ou propose « Ré
 **Décision** : `visibilite` n'est **jamais envoyé** par défaut (le serveur applique sa règle :
 ressource de projet ⇒ équipe, sinon publique). Il n'est envoyé (`publique`) que si l'auteur coche
 « Rendre aussi publique » sur une ressource de projet. Onglet « Ressources » d'un projet :
-`403` ⇒ section vide (cf. `A-8`). Commentaires (P1) non affichés : `commentaires_count` ignoré.
+`403` ⇒ section vide (cf. `A-8`). Commentaires (P1) : affichés seulement si `priorites.commentaires` (voir `A-21`) ; la lecture d'un fil en `403` donne une section « réservée à l'équipe », pas une erreur.
 
 ### A-18 — Polling de la discussion
 
@@ -389,6 +393,29 @@ est silencieux ou ouvert :
 **Bouton** : orange = action → « Suivre » est plein ; « Suivi » est un état (secondaire).
 Accessibilité : `aria-pressed`, nom accessible constant « Suivre <nom> », annonce du résultat dans
 une région `status`. Sur les cartes, le bouton n'est jamais dans le lien (lien étiré sur le nom).
+
+### A-21 — Commentaires d'une ressource (P1)
+
+**Décision** : le module `feat/commentaires` applique le contrat (`GET` / `POST /resources/{id}/comments`,
+`DELETE /comments/{id}`) avec les choix suivants là où il est silencieux :
+
+1. **Ordre : le plus récent en premier** (règle générale `A-1`). Un commentaire publié apparaît donc en
+   tête de la page 1 ; on ne retrie jamais côté front. À confirmer : `V-15`.
+2. **Qui peut supprimer** : l'auteur du commentaire **ou l'auteur de la ressource** — exactement le contrat.
+   Attention : ce n'est **pas** la règle de modification d'une ressource (qui inclut aussi le propriétaire
+   du projet lié). Le bouton n'apparaît que dans ces deux cas ; la vraie barrière est le `403` du serveur.
+3. **Suppression en deux temps, en ligne** (« Supprimer » → « Confirmer la suppression » / « Annuler »),
+   sans `window.confirm` : accessible au clavier et cohérent avec l'audit UX.
+4. **`403` sur la lecture** = ressource réservée à une équipe : on affiche « réservés à son équipe »
+   (même logique que `A-8`), jamais une erreur.
+5. **Pas d'optimisme** : contrairement au suivi, l'écran attend la réponse puis invalide
+   (`rafraichirCommentaires` : le fil **et** `commentaires_count` partout où il s'affiche).
+6. **Pas de modification** d'un commentaire : le contrat n'a pas de `PATCH`. Pagination : 10 par page ;
+   supprimer le dernier élément d'une page > 1 ramène à la page précédente.
+7. **Compteur** : « N commentaire(s) » sur les cartes de la bibliothèque seulement quand `N > 0`
+   (un vrai zéro n'est pas affiché pour alléger les cartes).
+
+**Pilotage** : `priorites.commentaires`. À `false` : aucune section, aucun compteur, aucune requête `/comments`.
 
 ### V-12 — Premier appel sans curseur 🔴
 
@@ -521,6 +548,21 @@ connecté sur `GET /users` et sur `GET /users/{id}` ? »).
 le backend doit renvoyer le profil public (sans e-mail) avec des `followers_count` /
 `following_count` **exacts**. S'il le refuse (403/404), les compteurs de « Mon profil » retombent sur
 ceux de la session (`/auth/me`), qui peuvent être périmés après un suivi. **À confirmer.**
+
+### V-15 — Ordre des commentaires 🔴
+
+Le contrat ne précise pas l'ordre de `GET /resources/{id}/comments`. Hypothèse du front : **du plus récent
+au plus ancien** (`A-1`). Si le backend renvoie le plus ancien d'abord, un commentaire tout juste publié
+n'apparaîtrait pas sur la page 1 dès qu'il y a plus de 10 commentaires. **À confirmer** (question prête :
+« `GET /resources/{id}/comments` renvoie-t-il le plus récent en premier ? »).
+
+### V-16 — `commentaires_count` d'une ressource 🔴
+
+Le front affiche ce compteur sur le détail et sur les cartes de la bibliothèque. Il doit être **exact**
+dans `GET /resources`, `GET /resources/{id}` et les réponses de création / modification, et changer
+après chaque `POST` / `DELETE` de commentaire. Un compteur figé fausserait l'affichage sans erreur visible.
+**À confirmer**, avec la règle d'autorisation : une ressource **publique** liée à un projet est commentable
+par tout membre connecté ; une ressource **réservée** (`visibilite: projet`) l'est par les membres du projet.
 
 ---
 

@@ -17,6 +17,8 @@ import { ErreurApi, messageErreur } from '../../api/erreurs'
 import { useSession } from '../../features/auth/SessionProvider'
 import { rafraichirRessources } from '../../lib/cache'
 import { LIBELLES_TYPE_RESSOURCE, LIBELLES_VISIBILITE_RESSOURCE, LIBELLES_ROLE_PROFIL } from '../../lib/labels'
+import { estLivre } from '../../lib/priorites'
+import { FilCommentaires } from './FilCommentaires'
 import { dateCourte, domaineDe, fichierSur, lienSur } from './outils'
 
 /**
@@ -239,6 +241,8 @@ export function RessourceDetail() {
           )}
         </CardCorps>
       </Card>
+
+      {estLivre('commentaires') && <FilCommentaires ressource={ressource} />}
     </div>
   )
 }

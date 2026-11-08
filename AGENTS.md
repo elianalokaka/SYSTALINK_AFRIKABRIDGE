@@ -394,8 +394,9 @@ qu'aucun `node_modules` n'apparaît** avant de commiter.
 | **6** | `feat/ressources` | bibliothèque (filtres, pagination), partage lien/document/code, détail, onglet « Ressources » d'un projet | ✅ fusionné |
 | **7** | `feat/talents` | recherche de talents (filtres, any/all), profil public, projets réalisés | ✅ fusionné |
 | **8** | `feat/dashboard` | tableau de bord (repli P0, bascule P1 prête) + projets réalisés | ✅ **code prêt · à tester puis fusionner** |
-| **9** | `feat/follow` | suivi entre développeurs : bouton Suivre (optimiste), compteurs, carte « Réseau » (Abonnés / Abonnements) ; P1 simulé comme livré, interrupteur `priorites.follow` | ✅ **code prêt · à tester puis fusionner** |
-| **10+** | `feat/commentaires` | le reste du P1 (commentaires, suggestions, `/stats`), si le planning tient | ⬜ |
+| **9** | `feat/follow` | suivi entre développeurs : bouton Suivre (optimiste), compteurs, carte « Réseau » (Abonnés / Abonnements) ; P1 simulé comme livré, interrupteur `priorites.follow` | ✅ fusionné |
+| **10** | `feat/commentaires` | fil de commentaires sous une ressource (publier, supprimer en 2 temps, pagination, compteurs) ; P1 simulé comme livré, interrupteur `priorites.commentaires` | ✅ **code prêt · à tester puis fusionner** |
+| **11+** | à définir | le reste du P1 (suggestions, `/stats`), si le planning tient | ⬜ |
 
 **Pourquoi cet ordre** : le design system d'abord (sinon chaque module réinvente ses boutons) ;
 puis `api-et-auth` (c'est là que vit le code le plus risqué du projet — le rejeu 419, les deux
@@ -427,6 +428,10 @@ racines, le curseur). Prouver ça tôt évite de découvrir le problème la veil
   de talents (lien étiré, bouton hors du lien). Mocks : table `suivis` + `mocks/handlers/suivi.ts` (201/409/422/404).
   Interrupteur `lib/priorites.ts` → `follow: true` (repasser à `false` si le backend ne livre pas). Branchement :
   `INTEGRATION.md` §8 · hypothèses : `ASSUMPTIONS.md` A-20, V-13, V-14.
+- **Module 10 (`feat/commentaires`) codé + `tsc` 0** : `api/commentaires.ts`, `pages/ressources/FilCommentaires.tsx`
+  (fil, formulaire 1-1000 caractères, suppression en deux temps en ligne, pagination 10), compteur sur les cartes de
+  la bibliothèque. Mocks : table `commentaires` + `mocks/handlers/commentaires.ts` (201/403/404/422, 204). Interrupteur
+  `lib/priorites.ts` → `commentaires: true`. Branchement : `INTEGRATION.md` §9 · hypothèses : `ASSUMPTIONS.md` A-21, V-15, V-16.
 - **Règles permanentes** : le site est **toujours responsive** (vérifier 320 / 375 / 768 px) · à la fin de
   chaque module, **rappeler à l'utilisateur de mettre le dépôt à jour** (commit, push, PR, fusion, `git pull`).
   - Règle : **toute nouvelle écriture appelle `rafraichirProjets()`** ; les clés de cache sont
@@ -434,7 +439,7 @@ racines, le curseur). Prouver ça tôt évite de découvrir le problème la veil
 
 ### À faire, dans l'ordre
 1. **Tester puis fusionner `feat/audit-ux`** (rapport : `docs/AUDIT-UX.md` ; corrections : titres de page, lien d'évitement, onglets clavier, 404, cibles tactiles). Restent à faire : focus sur le 1er champ en erreur, dialogue de confirmation maison, test lecteur d'écran.
-2. **Tester puis fusionner `feat/follow`** (scénario dans le récap du module). Puis le reste du P1 si le backend le livre (commentaires, suggestions, `/stats`), ou passage final (audit UX/accessibilité, `INTEGRATION.md`, bascule vers le vrai backend).
+2. **Tester puis fusionner `feat/commentaires`** (scénario dans le récap du module). Puis le reste du P1 si le backend le livre (suggestions, `/stats`), ou passage final (audit UX/accessibilité, `INTEGRATION.md`, bascule vers le vrai backend).
 4. Vérifier les hypothèses 🔴 d'`ASSUMPTIONS.md` auprès du backend (2 critiques : `V-1`, `V-2`).
 
 ### Info utile

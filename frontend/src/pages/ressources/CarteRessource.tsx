@@ -1,6 +1,8 @@
 import { Avatar, Badge, Card, CardCorps } from '../../components/ui'
 import { LIBELLES_TYPE_RESSOURCE, LIBELLES_VISIBILITE_RESSOURCE } from '../../lib/labels'
 import type { Ressource } from '../../types'
+import { estLivre } from '../../lib/priorites'
+import { libelleCommentaires } from './commentaires'
 import { dateCourte } from './outils'
 
 /**
@@ -42,7 +44,10 @@ export function CarteRessource({ ressource }: { ressource: Ressource }) {
             <Avatar nom={ressource.auteur.nom} photoUrl={ressource.auteur.photo_url} taille="sm" />
             <span className="truncate text-xs text-fg-2">{ressource.auteur.nom}</span>
           </div>
-          <span className="shrink-0 text-xs tabular-nums text-fg-3">{dateCourte(ressource.created_at)}</span>
+          <span className="shrink-0 text-xs tabular-nums text-fg-3">
+            {estLivre('commentaires') && ressource.commentaires_count > 0 && `${libelleCommentaires(ressource.commentaires_count)} · `}
+            {dateCourte(ressource.created_at)}
+          </span>
         </div>
       </CardCorps>
     </Card>
