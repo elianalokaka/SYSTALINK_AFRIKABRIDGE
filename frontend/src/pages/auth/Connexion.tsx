@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { Button, Card, CardCorps, FormField, Input } from '../../components/ui'
+import { Button, Card, CardCorps, ChampMotDePasse, FormField, Input } from '../../components/ui'
 import { useTitreDocument } from '../../components/layout/useSuiviDeRoute'
 import { ErreurApi } from '../../api/erreurs'
 import { useSession } from '../../features/auth/SessionProvider'
@@ -89,9 +89,8 @@ export function Connexion() {
                 obligatoire
                 erreur={erreurs.mot_de_passe}
               >
-                <Input
+                <ChampMotDePasse
                   id="mot-de-passe"
-                  type="password"
                   name="mot_de_passe"
                   autoComplete="current-password"
                   invalide={Boolean(erreurs.mot_de_passe)}

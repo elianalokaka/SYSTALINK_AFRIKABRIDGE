@@ -79,6 +79,7 @@ ils servent de référence dans les échanges avec le backend et dans les tests.
 | `A-19` | 🟢 | Visibilité d'une ressource | `visibilite` omis par défaut ; `publique` seulement si case cochée | moyen |
 | `A-20` | 🟢 | Suivi entre développeurs | 409 = succès, optimiste, listes sans bouton, « mon » réseau via `GET /users/{moi}` | moyen |
 | `A-21` | 🟢 | Commentaires d'une ressource | récents d'abord, suppression en 2 temps en ligne, 403 = section réservée | moyen |
+| `A-22` | 🟢 | Finitions UX (focus erreur, confirmation, mot de passe) | purement front, aucune route ni contrat touchés | aucun |
 | `V-1` | 🔴 | **Redemande après départ ou refus** | autorisée | **critique** |
 | `V-2` | 🔴 | `ma_demande_statut` après départ | redevient `null` | **critique** |
 | `V-3` | 🔴 | Tri réel des listes | confirmé par le backend | faible |
@@ -416,6 +417,20 @@ une région `status`. Sur les cartes, le bouton n'est jamais dans le lien (lien 
    (un vrai zéro n'est pas affiché pour alléger les cartes).
 
 **Pilotage** : `priorites.commentaires`. À `false` : aucune section, aucun compteur, aucune requête `/comments`.
+
+### A-22 — Finitions UX (passe finale)
+
+**Décision** : ces trois ajouts sont **purement côté front** ; ils ne changent ni une route, ni un champ, ni un code HTTP.
+
+1. **Focus sur le premier champ invalide** : géré une seule fois dans `FormField` (le premier `[aria-invalid="true"]`
+   du formulaire reçoit le focus quand une erreur apparaît). Vaut pour les erreurs `422` du serveur comme pour les
+   contrôles locaux.
+2. **Confirmation des actions destructives** : `<dialog>` natif (focus piégé par le navigateur, Échap, annonce comme
+   boîte modale). Focus initial sur **Annuler**. Les textes mentionnent la cascade (projet → ressources et discussions,
+   ressource → commentaires) : c'est le comportement du mock ; **à confirmer avec le backend** si la suppression
+   d'un projet ne supprime pas ses ressources (alors retirer la phrase correspondante dans `ProjetDetail.tsx`).
+3. **Afficher / masquer le mot de passe** : change uniquement `type="password"` ↔ `type="text"` côté navigateur ;
+   le mot de passe n'est jamais stocké ni journalisé.
 
 ### V-12 — Premier appel sans curseur 🔴
 

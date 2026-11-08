@@ -12,6 +12,7 @@ import {
   ProgressBar,
   SkeletonTexte,
   Tabs,
+  useConfirmation,
 } from '../../components/ui'
 import { detailProjet, supprimerProjet } from '../../api/projets'
 import { ErreurApi, messageErreur } from '../../api/erreurs'
@@ -44,6 +45,7 @@ export function ProjetDetail() {
   const [onglet, setOnglet] = useState('vue')
   const [erreurAction, setErreurAction] = useState<string | null>(null)
   const demandesRecues = useDemandesRecues()
+  const { confirmer, dialogue } = useConfirmation()
 
   const requete = useQuery({
     queryKey: ['projet', id],
@@ -55,7 +57,11 @@ export function ProjetDetail() {
   })
 
   async function onSupprimer() {
-    if (!window.confirm('Supprimer définitivement ce projet ?')) return
+    const confirme = await confirmer({
+      titre: 'Supprimer définitivement ce projet ?',
+      description: 'Ses ressources et ses discussions seront supprimées avec lui. Cette action est irréversible.',
+    })
+    if (!confirme) return
     setErreurAction(null)
     try {
       await supprimerProjet(Number(id))
@@ -177,6 +183,7 @@ export function ProjetDetail() {
       {onglet === 'ressources' && projet.is_member && <OngletRessources projetId={projet.id} />}
       {onglet === 'demandes' && estProprietaire && <OngletDemandes projetId={projet.id} />}
       </div>
+      {dialogue}
     </div>
   )
 }

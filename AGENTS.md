@@ -395,8 +395,9 @@ qu'aucun `node_modules` n'apparaît** avant de commiter.
 | **7** | `feat/talents` | recherche de talents (filtres, any/all), profil public, projets réalisés | ✅ fusionné |
 | **8** | `feat/dashboard` | tableau de bord (repli P0, bascule P1 prête) + projets réalisés | ✅ **code prêt · à tester puis fusionner** |
 | **9** | `feat/follow` | suivi entre développeurs : bouton Suivre (optimiste), compteurs, carte « Réseau » (Abonnés / Abonnements) ; P1 simulé comme livré, interrupteur `priorites.follow` | ✅ fusionné |
-| **10** | `feat/commentaires` | fil de commentaires sous une ressource (publier, supprimer en 2 temps, pagination, compteurs) ; P1 simulé comme livré, interrupteur `priorites.commentaires` | ✅ **code prêt · à tester puis fusionner** |
-| **11+** | à définir | le reste du P1 (suggestions, `/stats`), si le planning tient | ⬜ |
+| **10** | `feat/commentaires` | fil de commentaires sous une ressource (publier, supprimer en 2 temps, pagination, compteurs) ; P1 simulé comme livré, interrupteur `priorites.commentaires` | ✅ fusionné |
+| **11** | `feat/finitions` | passe finale UX : focus sur le 1er champ invalide, boîte de confirmation accessible (remplace 3 `window.confirm`), afficher/masquer le mot de passe | ✅ **code prêt · à tester puis fusionner** |
+| **12+** | à définir | le reste du P1 (suggestions, `/stats`), si le planning tient | ⬜ |
 
 **Pourquoi cet ordre** : le design system d'abord (sinon chaque module réinvente ses boutons) ;
 puis `api-et-auth` (c'est là que vit le code le plus risqué du projet — le rejeu 419, les deux
@@ -432,14 +433,19 @@ racines, le curseur). Prouver ça tôt évite de découvrir le problème la veil
   (fil, formulaire 1-1000 caractères, suppression en deux temps en ligne, pagination 10), compteur sur les cartes de
   la bibliothèque. Mocks : table `commentaires` + `mocks/handlers/commentaires.ts` (201/403/404/422, 204). Interrupteur
   `lib/priorites.ts` → `commentaires: true`. Branchement : `INTEGRATION.md` §9 · hypothèses : `ASSUMPTIONS.md` A-21, V-15, V-16.
+- **Module 11 (`feat/finitions`) codé + `tsc` 0** : (1) `FormField` donne le focus au premier champ invalide du
+  formulaire quand une erreur apparaît (aucun câblage dans les pages) ; (2) `components/ui/BoiteConfirmation.tsx` +
+  `useConfirmation.tsx` (`<dialog>` natif modal, focus initial sur Annuler, Échap, clic sur le fond, focus rendu au
+  bouton) remplacent les 3 `window.confirm` (projet, ressource, message) ; (3) `ChampMotDePasse.tsx` (Afficher/Masquer,
+  `aria-pressed`, nom accessible constant) sur Connexion et Inscription (2 champs). Hypothèse : `ASSUMPTIONS.md` A-22.
 - **Règles permanentes** : le site est **toujours responsive** (vérifier 320 / 375 / 768 px) · à la fin de
   chaque module, **rappeler à l'utilisateur de mettre le dépôt à jour** (commit, push, PR, fusion, `git pull`).
   - Règle : **toute nouvelle écriture appelle `rafraichirProjets()`** ; les clés de cache sont
     documentées en tête de `lib/cache.ts`.
 
 ### À faire, dans l'ordre
-1. **Tester puis fusionner `feat/audit-ux`** (rapport : `docs/AUDIT-UX.md` ; corrections : titres de page, lien d'évitement, onglets clavier, 404, cibles tactiles). Restent à faire : focus sur le 1er champ en erreur, dialogue de confirmation maison, test lecteur d'écran.
-2. **Tester puis fusionner `feat/commentaires`** (scénario dans le récap du module). Puis le reste du P1 si le backend le livre (suggestions, `/stats`), ou passage final (audit UX/accessibilité, `INTEGRATION.md`, bascule vers le vrai backend).
+1. **Tester puis fusionner `feat/finitions`** (scénario dans le récap du module). Reste de la passe finale : test lecteur d'écran, répétition du scénario de démonstration, préparation de la bascule vers le vrai backend (`INTEGRATION.md`).
+2. Le reste du P1 si le backend le livre (suggestions, `/stats`).
 4. Vérifier les hypothèses 🔴 d'`ASSUMPTIONS.md` auprès du backend (2 critiques : `V-1`, `V-2`).
 
 ### Info utile
