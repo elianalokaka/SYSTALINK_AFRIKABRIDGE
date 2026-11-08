@@ -10,7 +10,7 @@ import { idUtilisateurConnecte, listerTalentsDb, portfolioDb, profilPublicDb, pr
  *   - `GET /users/{id}` : profil PUBLIC (jamais d'e-mail) — 404 si inconnu ;
  *   - `GET /users/{id}/portfolio` : projets `termine` dont le membre fait partie.
  *
- * Hors périmètre P0 : suggestions, follow, followers, following.
+ * Le suivi (follow, followers, following) est dans `suivi.ts` ; suggestions : non construites.
  */
 
 function non401() {
@@ -63,7 +63,7 @@ export const handlersTalents = [
   http.get('/api/v1/users/:id', ({ params }) => {
     const userId = idUtilisateurConnecte()
     if (!userId) return non401()
-    const profil = profilPublicDb(Number(params.id))
+    const profil = profilPublicDb(Number(params.id), userId)
     if (!profil) return HttpResponse.json({ message: 'Resource not found.' }, { status: 404 })
     return HttpResponse.json(profil, { status: 200 })
   }),
