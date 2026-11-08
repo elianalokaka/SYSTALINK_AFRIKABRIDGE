@@ -1,4 +1,5 @@
 import { handlersAuth } from './auth'
+import { handlersCommentaires } from './commentaires'
 import { handlersDashboard } from './dashboard'
 import { handlersEquipes } from './equipes'
 import { handlersMessagerie } from './messagerie'
@@ -15,4 +16,4 @@ import { handlersTalents } from './talents'
  * modules suivants ajouteront leurs routes, ils n'auront qu'à ajouter leur
  * handler à cette liste — sans toucher à `browser.ts` ni `server.ts`.
  */
-export const handlers = [...handlersAuth, ...handlersProfil, ...handlersProjets, ...handlersEquipes, ...handlersMessagerie, ...handlersRessources, ...handlersTalents, ...handlersSuivi, ...handlersDashboard]
+export const handlers = [...handlersAuth, ...handlersProfil, ...handlersProjets, ...handlersEquipes, ...handlersMessagerie, ...handlersRessources, ...handlersCommentaires, ...handlersTalents, ...handlersSuivi, ...handlersDashboard]

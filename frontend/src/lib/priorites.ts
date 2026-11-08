@@ -25,8 +25,11 @@ export const priorites = {
   follow: true,
   /** `GET /users/suggestions` et `GET /projects/suggestions` */
   suggestions: false,
-  /** `GET`/`POST /resources/{id}/comments` + `DELETE /comments/{id}` */
-  commentaires: false,
+  /** `GET`/`POST /resources/{id}/comments` + `DELETE /comments/{id}`.
+   *  `true` pendant le développement avec les mocks (module `feat/commentaires`).
+   *  Si le backend ne les livre pas : repasser à `false` — fil de commentaires et
+   *  compteurs disparaissent, sans rien casser. */
+  commentaires: true,
   /** `GET /me/dashboard` */
   dashboard: false,
   /** `GET /stats` (route publique) */

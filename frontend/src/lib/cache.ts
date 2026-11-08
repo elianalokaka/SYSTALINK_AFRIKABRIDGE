@@ -30,6 +30,7 @@ import type { QueryClient } from '@tanstack/react-query'
  *   ['talent', id: string]          profil public (id issu de l'URL)
  *   ['portfolio', id: string]       projets réalisés d'un membre
  *   ['discussion', id: number]      fil de messages d'un projet (état de polling, cf. features/messagerie)
+ *   ['commentaires', id: string, page] commentaires d'une ressource (P1)
  *   ['abonnes', id: string, page]      liste des abonnés d'un membre (P1)
  *   ['abonnements', id: string, page]  liste des abonnements d'un membre (P1)
  */
@@ -82,6 +83,15 @@ export function rafraichirSuivi(queryClient: QueryClient): void {
   void queryClient.invalidateQueries({ queryKey: ['talent'] })
   void queryClient.invalidateQueries({ queryKey: ['abonnes'] })
   void queryClient.invalidateQueries({ queryKey: ['abonnements'] })
+}
+
+/**
+ * Après avoir publié ou supprimé un commentaire : le fil, mais aussi tout ce qui
+ * affiche `commentaires_count` (détail d'une ressource, bibliothèque, onglet du projet).
+ */
+export function rafraichirCommentaires(queryClient: QueryClient): void {
+  void queryClient.invalidateQueries({ queryKey: ['commentaires'] })
+  rafraichirRessources(queryClient)
 }
 
 /** Retire du cache tout ce qui concerne un projet supprimé. */

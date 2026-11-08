@@ -9,6 +9,7 @@ import {
   resume,
 } from './seed'
 import type {
+  Commentaire,
   Competence,
   CompetenceUtilisateur,
   DemandeAdhesion,
@@ -635,12 +636,16 @@ export function modifierRessourceDb(
 export function supprimerRessourceDb(id: number): void {
   const index = ressources.findIndex((ressource) => ressource.id === id)
   if (index !== -1) ressources.splice(index, 1)
+  supprimerCommentairesDeRessourceDb(id)
 }
 
 /** Cascade : les ressources d'un projet supprimé disparaissent avec lui (contrat : suppression logique). */
 function supprimerRessourcesDuProjetDb(projetId: number): void {
   for (let i = ressources.length - 1; i >= 0; i--) {
-    if (ressources[i].projet_id === projetId) ressources.splice(i, 1)
+    if (ressources[i].projet_id === projetId) {
+      supprimerCommentairesDeRessourceDb(ressources[i].id)
+      ressources.splice(i, 1)
+    }
   }
 }
 
@@ -684,6 +689,65 @@ function amorcerRessources(): void {
   }, il_y_a(1))
 }
 amorcerRessources()
+
+/* ══════════════════════════════════════════════════════════════════════════
+   COMMENTAIRES DES RESSOURCES (P1) — table `resource_comments`. Simulés comme LIVRÉS.
+   `commentaires_count` de la ressource est tenu à jour à chaque écriture.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const commentaires: Commentaire[] = []
+let prochainIdCommentaire = 1
+
+export function commentaireParIdDb(id: number): Commentaire | undefined {
+  return commentaires.find((commentaire) => commentaire.id === id)
+}
+
+/** Commentaires d'une ressource, du plus récent au plus ancien (hypothèse A-1 ; le contrat ne précise pas l'ordre). */
+export function commentairesDeDb(ressourceId: number): Commentaire[] {
+  return commentaires
+    .filter((commentaire) => commentaire.ressource_id === ressourceId)
+    .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || b.id - a.id)
+}
+
+export function creerCommentaireDb(ressourceId: number, auteurId: number, contenu: string, creeLe?: string): Commentaire {
+  const auteur = profils.find((profil) => profil.id === auteurId)
+  const ressource = ressourceParIdDb(ressourceId)
+  if (!auteur || !ressource) throw new Error('Auteur ou ressource introuvable')
+  const commentaire: Commentaire = {
+    id: prochainIdCommentaire++,
+    ressource_id: ressourceId,
+    auteur: resume(auteur),
+    contenu,
+    created_at: creeLe ?? new Date().toISOString(),
+  }
+  commentaires.push(commentaire)
+  ressource.commentaires_count += 1
+  return commentaire
+}
+
+export function supprimerCommentaireDb(id: number): void {
+  const index = commentaires.findIndex((commentaire) => commentaire.id === id)
+  if (index === -1) return
+  const [retire] = commentaires.splice(index, 1)
+  const ressource = ressourceParIdDb(retire.ressource_id)
+  if (ressource) ressource.commentaires_count = Math.max(0, ressource.commentaires_count - 1)
+}
+
+function supprimerCommentairesDeRessourceDb(ressourceId: number): void {
+  for (let i = commentaires.length - 1; i >= 0; i--) {
+    if (commentaires[i].ressource_id === ressourceId) commentaires.splice(i, 1)
+  }
+}
+
+function amorcerCommentaires(): void {
+  const il_y_a = (heures: number) => new Date(Date.now() - heures * 3_600_000).toISOString()
+  creerCommentaireDb(1, 1, "Merci, je l'ai repris pour la liste des projets. Pense à indexer la colonne `nom` si la table grossit.", il_y_a(70))
+  creerCommentaireDb(1, 3, "Ça fonctionne aussi avec `paginate()` ? Je voudrais garder le tri par défaut.", il_y_a(48))
+  creerCommentaireDb(1, 2, "Oui : `->latest()` est déjà dans le scope, `paginate(15)` s'enchaîne derrière sans rien changer.", il_y_a(26))
+  creerCommentaireDb(3, 1, "Super pour notre prototype agricole : aucune clé à gérer, et les prévisions sont assez précises.", il_y_a(30))
+  creerCommentaireDb(6, 3, "Section 3 à compléter avec les critères d'évaluation avant la réunion de jeudi.", il_y_a(5))
+}
+amorcerCommentaires()
 
 /* ══════════════════════════════════════════════════════════════════════════
    TALENTS (recherche, profil public, portfolio)
