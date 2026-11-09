@@ -11,7 +11,10 @@ import {
   LIBELLES_ROLE_PROFIL,
   LIBELLES_TYPE_LIEN,
 } from '../../lib/labels'
+import { estLivre } from '../../lib/priorites'
 import { dateCourte, domaineDe, lienSur } from '../ressources/outils'
+import { BoutonSuivre } from './BoutonSuivre'
+import { CompteursSuivi, ListeReseau } from './ListeReseau'
 
 /**
  * Profil PUBLIC d'un membre (`GET /users/{id}`) + « Projets réalisés » (`GET /users/{id}/portfolio`).
@@ -19,7 +22,8 @@ import { dateCourte, domaineDe, lienSur } from '../ressources/outils'
  * - Jamais d'e-mail (le contrat ne le renvoie pas) ;
  * - mon propre id redirige vers « Mon profil » (c'est là qu'on modifie) ;
  * - liens externes : http(s) uniquement, `rel="noopener noreferrer"` ;
- * - les compteurs de suivi sont des champs fantômes (P1) : non affichés.
+ * - le suivi (P1) : bouton « Suivre », compteurs et carte « Réseau » ne s'affichent que
+ *   si `priorites.follow` est vrai ; sinon les compteurs sont des champs fantômes (0).
  *
  * Le portfolio est une section indépendante : s'il échoue, le profil reste lisible.
  */
@@ -87,6 +91,7 @@ export function ProfilPublic() {
   }
 
   const membre = requete.data
+  const suiviLivre = estLivre('follow')
   const lieu = [membre.region, nomDePays(membre.pays)].filter(Boolean).join(', ')
 
   return (
@@ -108,7 +113,17 @@ export function ProfilPublic() {
               <p className="mt-3 text-sm text-fg-3">Ce membre n’a pas encore de bio.</p>
             )}
             <p className="mt-3 text-xs text-fg-3">Membre depuis le {dateCourte(membre.created_at)}</p>
+            {suiviLivre && (
+              <div className="mt-3">
+                <CompteursSuivi nbAbonnes={membre.followers_count} nbAbonnements={membre.following_count} />
+              </div>
+            )}
           </div>
+          {suiviLivre && (
+            <div className="flex shrink-0 flex-wrap items-center gap-2 sm:self-start">
+              <BoutonSuivre membre={membre} taille="md" />
+            </div>
+          )}
         </CardCorps>
       </Card>
 
@@ -183,6 +198,14 @@ export function ProfilPublic() {
           </Card>
         </div>
       </div>
+
+      {suiviLivre && (
+        <ListeReseau
+          membreId={membre.id}
+          nbAbonnes={membre.followers_count}
+          nbAbonnements={membre.following_count}
+        />
+      )}
 
       <Card>
         <CardEntete titre="Projets réalisés" compteur={projets.data?.length ?? membre.projets_realises_count} />

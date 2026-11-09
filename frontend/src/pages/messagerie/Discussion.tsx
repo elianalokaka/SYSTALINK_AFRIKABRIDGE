@@ -1,5 +1,5 @@
 import { useCallback, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
-import { Avatar, Button, Card, EmptyState, SkeletonTexte, Textarea } from '../../components/ui'
+import { Avatar, Button, Card, EmptyState, SkeletonTexte, Textarea, useConfirmation } from '../../components/ui'
 import { messageErreur } from '../../api/erreurs'
 import { useDiscussion } from '../../features/messagerie/useDiscussion'
 import { useSession } from '../../features/auth/SessionProvider'
@@ -36,6 +36,7 @@ function libelleJour(iso: string): string {
 export function Discussion({ projetId, proprietaireId }: { projetId: number; proprietaireId: number }) {
   const { profil } = useSession()
   const fil = useDiscussion(projetId)
+  const { confirmer, dialogue } = useConfirmation()
   const { messages } = fil
 
   const conteneur = useRef<HTMLDivElement>(null)
@@ -109,7 +110,11 @@ export function Discussion({ projetId, proprietaireId }: { projetId: number; pro
   }
 
   async function supprimer(message: Message) {
-    if (!window.confirm('Supprimer ce message pour tout le monde ?')) return
+    const confirme = await confirmer({
+      titre: 'Supprimer ce message ?',
+      description: 'Il sera supprimé pour tout le monde. Cette action est irréversible.',
+    })
+    if (!confirme) return
     setErreur(null)
     try {
       await fil.supprimer(message.id)
@@ -231,6 +236,7 @@ export function Discussion({ projetId, proprietaireId }: { projetId: number; pro
           </p>
         )}
       </form>
+      {dialogue}
     </Card>
   )
 }

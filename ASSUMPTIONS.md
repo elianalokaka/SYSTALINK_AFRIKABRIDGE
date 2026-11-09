@@ -67,7 +67,7 @@ ils servent de référence dans les échanges avec le backend et dans les tests.
 | `A-7` | 🟢 | Sémantique 403 / 401 | 403 = contexte, 401 = déconnexion | moyen |
 | `A-8` | 🟢 | 403 sur les ressources | pas une erreur d'accès | moyen |
 | `A-9` | 🟢 | Messages d'erreur | afficher `errors` de Laravel tel quel | moyen |
-| `A-10` | 🟢 | Compteurs P1 à zéro | **masquer**, jamais afficher `0` | moyen |
+| `A-10` | 🟢 | Compteurs P1 à zéro | **masquer** tant que non livré ; **afficher** quand `priorites.follow` | moyen |
 | `A-11` | 🟢 | Fuseau d'affichage | conversion à l'affichage, UTC en données | moyen |
 | `A-12` | 🟢 | Suggestion sans projet | ne pas appeler la route | moyen |
 | `A-13` | 🟢 | Historique des messages | insertion en tête (`avant_id`) | faible |
@@ -77,6 +77,9 @@ ils servent de référence dans les échanges avec le backend et dans les tests.
 | `A-17` | 🟢 | Fraîcheur du cache après écriture | invalidation explicite (`lib/cache.ts`) | **élevé** |
 | `A-18` | 🟢 | Polling de la discussion | `refetchInterval` 5 s, curseur monotone | **élevé** |
 | `A-19` | 🟢 | Visibilité d'une ressource | `visibilite` omis par défaut ; `publique` seulement si case cochée | moyen |
+| `A-20` | 🟢 | Suivi entre développeurs | 409 = succès, optimiste, listes sans bouton, « mon » réseau via `GET /users/{moi}` | moyen |
+| `A-21` | 🟢 | Commentaires d'une ressource | récents d'abord, suppression en 2 temps en ligne, 403 = section réservée | moyen |
+| `A-22` | 🟢 | Finitions UX (focus erreur, confirmation, mot de passe) | purement front, aucune route ni contrat touchés | aucun |
 | `V-1` | 🔴 | **Redemande après départ ou refus** | autorisée | **critique** |
 | `V-2` | 🔴 | `ma_demande_statut` après départ | redevient `null` | **critique** |
 | `V-3` | 🔴 | Tri réel des listes | confirmé par le backend | faible |
@@ -89,6 +92,10 @@ ils servent de référence dans les échanges avec le backend et dans les tests.
 | `V-10` | 🔴 | Compteurs d'agrégats | cohérents avec les listes | faible |
 | `V-11` | 🔴 | Identité « c'est moi » | comparaison d'`id` fiable | moyen |
 | `V-12` | 🔴 | Premier appel de la discussion (sans curseur) | renvoie les `limit` DERNIERS messages | **élevé** |
+| `V-13` | 🔴 | `is_following` relatif à l'utilisateur connecté | sur `GET /users` ET `GET /users/{id}` | **élevé** |
+| `V-14` | 🔴 | `GET /users/{id}` avec MON id | autorisé, compteurs exacts | moyen |
+| `V-15` | 🔴 | Ordre des commentaires | plus récent d'abord | moyen |
+| `V-16` | 🔴 | `commentaires_count` d'une ressource | exact après chaque écriture, aussi dans `GET /resources` | moyen |
 
 ---
 
@@ -222,7 +229,8 @@ et masquerait les messages précis du backend. Voir `V-9` pour la langue.
 ### A-10 — Les compteurs P1 valent zéro : on les masque
 
 **Décision** : tant que le P1 n'est pas livré, `followers_count`, `following_count` et
-`commentaires_count` (présents dans des schémas **P0**) sont **masqués**, jamais affichés à `0`.
+`commentaires_count` (présents dans des schémas **P0**) sont **masqués**, jamais affichés à `0`
+(*tant que la fonction n'est pas livrée* : voir la mise à jour ci-dessous, `A-20` et `A-21`).
 
 **Contrat** : *« Tant que le follow n'est pas livré, renvoyer 0 »* et *« Ne rien construire
 dessus. »*
@@ -233,6 +241,12 @@ faux. On masque la ligne entière.
 
 **Pilotage** : via `lib/priorites.ts`, pour que la bascule soit une **constante**, pas dix
 composants.
+
+**Mise à jour (module `feat/follow`)** : la règle de masquage reste vraie *tant que le suivi n'est
+pas livré*. Dès que `priorites.follow` vaut `true` (mocks, puis backend qui livre vraiment le
+suivi), les compteurs sont **affichés** : ils ne sont plus des champs fantômes. Si le backend ne
+livre pas le suivi, on repasse la constante à `false` et tout (bouton, compteurs, onglets
+Abonnés / Abonnements) disparaît sans rien casser. Voir `A-20`.
 
 ### A-11 — Dates : UTC en données, local à l'affichage
 
@@ -335,7 +349,7 @@ Une panne réseau ou 5xx garde les données déjà affichées (ou propose « Ré
 **Décision** : `visibilite` n'est **jamais envoyé** par défaut (le serveur applique sa règle :
 ressource de projet ⇒ équipe, sinon publique). Il n'est envoyé (`publique`) que si l'auteur coche
 « Rendre aussi publique » sur une ressource de projet. Onglet « Ressources » d'un projet :
-`403` ⇒ section vide (cf. `A-8`). Commentaires (P1) non affichés : `commentaires_count` ignoré.
+`403` ⇒ section vide (cf. `A-8`). Commentaires (P1) : affichés seulement si `priorites.commentaires` (voir `A-21`) ; la lecture d'un fil en `403` donne une section « réservée à l'équipe », pas une erreur.
 
 ### A-18 — Polling de la discussion
 
@@ -356,6 +370,67 @@ fusion sont des fonctions pures dans `features/messagerie/fil.ts`.
 
 **Conséquence assumée** : un poll toutes les 5 s **par discussion ouverte**, uniquement tant que
 l'onglet « Discussion » est affiché.
+
+### A-20 — Suivi entre développeurs (follow, P1)
+
+**Décision** : le module `feat/follow` applique le contrat à la lettre, avec quatre choix là où il
+est silencieux ou ouvert :
+
+1. **`409` « déjà suivi » = succès** (le contrat le dit) : `api/suivi.ts` laisse passer le 409 et
+   utilise son corps (`FollowState`) tel quel. Aucun autre fichier ne connaît ce cas.
+2. **Mise à jour optimiste** (le contrat le demande) : au clic, `is_following` et `followers_count`
+   changent dans le profil public et dans les pages de la recherche de talents ; en cas d'échec on
+   restaure l'état d'avant et on affiche l'erreur ; à la réponse, la valeur du serveur remplace
+   la valeur optimiste (`features/suivi/useSuivi.ts`).
+3. **Les listes Abonnés / Abonnements n'ont pas de bouton « Suivre »** : le contrat y renvoie des
+   `UtilisateurResume`, qui n'ont pas `is_following`. On ouvre le profil pour suivre. Aucune requête
+   supplémentaire n'est inventée pour combler ce manque.
+4. **Mon réseau** : la session (`GET /auth/me`) n'est pas rafraîchie quand je suis quelqu'un ; les
+   compteurs de « Mon profil » viennent donc de `GET /users/{mon id}` (voir `V-14`), rafraîchi par
+   `rafraichirSuivi`.
+
+**Pilotage** : `priorites.follow`. À `false` : aucun bouton, aucun compteur, aucune requête `/follow*`.
+
+**Bouton** : orange = action → « Suivre » est plein ; « Suivi » est un état (secondaire).
+Accessibilité : `aria-pressed`, nom accessible constant « Suivre <nom> », annonce du résultat dans
+une région `status`. Sur les cartes, le bouton n'est jamais dans le lien (lien étiré sur le nom).
+
+### A-21 — Commentaires d'une ressource (P1)
+
+**Décision** : le module `feat/commentaires` applique le contrat (`GET` / `POST /resources/{id}/comments`,
+`DELETE /comments/{id}`) avec les choix suivants là où il est silencieux :
+
+1. **Ordre : le plus récent en premier** (règle générale `A-1`). Un commentaire publié apparaît donc en
+   tête de la page 1 ; on ne retrie jamais côté front. À confirmer : `V-15`.
+2. **Qui peut supprimer** : l'auteur du commentaire **ou l'auteur de la ressource** — exactement le contrat.
+   Attention : ce n'est **pas** la règle de modification d'une ressource (qui inclut aussi le propriétaire
+   du projet lié). Le bouton n'apparaît que dans ces deux cas ; la vraie barrière est le `403` du serveur.
+3. **Suppression en deux temps, en ligne** (« Supprimer » → « Confirmer la suppression » / « Annuler »),
+   sans `window.confirm` : accessible au clavier et cohérent avec l'audit UX.
+4. **`403` sur la lecture** = ressource réservée à une équipe : on affiche « réservés à son équipe »
+   (même logique que `A-8`), jamais une erreur.
+5. **Pas d'optimisme** : contrairement au suivi, l'écran attend la réponse puis invalide
+   (`rafraichirCommentaires` : le fil **et** `commentaires_count` partout où il s'affiche).
+6. **Pas de modification** d'un commentaire : le contrat n'a pas de `PATCH`. Pagination : 10 par page ;
+   supprimer le dernier élément d'une page > 1 ramène à la page précédente.
+7. **Compteur** : « N commentaire(s) » sur les cartes de la bibliothèque seulement quand `N > 0`
+   (un vrai zéro n'est pas affiché pour alléger les cartes).
+
+**Pilotage** : `priorites.commentaires`. À `false` : aucune section, aucun compteur, aucune requête `/comments`.
+
+### A-22 — Finitions UX (passe finale)
+
+**Décision** : ces trois ajouts sont **purement côté front** ; ils ne changent ni une route, ni un champ, ni un code HTTP.
+
+1. **Focus sur le premier champ invalide** : géré une seule fois dans `FormField` (le premier `[aria-invalid="true"]`
+   du formulaire reçoit le focus quand une erreur apparaît). Vaut pour les erreurs `422` du serveur comme pour les
+   contrôles locaux.
+2. **Confirmation des actions destructives** : `<dialog>` natif (focus piégé par le navigateur, Échap, annonce comme
+   boîte modale). Focus initial sur **Annuler**. Les textes mentionnent la cascade (projet → ressources et discussions,
+   ressource → commentaires) : c'est le comportement du mock ; **à confirmer avec le backend** si la suppression
+   d'un projet ne supprime pas ses ressources (alors retirer la phrase correspondante dans `ProjetDetail.tsx`).
+3. **Afficher / masquer le mot de passe** : change uniquement `type="password"` ↔ `type="text"` côté navigateur ;
+   le mot de passe n'est jamais stocké ni journalisé.
 
 ### V-12 — Premier appel sans curseur 🔴
 
@@ -473,6 +548,36 @@ booléen `is_owner` global.
 **Point d'attention** : `GET /users/{id}` **ne contient jamais d'`email`** — y compris pour
 soi-même. L'identité « moi » se lit donc **exclusivement** via `GET /auth/me` (`A-7`, et
 `ANALYSE-CONTRAT.md` §7). Comparer des e-mails est **impossible** : ne jamais l'écrire.
+
+### V-13 — `is_following` est-il relatif à l'utilisateur connecté ? 🔴
+
+`GET /users` (`Talent`) et `GET /users/{id}` (`Profil`) portent `is_following`. Hypothèse du front :
+c'est **« l'utilisateur connecté suit-il ce membre ? »** sur **les deux** routes (le contrat le dit
+pour `Talent`). Si le backend ne le calcule que sur l'une, les boutons « Suivre » afficheraient un
+état faux. **À confirmer** (question prête : « `is_following` est-il calculé pour l'utilisateur
+connecté sur `GET /users` et sur `GET /users/{id}` ? »).
+
+### V-14 — `GET /users/{id}` avec son propre id 🔴
+
+« Mon profil » lit ses compteurs de suivi via `GET /users/{mon id}`. Le contrat ne l'interdit pas ;
+le backend doit renvoyer le profil public (sans e-mail) avec des `followers_count` /
+`following_count` **exacts**. S'il le refuse (403/404), les compteurs de « Mon profil » retombent sur
+ceux de la session (`/auth/me`), qui peuvent être périmés après un suivi. **À confirmer.**
+
+### V-15 — Ordre des commentaires 🔴
+
+Le contrat ne précise pas l'ordre de `GET /resources/{id}/comments`. Hypothèse du front : **du plus récent
+au plus ancien** (`A-1`). Si le backend renvoie le plus ancien d'abord, un commentaire tout juste publié
+n'apparaîtrait pas sur la page 1 dès qu'il y a plus de 10 commentaires. **À confirmer** (question prête :
+« `GET /resources/{id}/comments` renvoie-t-il le plus récent en premier ? »).
+
+### V-16 — `commentaires_count` d'une ressource 🔴
+
+Le front affiche ce compteur sur le détail et sur les cartes de la bibliothèque. Il doit être **exact**
+dans `GET /resources`, `GET /resources/{id}` et les réponses de création / modification, et changer
+après chaque `POST` / `DELETE` de commentaire. Un compteur figé fausserait l'affichage sans erreur visible.
+**À confirmer**, avec la règle d'autorisation : une ressource **publique** liée à un projet est commentable
+par tout membre connecté ; une ressource **réservée** (`visibilite: projet`) l'est par les membres du projet.
 
 ---
 

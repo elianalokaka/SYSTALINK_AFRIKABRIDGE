@@ -10,6 +10,7 @@ import {
   CardEntete,
   EmptyState,
   SkeletonTexte,
+  useConfirmation,
 } from '../../components/ui'
 import { detailRessource, supprimerRessource } from '../../api/ressources'
 import { detailProjet } from '../../api/projets'
@@ -17,6 +18,8 @@ import { ErreurApi, messageErreur } from '../../api/erreurs'
 import { useSession } from '../../features/auth/SessionProvider'
 import { rafraichirRessources } from '../../lib/cache'
 import { LIBELLES_TYPE_RESSOURCE, LIBELLES_VISIBILITE_RESSOURCE, LIBELLES_ROLE_PROFIL } from '../../lib/labels'
+import { estLivre } from '../../lib/priorites'
+import { FilCommentaires } from './FilCommentaires'
 import { dateCourte, domaineDe, fichierSur, lienSur } from './outils'
 
 /**
@@ -33,6 +36,7 @@ export function RessourceDetail() {
   const { profil } = useSession()
   const [erreur, setErreur] = useState<string | null>(null)
   const [suppression, setSuppression] = useState(false)
+  const { confirmer, dialogue } = useConfirmation()
   const [copie, setCopie] = useState(false)
 
   const requete = useQuery({
@@ -52,7 +56,12 @@ export function RessourceDetail() {
   })
 
   async function onSupprimer() {
-    if (!ressource || !window.confirm('Supprimer définitivement cette ressource ?')) return
+    if (!ressource) return
+    const confirme = await confirmer({
+      titre: 'Supprimer définitivement cette ressource ?',
+      description: 'Ses commentaires seront supprimés avec elle. Cette action est irréversible.',
+    })
+    if (!confirme) return
     setSuppression(true)
     setErreur(null)
     try {
@@ -239,6 +248,9 @@ export function RessourceDetail() {
           )}
         </CardCorps>
       </Card>
+
+      {estLivre('commentaires') && <FilCommentaires ressource={ressource} />}
+      {dialogue}
     </div>
   )
 }

@@ -47,6 +47,15 @@ export type Profil = Required<Schemas['Profil']>
 /** Carte de la recherche de talents (`GET /users`). Pas d'email. */
 export type Talent = Required<Schemas['Talent']>
 
+/** Commentaire sous une ressource (P1) et son corps de création. */
+export type Commentaire = Omit<Required<Schemas['Commentaire']>, 'auteur'> & {
+  auteur: UtilisateurResume
+}
+export type CommentaireCreate = Schemas['CommentaireCreate']
+
+/** Résultat d'un suivi / désabonnement : `is_following` + `followers_count` du membre CIBLE (P1). */
+export type FollowState = Required<Schemas['FollowState']>
+
 /** Corps PATCH de `/users/me` : TOUT est optionnel — donc PAS de `Required<>`. */
 export type ProfilUpdate = Schemas['ProfilUpdate']
 

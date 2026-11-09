@@ -9,6 +9,7 @@ import {
   resume,
 } from './seed'
 import type {
+  Commentaire,
   Competence,
   CompetenceUtilisateur,
   DemandeAdhesion,
@@ -25,6 +26,7 @@ import type {
   StatutDemande,
   Talent,
   TypeRessource,
+  UtilisateurResume,
   VisibiliteRessource,
 } from '../types'
 
@@ -74,7 +76,11 @@ export function fermerSession(): void {
 
 export function utilisateurConnecte(): ProfilPrive | null {
   const id = lireSession()
-  return profils.find((profil) => profil.id === id) ?? null
+  const profil = profils.find((p) => p.id === id)
+  /* Les compteurs de suivi sont CALCULÉS (table `suivis`), jamais stockés sur le profil. */
+  return profil
+    ? { ...profil, followers_count: nombreAbonnesDb(profil.id), following_count: nombreAbonnementsDb(profil.id) }
+    : null
 }
 
 /** L'id de l'utilisateur connecté, ou `null`. */
@@ -630,12 +636,16 @@ export function modifierRessourceDb(
 export function supprimerRessourceDb(id: number): void {
   const index = ressources.findIndex((ressource) => ressource.id === id)
   if (index !== -1) ressources.splice(index, 1)
+  supprimerCommentairesDeRessourceDb(id)
 }
 
 /** Cascade : les ressources d'un projet supprimé disparaissent avec lui (contrat : suppression logique). */
 function supprimerRessourcesDuProjetDb(projetId: number): void {
   for (let i = ressources.length - 1; i >= 0; i--) {
-    if (ressources[i].projet_id === projetId) ressources.splice(i, 1)
+    if (ressources[i].projet_id === projetId) {
+      supprimerCommentairesDeRessourceDb(ressources[i].id)
+      ressources.splice(i, 1)
+    }
   }
 }
 
@@ -681,6 +691,65 @@ function amorcerRessources(): void {
 amorcerRessources()
 
 /* ══════════════════════════════════════════════════════════════════════════
+   COMMENTAIRES DES RESSOURCES (P1) — table `resource_comments`. Simulés comme LIVRÉS.
+   `commentaires_count` de la ressource est tenu à jour à chaque écriture.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const commentaires: Commentaire[] = []
+let prochainIdCommentaire = 1
+
+export function commentaireParIdDb(id: number): Commentaire | undefined {
+  return commentaires.find((commentaire) => commentaire.id === id)
+}
+
+/** Commentaires d'une ressource, du plus récent au plus ancien (hypothèse A-1 ; le contrat ne précise pas l'ordre). */
+export function commentairesDeDb(ressourceId: number): Commentaire[] {
+  return commentaires
+    .filter((commentaire) => commentaire.ressource_id === ressourceId)
+    .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || b.id - a.id)
+}
+
+export function creerCommentaireDb(ressourceId: number, auteurId: number, contenu: string, creeLe?: string): Commentaire {
+  const auteur = profils.find((profil) => profil.id === auteurId)
+  const ressource = ressourceParIdDb(ressourceId)
+  if (!auteur || !ressource) throw new Error('Auteur ou ressource introuvable')
+  const commentaire: Commentaire = {
+    id: prochainIdCommentaire++,
+    ressource_id: ressourceId,
+    auteur: resume(auteur),
+    contenu,
+    created_at: creeLe ?? new Date().toISOString(),
+  }
+  commentaires.push(commentaire)
+  ressource.commentaires_count += 1
+  return commentaire
+}
+
+export function supprimerCommentaireDb(id: number): void {
+  const index = commentaires.findIndex((commentaire) => commentaire.id === id)
+  if (index === -1) return
+  const [retire] = commentaires.splice(index, 1)
+  const ressource = ressourceParIdDb(retire.ressource_id)
+  if (ressource) ressource.commentaires_count = Math.max(0, ressource.commentaires_count - 1)
+}
+
+function supprimerCommentairesDeRessourceDb(ressourceId: number): void {
+  for (let i = commentaires.length - 1; i >= 0; i--) {
+    if (commentaires[i].ressource_id === ressourceId) commentaires.splice(i, 1)
+  }
+}
+
+function amorcerCommentaires(): void {
+  const il_y_a = (heures: number) => new Date(Date.now() - heures * 3_600_000).toISOString()
+  creerCommentaireDb(1, 1, "Merci, je l'ai repris pour la liste des projets. Pense à indexer la colonne `nom` si la table grossit.", il_y_a(70))
+  creerCommentaireDb(1, 3, "Ça fonctionne aussi avec `paginate()` ? Je voudrais garder le tri par défaut.", il_y_a(48))
+  creerCommentaireDb(1, 2, "Oui : `->latest()` est déjà dans le scope, `paginate(15)` s'enchaîne derrière sans rien changer.", il_y_a(26))
+  creerCommentaireDb(3, 1, "Super pour notre prototype agricole : aucune clé à gérer, et les prévisions sont assez précises.", il_y_a(30))
+  creerCommentaireDb(6, 3, "Section 3 à compléter avec les critères d'évaluation avant la réunion de jeudi.", il_y_a(5))
+}
+amorcerCommentaires()
+
+/* ══════════════════════════════════════════════════════════════════════════
    TALENTS (recherche, profil public, portfolio)
    ══════════════════════════════════════════════════════════════════════════ */
 
@@ -695,9 +764,10 @@ export function portfolioDb(userId: number): Projet[] {
  * Le profil PUBLIC d'un compte : tout sauf l'email (règle de sécurité du contrat).
  * On RECONSTRUIT l'objet champ par champ plutôt que de supprimer `email` d'une
  * copie : un nouveau champ privé ajouté plus tard ne fuitera pas par défaut.
- * `followers_count`/`is_following` valent 0/false : le follow est P1 (non livré).
+ * Suivi (P1, simulé comme LIVRÉ) : `followers_count` / `following_count` sont calculés
+ * depuis la table `suivis` ; `is_following` dépend de `viewerId` (l'utilisateur connecté).
  */
-export function profilPublicDb(id: number): Profil | null {
+export function profilPublicDb(id: number, viewerId: number | null = null): Profil | null {
   const p = profils.find((profil) => profil.id === id)
   if (!p) return null
   return {
@@ -710,11 +780,11 @@ export function profilPublicDb(id: number): Profil | null {
     bio_courte: p.bio ? p.bio.slice(0, 160) : p.bio_courte,
     competences: p.competences,
     domaines: p.domaines,
-    followers_count: 0,
-    is_following: false,
+    followers_count: nombreAbonnesDb(p.id),
+    is_following: viewerId !== null && suitDb(viewerId, p.id),
     bio: p.bio,
     liens: p.liens,
-    following_count: 0,
+    following_count: nombreAbonnementsDb(p.id),
     projets_realises_count: portfolioDb(p.id).length,
     created_at: p.created_at,
   }
@@ -753,7 +823,7 @@ export function listerTalentsDb(userId: number | null, f: FiltresTalentsDb): Tal
   return resultats
     .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
     .map((p) => {
-      const pub = profilPublicDb(p.id) as Profil
+      const pub = profilPublicDb(p.id, userId) as Profil
       return {
         id: pub.id,
         nom: pub.nom,
@@ -764,8 +834,89 @@ export function listerTalentsDb(userId: number | null, f: FiltresTalentsDb): Tal
         bio_courte: pub.bio_courte,
         competences: pub.competences,
         domaines: pub.domaines,
-        followers_count: 0,
-        is_following: false,
+        followers_count: pub.followers_count,
+        is_following: pub.is_following,
       }
     })
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SUIVI ENTRE DÉVELOPPEURS (P1) — table `follows` (follower_id, followed_id, created_at)
+   avec UNIQUE(follower_id, followed_id). Les mocks le simulent comme LIVRÉ.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+interface Suivi {
+  suiveurId: number
+  suiviId: number
+  creeLe: string
+}
+
+const IL_Y_A = (jours: number) => new Date(Date.now() - jours * 86_400_000).toISOString()
+
+/** Jeu de départ : de quoi voir des compteurs, des listes et des pages non vides. */
+const suivis: Suivi[] = [
+  { suiveurId: 2, suiviId: 1, creeLe: IL_Y_A(9) },
+  { suiveurId: 3, suiviId: 1, creeLe: IL_Y_A(7) },
+  { suiveurId: 4, suiviId: 1, creeLe: IL_Y_A(5) },
+  { suiveurId: 1, suiviId: 2, creeLe: IL_Y_A(8) },
+  { suiveurId: 1, suiviId: 3, creeLe: IL_Y_A(6) },
+  { suiveurId: 5, suiviId: 2, creeLe: IL_Y_A(4) },
+  { suiveurId: 6, suiviId: 2, creeLe: IL_Y_A(3) },
+  { suiveurId: 7, suiviId: 3, creeLe: IL_Y_A(2) },
+  { suiveurId: 2, suiviId: 3, creeLe: IL_Y_A(1) },
+  { suiveurId: 3, suiviId: 4, creeLe: IL_Y_A(1) },
+]
+
+export function suitDb(suiveurId: number, suiviId: number): boolean {
+  return suivis.some((s) => s.suiveurId === suiveurId && s.suiviId === suiviId)
+}
+
+export function nombreAbonnesDb(id: number): number {
+  return suivis.filter((s) => s.suiviId === id).length
+}
+
+export function nombreAbonnementsDb(id: number): number {
+  return suivis.filter((s) => s.suiveurId === id).length
+}
+
+/** `POST /users/{id}/follow` : `soi` → 422, `introuvable` → 404, `deja` → 409, `cree` → 201. */
+export function suivreDb(suiveurId: number, cibleId: number): 'cree' | 'deja' | 'soi' | 'introuvable' {
+  if (!profils.some((p) => p.id === cibleId)) return 'introuvable'
+  if (suiveurId === cibleId) return 'soi'
+  if (suitDb(suiveurId, cibleId)) return 'deja'
+  suivis.push({ suiveurId, suiviId: cibleId, creeLe: new Date().toISOString() })
+  return 'cree'
+}
+
+/** `DELETE /users/{id}/follow` : idempotent (200 même si la relation n'existait pas). */
+export function nePlusSuivreDb(suiveurId: number, cibleId: number): 'ok' | 'introuvable' {
+  if (!profils.some((p) => p.id === cibleId)) return 'introuvable'
+  const index = suivis.findIndex((s) => s.suiveurId === suiveurId && s.suiviId === cibleId)
+  if (index >= 0) suivis.splice(index, 1)
+  return 'ok'
+}
+
+function resumeDe(id: number): UtilisateurResume | null {
+  const p = profils.find((profil) => profil.id === id)
+  return p ? { id: p.id, nom: p.nom, photo_url: p.photo_url, pays: p.pays, role_profil: p.role_profil } : null
+}
+
+/** Abonnés d'un membre, du plus récent au plus ancien (ordre du contrat). `null` si le membre n'existe pas. */
+export function abonnesDb(id: number): UtilisateurResume[] | null {
+  if (!profils.some((p) => p.id === id)) return null
+  return suivis
+    .filter((s) => s.suiviId === id)
+    .sort((a, b) => b.creeLe.localeCompare(a.creeLe))
+    .map((s) => resumeDe(s.suiveurId))
+    .filter((r): r is UtilisateurResume => r !== null)
+}
+
+/** Membres suivis par `id`, du plus récent au plus ancien. `null` si le membre n'existe pas. */
+export function abonnementsDb(id: number): UtilisateurResume[] | null {
+  if (!profils.some((p) => p.id === id)) return null
+  return suivis
+    .filter((s) => s.suiveurId === id)
+    .sort((a, b) => b.creeLe.localeCompare(a.creeLe))
+    .map((s) => resumeDe(s.suiviId))
+    .filter((r): r is UtilisateurResume => r !== null)
 }
