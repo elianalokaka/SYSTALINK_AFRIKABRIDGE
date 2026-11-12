@@ -31,9 +31,12 @@ class TalentResource extends JsonResource
                 ? asset('storage/'.$this->photo_profil)
                 : null,
             'pays' => $this->pays,
-            'role_profil' => null,
-            'region' => null,
-            'bio' => $this->biographie
+            'role_profil' => $this->when(
+                filled($this->role_profil),
+                $this->role_profil
+            ),
+            'region' => $this->region,
+            'bio_courte' => $this->biographie
                 ? mb_substr($this->biographie, 0, 160)
                 : null,
             'competences' => $this->competences->map(
@@ -44,9 +47,11 @@ class TalentResource extends JsonResource
                     'niveau' => $competence->pivot?->niveau,
                 ]
             )->values()->all(),
-            'domaines' => $this->domaine !== null && in_array($this->domaine, $domainesAcceptes, true)
-                ? [$this->domaine]
-                : [],
+            'domaines' => $this->relationLoaded('domaines') && $this->domaines->isNotEmpty()
+                ? $this->domaines->pluck('domaine')->values()->all()
+                : ($this->domaine !== null && in_array($this->domaine, $domainesAcceptes, true)
+                    ? [$this->domaine]
+                    : []),
             'followers_count' => (int) ($this->followers_count ?? 0),
             'is_following' => (bool) ($this->is_following ?? false),
         ];

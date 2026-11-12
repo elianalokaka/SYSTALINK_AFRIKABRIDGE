@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw'
-import { idUtilisateurConnecte, listerTalentsDb, portfolioDb, profilPublicDb, projetPour } from '../db'
+import { idUtilisateurConnecte, listerTalentsDb, portfolioDb, profilPublicDb, projetPour, suggestionsTalentsDb } from '../db'
 
 /**
  * Mocks de la recherche de talents, du profil public et du portfolio.
@@ -10,7 +10,8 @@ import { idUtilisateurConnecte, listerTalentsDb, portfolioDb, profilPublicDb, pr
  *   - `GET /users/{id}` : profil PUBLIC (jamais d'e-mail) — 404 si inconnu ;
  *   - `GET /users/{id}/portfolio` : projets `termine` dont le membre fait partie.
  *
- * Le suivi (follow, followers, following) est dans `suivi.ts` ; suggestions : non construites.
+ * Le suivi (follow, followers, following) est dans `suivi.ts`.
+ * `GET /users/suggestions` est déclaré AVANT `/users/:id` pour ne pas matcher « suggestions ».
  */
 
 function non401() {
@@ -18,6 +19,23 @@ function non401() {
 }
 
 export const handlersTalents = [
+  http.get('/api/v1/users/suggestions', ({ request }) => {
+    const userId = idUtilisateurConnecte()
+    if (!userId) return non401()
+
+    const sp = new URL(request.url).searchParams
+    const projetBrut = sp.get('projet_id')
+    const projetId = projetBrut != null && projetBrut !== '' ? Number(projetBrut) : undefined
+    if (projetId !== undefined && !Number.isFinite(projetId)) {
+      return HttpResponse.json({ message: 'The given data was invalid.', errors: { projet_id: ['Identifiant invalide.'] } }, { status: 422 })
+    }
+    const limit = Math.min(20, Math.max(1, Number(sp.get('limit') ?? '10') || 10))
+    const resultat = suggestionsTalentsDb(userId, { projetId, limit })
+    if (resultat.code === 403) return HttpResponse.json({ message: 'This action is unauthorized.' }, { status: 403 })
+    if (resultat.code === 404) return HttpResponse.json({ message: 'Resource not found.' }, { status: 404 })
+    return HttpResponse.json({ data: resultat.data }, { status: 200 })
+  }),
+
   http.get('/api/v1/users', ({ request }) => {
     const userId = idUtilisateurConnecte()
     if (!userId) return non401()

@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: AfricaBridge - API Contractuelle
-  version: 1.2.0
+  version: 1.3.0
   description: >
     Contrat officiel d'interface entre le Backend Laravel (API REST) et le Frontend React JS
     de la plateforme AfricaBridge (concours Systalink).
@@ -19,6 +19,9 @@ info:
     # v1.2.0 : 413 distinct du 422, Profil sans e-mail (ProfilPrive), hôte A_REMPLACER_AVANT_J2,
     #   SESSION_COOKIE et CORS, seeder de démo, GET /stats, suggestions liées à un projet,
     #   libellés Ouvert / En cours / Terminé, repli du dashboard.
+    # v1.3.0 : domaines libres, compétence par nom, fichier de ressource privé
+    #   (GET /resources/{id}/file), plafonds inscription / connexion / écritures.
+    #   GET /projects/suggestions n'existe pas : les suggestions sont GET /users/suggestions.
 
     # AUTHENTIFICATION : Laravel Sanctum en mode SPA (session + cookie), AUCUN token à gérer.
     # Les cookies restent le mode retenu : front et API partagent la même origine sur le VPS,
@@ -206,9 +209,14 @@ components:
     # --- ÉNUMÉRATIONS PARTAGÉES ---
     Domaine:
       type: string
-      enum: [agriculture, sante, education, fintech, energie, transport, iot, intelligence_artificielle, commerce, environnement, administration, autre]
+      maxLength: 100
+      description: >
+        Valeur du catalogue (agriculture, sante, education, fintech, energie, transport, iot,
+        intelligence_artificielle, commerce, environnement, administration) ou un nom libre
+        saisi par le membre. Un libellé connu (ex. « éducation ») est ramené à sa valeur technique.
+        Un nom inconnu est stocké tel quel. La valeur « autre » n'est pas enregistrée.
       # CIBLE: Frontend (filtres, formulaires), Backend (validation)
-      # Utilisé pour les projets (domaine) et les centres d'intérêt des membres.
+      # Utilisé pour les projets et les centres d'intérêt des membres.
 
     RoleProfil:
       type: string
@@ -258,7 +266,7 @@ components:
         se_souvenir: { type: boolean, default: false, description: "Prolonge la durée de la session (remember me)" }
       # CIBLE: Frontend (formulaire de connexion)
       # BACKEND: Auth::attempt() avec session ; regenerate() de la session après succès (anti fixation).
-      # Limitation de débit : 5 tentatives/minute par email+IP (throttle).
+      # Limitation de débit : 5 tentatives/minute par e-mail+IP, et 20 tentatives/minute par IP.
 
     # --- COMPÉTENCES ---
     Competence:
@@ -268,7 +276,9 @@ components:
         nom: { type: string, example: "Python" }
         categorie: { type: string, enum: [langage, framework, outil, domaine_technique, design, gestion_projet, autre] }
       # CIBLE: Frontend (sélecteur de compétences, filtres)
-      # BDD: table `skills`. Catalogue fermé, alimenté par seeder (pas de création libre dans le MVP).
+      # BDD: table `competences`. Le seeder pose le catalogue de départ.
+      # Un nom inconnu envoyé à PUT /users/me/skills crée la compétence (catégorie autre).
+      # Un nom déjà présent, écrit autrement, réutilise la ligne existante.
       # J5: le seeder contient au minimum Python, JavaScript, IoT, Réseaux et UI/UX (exemples du cahier des charges).
 
     CompetenceUtilisateur:
@@ -288,12 +298,14 @@ components:
           maxItems: 30
           items:
             type: object
-            required: [competence_id]
+            description: "Fournir competence_id ou nom, pas les deux à la fois."
             properties:
-              competence_id: { type: integer }
+              competence_id: { type: integer, description: "Compétence déjà au catalogue. Obligatoire si nom est absent." }
+              nom: { type: string, minLength: 1, maxLength: 100, description: "Nom libre. Obligatoire si competence_id est absent. Réutilise ou crée la compétence." }
               niveau: { type: string, enum: [debutant, intermediaire, avance], nullable: true }
       # CIBLE: Frontend (édition du profil)
-      # BDD: sync() sur la table pivot skill_user. Remplace l'ensemble des compétences de l'utilisateur.
+      # BDD: sync() sur la table pivot. Remplace l'ensemble des compétences de l'utilisateur.
+      # Plafond : 30 requêtes d'écriture par minute et par membre (429).
 
     # --- PROFILS ---
     LienProfil:
@@ -569,7 +581,7 @@ components:
       #        Omettre le champ : le serveur applique `projet` si projet_id est présent, sinon `publique`.
       # RÈGLE: type = document => fichier obligatoire. type in (lien, tutoriel, api) => url requise si aucun fichier ni code.
       # BDD: table `resources` + pivot `resource_skill`.
-      # Fichiers sur le disque persistant du VPS (storage/app), pas un disque éphémère. URL publique via storage:link.
+      # Fichier sur le disque privé (storage/app/private). Le téléchargement passe par GET /resources/{id}/file.
 
     RessourceUpdate:
       type: object
@@ -592,7 +604,11 @@ components:
         url: { type: string, format: uri, nullable: true }
         contenu_code: { type: string, nullable: true }
         langage: { type: string, nullable: true }
-        fichier_url: { type: string, format: uri, nullable: true }
+        fichier_url:
+          type: string
+          format: uri
+          nullable: true
+          description: "GET /api/v1/resources/{id}/file, réservé à une session autorisée. Jamais une URL /storage/."
         visibilite: { type: string, enum: [projet, publique] }
         projet_id: { type: integer, nullable: true }
         auteur: { $ref: '#/components/schemas/UtilisateurResume' }
@@ -811,6 +827,7 @@ paths:
       description: >
         Crée le compte, ouvre directement la session et renvoie le profil.
         Nécessite un appel préalable à /sanctum/csrf-cookie.
+        Plafond : 5 inscriptions par minute et par adresse IP (429).
       requestBody:
         required: true
         content:
@@ -828,6 +845,7 @@ paths:
               schema: { $ref: '#/components/schemas/ProfilPrive' }
         '419': { $ref: '#/components/responses/CsrfMismatchError' }
         '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequestsError' }
 
   /auth/login:
     post:
@@ -840,6 +858,7 @@ paths:
         Vérifie email + mot de passe puis ouvre une session Laravel. Aucun token n'est renvoyé :
         l'authentification repose uniquement sur le cookie HttpOnly posé dans la réponse.
         Nécessite un appel préalable à /sanctum/csrf-cookie.
+        Plafond : 5 essais par minute pour un même e-mail et une même IP, et 20 essais par minute pour une IP.
       requestBody:
         required: true
         content:
@@ -913,6 +932,10 @@ paths:
                 type: object
                 properties:
                   data: { type: array, items: { $ref: '#/components/schemas/Competence' } }
+                  domaines:
+                    type: array
+                    items: { type: string, maxLength: 100 }
+                    description: Catalogue fixe (sans « autre ») plus les noms libres déjà enregistrés.
         '401': { $ref: '#/components/responses/UnauthenticatedError' }
 
   /users/me:
@@ -963,6 +986,7 @@ paths:
         '401': { $ref: '#/components/responses/UnauthenticatedError' }
         '419': { $ref: '#/components/responses/CsrfMismatchError' }
         '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequestsError' }
 
   /users/me/photo:
     post:
@@ -1122,6 +1146,7 @@ paths:
               schema: { $ref: '#/components/schemas/FollowState' }
         '419': { $ref: '#/components/responses/CsrfMismatchError' }
         '422': { description: Impossible de se suivre soi-même }
+        '429': { $ref: '#/components/responses/TooManyRequestsError' }
     delete:
       tags: [Suivi entre développeurs]
       x-priorite: P1
@@ -1139,6 +1164,7 @@ paths:
         '401': { $ref: '#/components/responses/UnauthenticatedError' }
         '404': { $ref: '#/components/responses/NotFoundError' }
         '419': { $ref: '#/components/responses/CsrfMismatchError' }
+        '429': { $ref: '#/components/responses/TooManyRequestsError' }
 
   /users/{id}/followers:
     get:
@@ -1262,30 +1288,7 @@ paths:
         '401': { $ref: '#/components/responses/UnauthenticatedError' }
         '419': { $ref: '#/components/responses/CsrfMismatchError' }
         '422': { $ref: '#/components/responses/ValidationError' }
-
-  /projects/suggestions:
-    # IMPORTANT BACKEND: déclarer cette route AVANT /projects/{id}.
-    get:
-      tags: [Projets]
-      x-priorite: P1
-      summary: Projets suggérés selon mes compétences
-      # CIBLE: Frontend (bloc "Projets pour vous" du dashboard)
-      # RÈGLE MÉTIER: projets en recrutement avec places disponibles, dont les compétences recherchées recoupent les miennes,
-      #   dont je ne suis pas déjà membre. Tri par nombre de compétences en commun.
-      parameters:
-        - name: limit
-          in: query
-          schema: { type: integer, minimum: 1, maximum: 20, default: 10 }
-      responses:
-        '200':
-          description: Projets suggérés (cartes légères)
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data: { type: array, items: { $ref: '#/components/schemas/ProjetCarte' } }
-        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+        '429': { $ref: '#/components/responses/TooManyRequestsError' }
 
   /projects/{id}:
     get:
@@ -1590,6 +1593,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFoundError' }
         '419': { $ref: '#/components/responses/CsrfMismatchError' }
         '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequestsError' }
 
   /projects/{id}/messages/{messageId}:
     delete:
@@ -1611,6 +1615,7 @@ paths:
         '403': { $ref: '#/components/responses/ForbiddenError' }
         '404': { $ref: '#/components/responses/NotFoundError' }
         '419': { $ref: '#/components/responses/CsrfMismatchError' }
+        '429': { $ref: '#/components/responses/TooManyRequestsError' }
 
   # === RESSOURCES ===
   /resources:
@@ -1677,6 +1682,7 @@ paths:
         '413': { $ref: '#/components/responses/PayloadTooLargeError' }
         '419': { $ref: '#/components/responses/CsrfMismatchError' }
         '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequestsError' }
 
   /resources/{id}:
     get:
@@ -1740,6 +1746,28 @@ paths:
         '404': { $ref: '#/components/responses/NotFoundError' }
         '419': { $ref: '#/components/responses/CsrfMismatchError' }
 
+  /resources/{id}/file:
+    get:
+      tags: [Ressources]
+      x-priorite: P0
+      summary: Télécharger le fichier d'une ressource
+      # AUTORISATION: session obligatoire. visibilite = projet => membre du projet uniquement (403 sinon).
+      # Le fichier est sur le disque privé. Cette route le sert après vérification. /storage/ressources/ est refusé.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Fichier binaire
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+
   /resources/{id}/comments:
     get:
       tags: [Ressources]
@@ -1788,6 +1816,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFoundError' }
         '419': { $ref: '#/components/responses/CsrfMismatchError' }
         '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequestsError' }
 
   /comments/{id}:
     delete:
@@ -1806,6 +1835,7 @@ paths:
         '403': { $ref: '#/components/responses/ForbiddenError' }
         '404': { $ref: '#/components/responses/NotFoundError' }
         '419': { $ref: '#/components/responses/CsrfMismatchError' }
+        '429': { $ref: '#/components/responses/TooManyRequestsError' }
 
   /stats:
     get:

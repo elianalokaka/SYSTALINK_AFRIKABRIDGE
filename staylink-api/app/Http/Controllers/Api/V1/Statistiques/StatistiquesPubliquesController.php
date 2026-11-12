@@ -16,7 +16,7 @@ class StatistiquesPubliquesController extends Controller
             'pays_count' => DB::table('utilisateurs')
                 ->distinct()
                 ->count('pays'),
-            'projets_count' => DB::table('projets')->count(),
+            'projets_count' => DB::table('projets')->whereNull('deleted_at')->count(),
             'equipes_formees_count' => DB::query()
                 ->fromSub(
                     DB::table('membres_projet')

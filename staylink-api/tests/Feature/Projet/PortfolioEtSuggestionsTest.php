@@ -88,7 +88,7 @@ class PortfolioEtSuggestionsTest extends TestCase
         $reponse = $this->actingAs($moi)
             ->getJson('/api/v1/users/suggestions')
             ->assertOk()
-            ->assertJsonStructure(['data' => [['id', 'nom', 'photo_url', 'pays', 'role_profil', 'bio', 'competences', 'domaines', 'followers_count', 'is_following']]]);
+            ->assertJsonStructure(['data' => [['id', 'nom', 'photo_url', 'pays', 'bio_courte', 'competences', 'domaines', 'followers_count', 'is_following']]]);
 
         $ids = collect($reponse->json('data'))->pluck('id')->all();
 

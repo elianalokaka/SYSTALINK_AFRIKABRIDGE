@@ -35,6 +35,19 @@ class CreationProjetTest extends TestCase
         $this->assertSame(1, MembreProjet::query()->where('projet_id', $projetId)->count());
     }
 
+    public function test_un_domaine_libre_est_enregistre_sous_son_nom(): void
+    {
+        $alice = $this->membre('projet-domaine-libre@example.com');
+
+        $this->actingAs($alice)
+            ->postJson('/api/v1/projects', [
+                ...$this->donnees(),
+                'domaines' => ['Agroécologie'],
+            ])
+            ->assertCreated()
+            ->assertJsonPath('domaines', ['Agroécologie']);
+    }
+
     public function test_creer_un_projet_refuse_moins_de_deux_membres(): void
     {
         $alice = $this->membre('alice@example.com');

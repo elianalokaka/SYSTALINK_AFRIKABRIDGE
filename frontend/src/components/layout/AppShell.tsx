@@ -115,7 +115,7 @@ export function AppShell() {
 
           <div className="hidden shrink-0 items-center gap-2.5 lg:ml-auto lg:flex">
             <span className="hidden max-w-40 truncate text-sm text-fg-2 xl:inline">{profil?.nom}</span>
-            <Avatar nom={profil?.nom ?? ''} taille="sm" />
+            <Avatar nom={profil?.nom ?? ''} photoUrl={profil?.photo_url} taille="sm" />
             <Button taille="sm" variante="discret" onClick={onDeconnexion}>
               Déconnexion
             </Button>
@@ -157,7 +157,7 @@ export function AppShell() {
               </nav>
               <div className="flex items-center justify-between gap-3 border-t border-border-subtle pt-3">
                 <div className="flex min-w-0 items-center gap-2.5">
-                  <Avatar nom={profil?.nom ?? ''} taille="sm" />
+                  <Avatar nom={profil?.nom ?? ''} photoUrl={profil?.photo_url} taille="sm" />
                   <span className="truncate text-sm text-fg-2">{profil?.nom}</span>
                 </div>
                 <Button taille="sm" variante="secondaire" onClick={onDeconnexion}>

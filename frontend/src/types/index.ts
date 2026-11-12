@@ -47,6 +47,11 @@ export type Profil = Required<Schemas['Profil']>
 /** Carte de la recherche de talents (`GET /users`). Pas d'email. */
 export type Talent = Required<Schemas['Talent']>
 
+/** Talent proposé par `GET /users/suggestions`, plus les compétences en commun avec le projet. */
+export type TalentSuggere = Talent & {
+  competences_correspondantes: Competence[]
+}
+
 /** Commentaire sous une ressource (P1) et son corps de création. */
 export type Commentaire = Omit<Required<Schemas['Commentaire']>, 'auteur'> & {
   auteur: UtilisateurResume

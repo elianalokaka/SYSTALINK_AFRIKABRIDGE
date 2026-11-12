@@ -20,19 +20,19 @@ class RessourceResource extends JsonResource
             'contenu_code' => $this->contenu_code,
             'langage' => $this->langage,
             'fichier_url' => $this->chemin_fichier
-                ? asset('storage/'.$this->chemin_fichier)
+                ? url('/api/v1/resources/'.$this->id.'/file')
                 : null,
             'visibilite' => $this->visibilite,
             'projet_id' => $this->projet_id,
-            'auteur' => [
+            'auteur' => array_filter([
                 'id' => $auteur->id,
                 'nom' => trim($auteur->prenom.' '.$auteur->nom),
                 'photo_url' => $auteur->photo_profil
                     ? asset('storage/'.$auteur->photo_profil)
                     : null,
                 'pays' => $auteur->pays,
-                'role_profil' => null,
-            ],
+                'role_profil' => $auteur->role_profil ?: null,
+            ], fn ($valeur, $cle) => $cle !== 'role_profil' || $valeur !== null, ARRAY_FILTER_USE_BOTH),
             'competences' => $this->competences
                 ->map(fn ($competence) => [
                     'id' => $competence->id,
@@ -41,7 +41,7 @@ class RessourceResource extends JsonResource
                 ])
                 ->values()
                 ->all(),
-            'commentaires_count' => 0,
+            'commentaires_count' => (int) ($this->commentaires_count ?? 0),
             'created_at' => $this->created_at?->toISOString(),
         ];
     }

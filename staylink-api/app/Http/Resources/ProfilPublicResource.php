@@ -11,14 +11,16 @@ class ProfilPublicResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'nom' => $this->nom,
-            'prenom' => $this->prenom,
+            'nom' => $this->nomComplet(),
             'photo_url' => $this->photo_profil
                 ? asset('storage/'.$this->photo_profil)
                 : null,
             'pays' => $this->pays,
-            'role_profil' => null,
-            'region' => null,
+            'role_profil' => $this->when(
+                filled($this->role_profil),
+                $this->role_profil
+            ),
+            'region' => $this->region,
             'bio_courte' => $this->biographie
                 ? mb_substr($this->biographie, 0, 160)
                 : null,
@@ -35,12 +37,25 @@ class ProfilPublicResource extends JsonResource
                 )->values()->all(),
                 []
             ),
-            'domaines' => [],
-            'liens' => [],
-            'followers_count' => 0,
-            'following_count' => 0,
-            'is_following' => false,
-            'projets_realises_count' => 0,
+            'domaines' => $this->whenLoaded(
+                'domaines',
+                fn () => $this->domaines->pluck('domaine')->values()->all(),
+                []
+            ),
+            'liens' => $this->whenLoaded(
+                'liens',
+                fn () => $this->liens->map(
+                    fn ($lien) => [
+                        'type' => $lien->type,
+                        'url' => $lien->url,
+                    ]
+                )->values()->all(),
+                []
+            ),
+            'followers_count' => (int) ($this->followers_count ?? 0),
+            'following_count' => (int) ($this->following_count ?? 0),
+            'is_following' => (bool) ($this->is_following ?? false),
+            'projets_realises_count' => (int) ($this->projets_realises_count ?? 0),
             'created_at' => $this->created_at?->toISOString(),
         ];
     }

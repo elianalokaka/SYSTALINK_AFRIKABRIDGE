@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '../../components/ui'
 import { useSession } from '../../features/auth/SessionProvider'
 import { useSuivi } from '../../features/suivi/useSuivi'
-import { messageErreur } from '../../api/erreurs'
+import { ErreurApi, messageErreur } from '../../api/erreurs'
 import { estLivre } from '../../lib/priorites'
 
 /**
@@ -30,14 +30,24 @@ export function BoutonSuivre({
   const { profil: moi } = useSession()
   const { enCours, erreur, basculer } = useSuivi(membre.id)
   const [annonce, setAnnonce] = useState('')
+  const [suivi, setSuivi] = useState(membre.is_following)
+
+  useEffect(() => {
+    setSuivi(membre.is_following)
+  }, [membre.is_following])
+
+  useEffect(() => {
+    if (erreur && !(erreur instanceof ErreurApi && erreur.conflit)) {
+      setSuivi(membre.is_following)
+    }
+  }, [erreur, membre.is_following])
 
   if (!estLivre('follow') || !moi || moi.id === membre.id) return null
-
-  const suivi = membre.is_following
 
   function onClick() {
     if (enCours) return
     const veutSuivre = !suivi
+    setSuivi(veutSuivre)
     setAnnonce('')
     basculer(veutSuivre)
     setAnnonce(veutSuivre ? `Tu suis maintenant ${membre.nom}.` : `Tu ne suis plus ${membre.nom}.`)
@@ -58,7 +68,7 @@ export function BoutonSuivre({
       <span role="status" className="sr-only">
         {annonce}
       </span>
-      {erreur && (
+      {erreur && !(erreur instanceof ErreurApi && erreur.conflit) && (
         <span role="alert" className="text-xs text-danger">
           {messageErreur(erreur, { 404: 'Ce membre n’existe plus.' })}
         </span>

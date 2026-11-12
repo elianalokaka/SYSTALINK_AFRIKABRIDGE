@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { cn } from '../../lib/cn'
 
 type Taille = 'sm' | 'md' | 'lg'
@@ -36,17 +37,28 @@ export function initiales(nom: string): string {
  * Aucun bouton, aucun badge n'est circulaire dans ce projet.
  */
 export function Avatar({ nom, photoUrl, taille = 'md', className }: AvatarProps) {
+  const [imageKo, setImageKo] = useState(false)
+
+  useEffect(() => {
+    setImageKo(false)
+  }, [photoUrl])
+
   const base = cn(
     'shrink-0 overflow-hidden rounded-full border border-border-subtle',
     TAILLES[taille],
     className
   )
 
-  if (photoUrl) {
+  if (photoUrl && !imageKo) {
     return (
       // alt vide volontaire : le nom est affiché à côté par l'appelant.
       // Éviter de doubler l'information pour les lecteurs d'écran.
-      <img src={photoUrl} alt="" className={cn(base, 'object-cover')} />
+      <img
+        src={photoUrl}
+        alt=""
+        className={cn(base, 'object-cover object-center')}
+        onError={() => setImageKo(true)}
+      />
     )
   }
 

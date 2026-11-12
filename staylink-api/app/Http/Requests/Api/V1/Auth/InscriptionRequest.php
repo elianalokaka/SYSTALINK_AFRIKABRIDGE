@@ -28,7 +28,7 @@ class InscriptionRequest extends FormRequest
             ],
 
             'prenom' => [
-                'required',
+                'sometimes',
                 'string',
                 'max:100',
             ],
@@ -94,7 +94,6 @@ class InscriptionRequest extends FormRequest
     {
         return [
             'nom.required' => 'Le nom est obligatoire.',
-            'prenom.required' => 'Le prénom est obligatoire.',
             'email.required' => "L'adresse e-mail est obligatoire.",
             'email.email' => "L'adresse e-mail est invalide.",
             'email.unique' => "Cette adresse e-mail est déjà utilisée.",

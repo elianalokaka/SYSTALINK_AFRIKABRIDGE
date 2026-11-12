@@ -18,20 +18,20 @@ class ProfilPriveResource extends JsonResource
         return [
             'id' => $this->id,
 
-            'nom' => $this->nom,
-            'prenom' => $this->prenom,
+            'nom' => $this->nomComplet(),
             'email' => $this->email,
 
             'photo_url' => $this->photo_profil
-                ? asset('storage/' . $this->photo_profil)
+                ? asset('storage/'.$this->photo_profil)
                 : null,
 
             'pays' => $this->pays,
 
-            // À adapter lorsque les champs correspondants
-            // seront intégrés au modèle et à la base.
-            'role_profil' => null,
-            'region' => null,
+            'role_profil' => $this->when(
+                filled($this->role_profil),
+                $this->role_profil
+            ),
+            'region' => $this->region,
 
             'bio_courte' => $this->biographie
                 ? mb_substr($this->biographie, 0, 160)
@@ -52,17 +52,28 @@ class ProfilPriveResource extends JsonResource
                 []
             ),
 
-            'domaines' => [],
+            'domaines' => $this->whenLoaded(
+                'domaines',
+                fn () => $this->domaines->pluck('domaine')->values()->all(),
+                []
+            ),
 
-            'liens' => [],
+            'liens' => $this->whenLoaded(
+                'liens',
+                fn () => $this->liens->map(
+                    fn ($lien) => [
+                        'type' => $lien->type,
+                        'url' => $lien->url,
+                    ]
+                )->values()->all(),
+                []
+            ),
 
-            // Le suivi des membres est une fonctionnalité P1.
-            'followers_count' => 0,
-            'following_count' => 0,
+            'followers_count' => (int) ($this->followers_count ?? 0),
+            'following_count' => (int) ($this->following_count ?? 0),
             'is_following' => false,
 
-            // Sera calculé à partir des projets terminés.
-            'projets_realises_count' => 0,
+            'projets_realises_count' => (int) ($this->projets_realises_count ?? 0),
 
             'created_at' => $this->created_at?->toISOString(),
         ];

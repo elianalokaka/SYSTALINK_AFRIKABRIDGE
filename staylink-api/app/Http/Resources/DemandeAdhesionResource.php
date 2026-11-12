@@ -19,19 +19,19 @@ class DemandeAdhesionResource extends JsonResource
                 'nom' => $projet->nom,
                 'domaines' => $projet->domaines->pluck('domaine')->values()->all(),
                 'statut' => $projet->statut,
-                'progression' => 0,
+                'progression' => (int) $projet->progression,
                 'nombre_membres_souhaite' => $projet->nombre_max_membres,
-                'nombre_membres_actuel' => $projet->participations()->count(),
+                'nombre_membres_actuel' => (int) ($projet->participations_count ?? $projet->participations()->count()),
             ],
-            'utilisateur' => [
+            'utilisateur' => array_filter([
                 'id' => $candidat->id,
                 'nom' => trim($candidat->prenom.' '.$candidat->nom),
                 'photo_url' => $candidat->photo_profil
                     ? asset('storage/'.$candidat->photo_profil)
                     : null,
                 'pays' => $candidat->pays,
-                'role_profil' => null,
-            ],
+                'role_profil' => $candidat->role_profil ?: null,
+            ], fn ($valeur, $cle) => $cle !== 'role_profil' || $valeur !== null, ARRAY_FILTER_USE_BOTH),
             'message' => $this->message_motivation,
             'statut' => $this->statut,
             'created_at' => $this->created_at?->toISOString(),

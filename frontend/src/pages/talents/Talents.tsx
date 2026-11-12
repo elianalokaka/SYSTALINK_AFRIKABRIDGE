@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { Button, Card, CardCorps, EmptyState, Input, SkeletonTexte } from '../../components/ui'
-import { listeCompetences } from '../../api/profil'
+import { listeCatalogues } from '../../api/profil'
 import { rechercherTalents } from '../../api/talents'
 import { PAYS } from '../../lib/constants'
-import { LISTE_DOMAINES, LISTE_ROLES_PROFIL } from '../../lib/labels'
+import { domainesAffiches } from '../../lib/catalogue'
+import { LISTE_ROLES_PROFIL } from '../../lib/labels'
 import { cn } from '../../lib/cn'
 import type { Domaine, RoleProfil } from '../../types'
 import { CarteTalent } from './CarteTalent'
@@ -30,7 +31,9 @@ export function Talents() {
   const [match, setMatch] = useState<'any' | 'all'>('any')
   const [page, setPage] = useState(1)
 
-  const catalogue = useQuery({ queryKey: ['skills'], queryFn: listeCompetences })
+  const catalogue = useQuery({ queryKey: ['skills'], queryFn: listeCatalogues })
+  const competencesCatalogue = catalogue.data?.competences ?? []
+  const domainesFiltres = domainesAffiches(catalogue.data?.domaines)
 
   const filtres = {
     q: q.trim() || undefined,
@@ -118,7 +121,7 @@ export function Talents() {
               className={CLASSE_SELECT}
             >
               <option value="">Tous les domaines</option>
-              {LISTE_DOMAINES.map(([valeur, libelle]) => (
+              {domainesFiltres.map(([valeur, libelle]) => (
                 <option key={valeur} value={valeur}>
                   {libelle}
                 </option>
@@ -148,7 +151,7 @@ export function Talents() {
           <fieldset className="flex flex-col gap-2">
             <legend className="text-xs font-medium text-fg-2">Compétences</legend>
             <div className="flex flex-wrap gap-2">
-              {(catalogue.data ?? []).map((comp) => {
+              {competencesCatalogue.map((comp) => {
                 const actif = competences.includes(comp.id)
                 return (
                   <button

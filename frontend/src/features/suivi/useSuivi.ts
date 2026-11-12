@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { ErreurApi } from '../../api/erreurs'
 import { nePlusSuivre, suivre } from '../../api/suivi'
 import type { Page } from '../../api/projets'
 import { rafraichirSuivi } from '../../lib/cache'
@@ -12,7 +13,8 @@ import { useSession } from '../auth/SessionProvider'
  * `is_following` et `followers_count` changent tout de suite dans les deux
  * endroits où le membre est affiché :
  *   - `['talent', id]`  : son profil public (aussi son `following_count`, pour MOI) ;
- *   - `['talents', …]`  : les pages de la recherche de talents.
+ *   - `['talents', …]`  : les pages de la recherche de talents ;
+ *   - `['suggestions-talents']` : cartes du tableau de bord.
  * Si le serveur échoue, on restaure l'état d'avant. Quand il répond, on
  * remplace les valeurs optimistes par `FollowState` (la vérité du serveur),
  * puis on invalide les caches concernés.
@@ -37,6 +39,9 @@ export function useSuivi(membreId: number) {
     queryClient.setQueriesData<Page<Talent>>({ queryKey: ['talents'] }, (page) =>
       page ? { ...page, data: page.data.map(ajuster) } : page
     )
+    queryClient.setQueriesData<Talent[]>({ queryKey: ['suggestions-talents'] }, (liste) =>
+      liste ? liste.map(ajuster) : liste
+    )
   }
 
   function ajusterMesAbonnements(delta: number) {
@@ -52,9 +57,11 @@ export function useSuivi(membreId: number) {
     onMutate: async (veutSuivre) => {
       await queryClient.cancelQueries({ queryKey: ['talent'] })
       await queryClient.cancelQueries({ queryKey: ['talents'] })
+      await queryClient.cancelQueries({ queryKey: ['suggestions-talents'] })
       const avant: Contexte['avant'] = [
         ...queryClient.getQueriesData({ queryKey: ['talent'] }),
         ...queryClient.getQueriesData({ queryKey: ['talents'] }),
+        ...queryClient.getQueriesData({ queryKey: ['suggestions-talents'] }),
       ]
       const delta = veutSuivre ? 1 : -1
       appliquer({ is_following: veutSuivre, delta })
@@ -62,7 +69,11 @@ export function useSuivi(membreId: number) {
       return { avant }
     },
 
-    onError: (_erreur, _veutSuivre, contexte) => {
+    onError: (erreur, veutSuivre, contexte) => {
+      if (veutSuivre && erreur instanceof ErreurApi && erreur.conflit) {
+        appliquer({ is_following: true, delta: 0 })
+        return
+      }
       contexte?.avant.forEach(([cle, donnees]) => queryClient.setQueryData(cle, donnees))
     },
 

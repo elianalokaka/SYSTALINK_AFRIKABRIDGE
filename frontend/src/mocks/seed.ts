@@ -27,9 +27,8 @@ import type {
 export const MOT_DE_PASSE_DEMO = 'Demo1234!'
 
 /**
- * Le catalogue FERMÉ des compétences.
- * C'est lui que renvoie `GET /skills`. L'utilisateur ne peut PAS créer une
- * compétence : il choisit dans cette liste (règle du contrat).
+ * Le catalogue des compétences renvoyé par `GET /skills`.
+ * Une saisie « Autre » peut y ajouter une entrée (même règle que l’API réelle).
  */
 export const CATALOGUE_COMPETENCES: Competence[] = [
   { id: 1, nom: 'Python', categorie: 'langage' },

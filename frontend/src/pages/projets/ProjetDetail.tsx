@@ -20,10 +20,12 @@ import { demandesDuProjet, membresDuProjet, retirerMembre, traiterDemande } from
 import { useSession } from '../../features/auth/SessionProvider'
 import { useDemandesRecues } from '../../features/equipes/useDemandesRecues'
 import { oublierProjet, rafraichirProjets } from '../../lib/cache'
-import { LIBELLES_DOMAINE, LIBELLES_ROLE_PROFIL } from '../../lib/labels'
+import { libelleDomaine } from '../../lib/catalogue'
+import { LIBELLES_ROLE_PROFIL } from '../../lib/labels'
 import { libelleStatutDemande, varianteStatutDemande } from '../equipes/statutDemande'
 import { Discussion } from '../messagerie/Discussion'
 import { OngletRessources } from '../ressources/OngletRessources'
+import { TalentsSuggeres } from '../talents/TalentsSuggeres'
 import { BoutonRejoindre } from './BoutonRejoindre'
 import { libelleStatut, varianteStatut } from './statut'
 import type { DemandeAdhesion, Projet } from '../../types'
@@ -145,7 +147,7 @@ export function ProjetDetail() {
             <div className="mt-2 flex flex-wrap gap-1.5">
               {projet.domaines.map((domaine) => (
                 <Badge key={domaine} variante="neutre">
-                  {LIBELLES_DOMAINE[domaine]}
+                  {libelleDomaine(domaine)}
                 </Badge>
               ))}
             </div>
@@ -175,7 +177,7 @@ export function ProjetDetail() {
       <Tabs onglets={onglets} actif={onglet} onChange={setOnglet} avecPanneaux />
 
       <div role="tabpanel" id={`panneau-${onglet}`} aria-labelledby={`onglet-${onglet}`} className="flex flex-col gap-6">
-      {onglet === 'vue' && <VueProjet projet={projet} />}
+      {onglet === 'vue' && <VueProjet projet={projet} estProprietaire={estProprietaire} />}
       {onglet === 'equipe' && <OngletEquipe projetId={projet.id} estProprietaire={estProprietaire} />}
       {onglet === 'discussion' && projet.is_member && (
         <Discussion projetId={projet.id} proprietaireId={projet.createur.id} />
@@ -190,7 +192,7 @@ export function ProjetDetail() {
 
 /* ── Onglet « Vue » ───────────────────────────────────────────────────────── */
 
-function VueProjet({ projet }: { projet: Projet }) {
+function VueProjet({ projet, estProprietaire }: { projet: Projet; estProprietaire: boolean }) {
   return (
     <>
       <Card>
@@ -252,6 +254,13 @@ function VueProjet({ projet }: { projet: Projet }) {
           </div>
         </CardCorps>
       </Card>
+
+      {estProprietaire && projet.statut === 'recrutement' && (
+        <TalentsSuggeres
+          projetId={projet.id}
+          competencesRecherchees={projet.competences_recherchees}
+        />
+      )}
 
       {projet.lien_realisation && (
         <Card>

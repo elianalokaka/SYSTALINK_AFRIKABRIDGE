@@ -128,6 +128,15 @@ client.interceptors.response.use(
       if (concernee) ecouteursExpiration.forEach((ecouteur) => ecouteur())
     }
 
+    /* ── 409 sur POST /users/{id}/follow : déjà suivi = succès du contrat ─
+       Le navigateur logue quand même le 409 en rouge. Sans ce passage, l'intercepteur
+       le transformait en ErreurApi, la mutation reculait, et le bouton restait « Suivre ». */
+    const methode = (config?.method ?? '').toLowerCase()
+    const url = config?.url ?? ''
+    if (statut === 409 && methode === 'post' && /\/users\/[^/]+\/follow\/?$/.test(url) && erreur.response) {
+      return erreur.response
+    }
+
     /* Toute erreur sort normalisée : les composants ne voient jamais un AxiosError. */
     throw normaliserErreur(erreur)
   }

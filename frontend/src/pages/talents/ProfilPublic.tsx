@@ -5,8 +5,8 @@ import { portfolio, profilPublic } from '../../api/talents'
 import { ErreurApi } from '../../api/erreurs'
 import { useSession } from '../../features/auth/SessionProvider'
 import { nomDePays } from '../../lib/constants'
+import { libelleDomaine } from '../../lib/catalogue'
 import {
-  LIBELLES_DOMAINE,
   LIBELLES_NIVEAU,
   LIBELLES_ROLE_PROFIL,
   LIBELLES_TYPE_LIEN,
@@ -157,7 +157,7 @@ export function ProfilPublic() {
                 <div className="flex flex-wrap gap-1.5">
                   {membre.domaines.map((d) => (
                     <Badge key={d} variante="neutre">
-                      {LIBELLES_DOMAINE[d]}
+                      {libelleDomaine(d)}
                     </Badge>
                   ))}
                 </div>
@@ -239,7 +239,7 @@ export function ProfilPublic() {
                     <div className="flex flex-wrap items-center gap-1.5">
                       {projet.domaines.map((d) => (
                         <Badge key={d} variante="neutre">
-                          {LIBELLES_DOMAINE[d]}
+                          {libelleDomaine(d)}
                         </Badge>
                       ))}
                     </div>

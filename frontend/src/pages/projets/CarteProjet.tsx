@@ -1,5 +1,5 @@
 import { Avatar, Badge, Card, CardCorps, ProgressBar } from '../../components/ui'
-import { LIBELLES_DOMAINE } from '../../lib/labels'
+import { libelleDomaine } from '../../lib/catalogue'
 import type { ProjetCarte } from '../../types'
 import { libelleStatut, varianteStatut } from './statut'
 
@@ -29,7 +29,7 @@ export function CarteProjet({
         <div className="flex flex-wrap gap-1.5">
           {projet.domaines.map((domaine) => (
             <Badge key={domaine} variante="neutre">
-              {LIBELLES_DOMAINE[domaine]}
+              {libelleDomaine(domaine)}
             </Badge>
           ))}
         </div>

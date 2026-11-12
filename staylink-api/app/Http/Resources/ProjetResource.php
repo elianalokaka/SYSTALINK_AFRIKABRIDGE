@@ -21,9 +21,9 @@ class ProjetResource extends JsonResource
                 ->values()
                 ->all(),
             'statut' => $this->statut,
-            'progression' => $this->progression,
+            'progression' => (int) $this->progression,
             'nombre_membres_souhaite' => $this->nombre_max_membres,
-            'nombre_membres_actuel' => $this->participations()->count(),
+            'nombre_membres_actuel' => (int) ($this->participations_count ?? $this->participations()->count()),
             'competences_recherchees' => $this->competences
                 ->map(fn ($competence) => [
                     'id' => $competence->id,
@@ -32,21 +32,23 @@ class ProjetResource extends JsonResource
                 ])
                 ->values()
                 ->all(),
-            'createur' => [
+            'createur' => array_filter([
                 'id' => $createur->id,
                 'nom' => trim($createur->prenom.' '.$createur->nom),
                 'photo_url' => $createur->photo_profil
                     ? asset('storage/'.$createur->photo_profil)
                     : null,
                 'pays' => $createur->pays,
-                'role_profil' => null,
-            ],
+                'role_profil' => $createur->role_profil ?: null,
+            ], fn ($valeur, $cle) => $cle !== 'role_profil' || $valeur !== null, ARRAY_FILTER_USE_BOTH),
             'lien_realisation' => $this->lien_realisation,
             'date_fin' => $this->date_fin?->toDateString(),
-            'is_member' => $this->relationLoaded('membres')
-                ? $this->membres->contains('id', $request->user()?->id)
-                : true,
-            'ma_demande_statut' => null,
+            'is_member' => array_key_exists('is_member', $this->resource->getAttributes())
+                ? (bool) $this->is_member
+                : ($this->relationLoaded('membres')
+                    ? $this->membres->contains('id', $request->user()?->id)
+                    : true),
+            'ma_demande_statut' => $this->ma_demande_statut,
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

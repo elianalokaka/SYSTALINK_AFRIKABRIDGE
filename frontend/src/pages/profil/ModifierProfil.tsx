@@ -1,19 +1,19 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Avatar, Button, Card, CardCorps, CardEntete, FormField, Input, Textarea } from '../../components/ui'
-import { definirCompetences, envoyerPhoto, listeCompetences, modifierProfil } from '../../api/profil'
+import { definirCompetences, envoyerPhoto, listeCatalogues, modifierProfil } from '../../api/profil'
 import { ErreurApi } from '../../api/erreurs'
 import { useSession } from '../../features/auth/SessionProvider'
 import { PAYS } from '../../lib/constants'
+import { competenceCataloguePour, domaineCataloguePour, domainesAffiches, domainesPourEnvoi } from '../../lib/catalogue'
 import {
-  LISTE_DOMAINES,
   LISTE_NIVEAUX,
   LISTE_ROLES_PROFIL,
   LISTE_TYPES_LIEN,
   type TypeLien,
 } from '../../lib/labels'
-import type { CompetenceUtilisateur, Domaine, LienProfil, NiveauCompetence, RoleProfil } from '../../types'
+import type { CompetenceUtilisateur, LienProfil, NiveauCompetence, ProfilUpdate, RoleProfil } from '../../types'
 
 /**
  * Base commune des `<select>`.
@@ -43,6 +43,7 @@ const CLASSE_SELECT_PLEIN = `${CLASSE_SELECT} w-full`
 export function ModifierProfil() {
   const { profil, mettreAJourProfil } = useSession()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
 
   /* ── 1. Informations ──────────────────────────────────────────────────── */
   const [nom, setNom] = useState(profil?.nom ?? '')
@@ -50,7 +51,8 @@ export function ModifierProfil() {
   const [pays, setPays] = useState(profil?.pays ?? '')
   const [region, setRegion] = useState(profil?.region ?? '')
   const [role, setRole] = useState<RoleProfil>(profil?.role_profil ?? 'autre')
-  const [domaines, setDomaines] = useState<Domaine[]>(profil?.domaines ?? [])
+  const [domaines, setDomaines] = useState<string[]>(profil?.domaines ?? [])
+  const [domaineLibre, setDomaineLibre] = useState('')
   const [liens, setLiens] = useState<LienProfil[]>(profil?.liens ?? [])
   const [chargementInfo, setChargementInfo] = useState(false)
   const [erreursInfo, setErreursInfo] = useState<Record<string, string>>({})
@@ -64,10 +66,12 @@ export function ModifierProfil() {
     (profil?.competences ?? []) as CompetenceUtilisateur[]
   )
   const [selection, setSelection] = useState('')
+  const [competenceLibre, setCompetenceLibre] = useState(false)
+  const [nomCompetenceLibre, setNomCompetenceLibre] = useState('')
   const [niveauAjout, setNiveauAjout] = useState<NiveauCompetence>('intermediaire')
   const [chargementSkills, setChargementSkills] = useState(false)
   const [erreurSkills, setErreurSkills] = useState<string | null>(null)
-  const catalogue = useQuery({ queryKey: ['skills'], queryFn: listeCompetences })
+  const catalogue = useQuery({ queryKey: ['skills'], queryFn: listeCatalogues })
 
   /* ── 3. Photo ─────────────────────────────────────────────────────────── */
   const [fichier, setFichier] = useState<File | null>(null)
@@ -78,7 +82,7 @@ export function ModifierProfil() {
   if (!profil) return null
 
   /* ── Handlers : Informations ──────────────────────────────────────────── */
-  function basculerDomaine(domaine: Domaine) {
+  function basculerDomaine(domaine: string) {
     setDomaines((prev) =>
       prev.includes(domaine) ? prev.filter((d) => d !== domaine) : [...prev, domaine]
     )
@@ -104,10 +108,11 @@ export function ModifierProfil() {
         pays,
         region: region || null,
         role_profil: role,
-        domaines,
+        domaines: domainesPourEnvoi(domaines, domaineLibre) as ProfilUpdate['domaines'],
         liens: liens.filter((lien) => lien.url.trim() !== ''),
       })
       mettreAJourProfil(maj)
+      await queryClient.invalidateQueries({ queryKey: ['skills'] })
       navigate('/profil', { replace: true })
     } catch (erreur) {
       if (erreur instanceof ErreurApi && erreur.validation) {
@@ -119,13 +124,40 @@ export function ModifierProfil() {
   }
 
   /* ── Handlers : Compétences ───────────────────────────────────────────── */
-  const disponibles = (catalogue.data ?? []).filter(
+  const competencesCatalogue = catalogue.data?.competences ?? []
+  const disponibles = competencesCatalogue.filter(
     (comp) => !competences.some((deja) => deja.id === comp.id)
   )
 
+  const correspondanceDomaine = domaineCataloguePour(domaineLibre)
+  const correspondanceCompetence = competenceCataloguePour(nomCompetenceLibre, competencesCatalogue)
+  const domainesCases = domainesAffiches(catalogue.data?.domaines, domaines)
+
   function ajouterCompetence() {
+    if (competenceLibre) {
+      const nom = nomCompetenceLibre.trim()
+      if (!nom) return
+      const existante = correspondanceCompetence
+      if (existante) {
+        if (competences.some((deja) => deja.id === existante.id)) return
+        setCompetences((prev) => [...prev, { ...existante, niveau: niveauAjout }])
+      } else {
+        setCompetences((prev) => [
+          ...prev,
+          {
+            id: -Date.now(),
+            nom,
+            categorie: 'autre',
+            niveau: niveauAjout,
+          },
+        ])
+      }
+      setNomCompetenceLibre('')
+      return
+    }
+
     const id = Number(selection)
-    const source = (catalogue.data ?? []).find((comp) => comp.id === id)
+    const source = competencesCatalogue.find((comp) => comp.id === id)
     if (!source) return
     setCompetences((prev) => [...prev, { ...source, niveau: niveauAjout }])
     setSelection('')
@@ -143,10 +175,16 @@ export function ModifierProfil() {
     setChargementSkills(true)
     setErreurSkills(null)
     try {
-      await definirCompetences({
-        competences: competences.map((comp) => ({ competence_id: comp.id, niveau: comp.niveau })),
+      const enregistrees = await definirCompetences({
+        competences: competences.map((comp) =>
+          comp.id > 0
+            ? { competence_id: comp.id, niveau: comp.niveau }
+            : { nom: comp.nom, niveau: comp.niveau },
+        ),
       })
-      mettreAJourProfil({ competences })
+      mettreAJourProfil({ competences: enregistrees })
+      setCompetences(enregistrees)
+      await catalogue.refetch()
     } catch (erreur) {
       setErreurSkills(erreur instanceof ErreurApi ? erreur.message : 'Une erreur est survenue.')
     } finally {
@@ -229,7 +267,7 @@ export function ModifierProfil() {
             <div className="flex flex-col gap-2">
               <span className="text-sm font-medium text-fg-1">Domaines d’intérêt</span>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {LISTE_DOMAINES.map(([valeur, libelle]) => (
+                {domainesCases.map(([valeur, libelle]) => (
                   <label key={valeur} className="flex items-center gap-2 text-sm text-fg-2">
                     <input
                       type="checkbox"
@@ -240,7 +278,43 @@ export function ModifierProfil() {
                     {libelle}
                   </label>
                 ))}
+                <label className="flex items-center gap-2 text-sm text-fg-2">
+                  <input
+                    type="checkbox"
+                    checked={domaines.includes('autre')}
+                    onChange={() => basculerDomaine('autre')}
+                    className="h-4 w-4 rounded-sm border border-border-strong bg-surface-1"
+                  />
+                  Autre
+                </label>
               </div>
+              {domaines.includes('autre') && (
+                <FormField
+                  id="domaine-libre"
+                  label="Précise le domaine"
+                  aide={
+                    correspondanceDomaine
+                      ? `Ce domaine existe déjà dans le catalogue : « ${correspondanceDomaine.libelle} ».`
+                      : domaineLibre.trim()
+                        ? `Ce domaine sera enregistré sous le nom « ${domaineLibre.trim()} ».`
+                        : 'Écris le domaine. S’il existe déjà, le nom du catalogue s’affiche.'
+                  }
+                >
+                  <Input
+                    id="domaine-libre"
+                    value={domaineLibre}
+                    onChange={(e) => {
+                      const saisie = e.target.value
+                      setDomaineLibre(saisie)
+                      const connu = domaineCataloguePour(saisie)
+                      if (connu && !domaines.includes(connu.valeur)) {
+                        setDomaines((prev) => [...prev.filter((d) => d !== 'autre'), connu.valeur, 'autre'])
+                      }
+                    }}
+                    placeholder="Ex. agroécologie"
+                  />
+                </FormField>
+              )}
             </div>
 
             <div className="flex flex-col gap-2">
@@ -320,33 +394,74 @@ export function ModifierProfil() {
             ))}
           </ul>
 
-          <div className="flex flex-col gap-2 border-t border-border-subtle pt-4 sm:flex-row sm:items-end">
-            <select
-              aria-label="Ajouter une compétence"
-              value={selection}
-              onChange={(e) => setSelection(e.target.value)}
-              className={`${CLASSE_SELECT} w-full sm:flex-1`}
-            >
-              <option value="" disabled>
-                {disponibles.length > 0 ? 'Choisir une compétence…' : 'Toutes les compétences sont ajoutées'}
-              </option>
-              {disponibles.map((comp) => (
-                <option key={comp.id} value={comp.id}>{comp.nom}</option>
-              ))}
-            </select>
-            <select
-              aria-label="Niveau"
-              value={niveauAjout}
-              onChange={(e) => setNiveauAjout(e.target.value as NiveauCompetence)}
-              className={`${CLASSE_SELECT} w-full shrink-0 sm:w-36`}
-            >
-              {LISTE_NIVEAUX.map(([valeur, libelle]) => (
-                <option key={valeur} value={valeur}>{libelle}</option>
-              ))}
-            </select>
-            <Button type="button" variante="secondaire" disabled={selection === ''} onClick={ajouterCompetence}>
-              Ajouter
-            </Button>
+          <div className="flex flex-col gap-3 border-t border-border-subtle pt-4">
+            <label className="flex items-center gap-2 text-sm text-fg-2">
+              <input
+                type="checkbox"
+                checked={competenceLibre}
+                onChange={(e) => {
+                  setCompetenceLibre(e.target.checked)
+                  setSelection('')
+                  setNomCompetenceLibre('')
+                }}
+                className="h-4 w-4 rounded-sm border border-border-strong bg-surface-1"
+              />
+              Autre — la compétence n’est pas dans la liste
+            </label>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+              {competenceLibre ? (
+                <FormField
+                  id="competence-libre"
+                  label="Nom de la compétence"
+                  aide={
+                    correspondanceCompetence
+                      ? `Cette compétence existe déjà : « ${correspondanceCompetence.nom} ».`
+                      : nomCompetenceLibre.trim()
+                        ? 'Cette compétence sera ajoutée au catalogue.'
+                        : 'Écris le nom. S’il existe déjà (même avec une autre casse), le nom du catalogue s’affiche.'
+                  }
+                >
+                  <Input
+                    id="competence-libre"
+                    value={nomCompetenceLibre}
+                    onChange={(e) => setNomCompetenceLibre(e.target.value)}
+                    placeholder="Ex. Rust"
+                  />
+                </FormField>
+              ) : (
+                <select
+                  aria-label="Ajouter une compétence"
+                  value={selection}
+                  onChange={(e) => setSelection(e.target.value)}
+                  className={`${CLASSE_SELECT} w-full sm:flex-1`}
+                >
+                  <option value="" disabled>
+                    {disponibles.length > 0 ? 'Choisir une compétence…' : 'Toutes les compétences sont ajoutées'}
+                  </option>
+                  {disponibles.map((comp) => (
+                    <option key={comp.id} value={comp.id}>{comp.nom}</option>
+                  ))}
+                </select>
+              )}
+              <select
+                aria-label="Niveau"
+                value={niveauAjout}
+                onChange={(e) => setNiveauAjout(e.target.value as NiveauCompetence)}
+                className={`${CLASSE_SELECT} w-full shrink-0 sm:w-36`}
+              >
+                {LISTE_NIVEAUX.map(([valeur, libelle]) => (
+                  <option key={valeur} value={valeur}>{libelle}</option>
+                ))}
+              </select>
+              <Button
+                type="button"
+                variante="secondaire"
+                disabled={competenceLibre ? nomCompetenceLibre.trim() === '' : selection === ''}
+                onClick={ajouterCompetence}
+              >
+                Ajouter
+              </Button>
+            </div>
           </div>
 
           {erreurSkills && (

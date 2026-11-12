@@ -23,15 +23,15 @@ export const priorites = {
    *  Si le backend ne livre pas le suivi : repasser à `false`, tout disparaît
    *  (bouton, compteurs, listes) sans rien casser. */
   follow: true,
-  /** `GET /users/suggestions` et `GET /projects/suggestions` */
-  suggestions: false,
+  /** `GET /users/suggestions` (bloc « Talents suggérés »). `GET /projects/suggestions` n'est pas branché. */
+  suggestions: true,
   /** `GET`/`POST /resources/{id}/comments` + `DELETE /comments/{id}`.
    *  `true` pendant le développement avec les mocks (module `feat/commentaires`).
    *  Si le backend ne les livre pas : repasser à `false` — fil de commentaires et
    *  compteurs disparaissent, sans rien casser. */
   commentaires: true,
   /** `GET /me/dashboard` */
-  dashboard: false,
+  dashboard: true,
   /** `GET /stats` (route publique) */
   stats: false,
 } as const

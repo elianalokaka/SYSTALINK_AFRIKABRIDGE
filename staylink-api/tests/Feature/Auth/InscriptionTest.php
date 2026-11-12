@@ -16,6 +16,7 @@ class InscriptionTest extends TestCase
         $reponse = $this->depuisLeFront()->postJson('/api/v1/auth/register', $this->donneesInscription());
 
         $reponse->assertCreated();
+        $reponse->assertJsonMissingPath('role_profil');
         $this->assertCookieSessionHttpOnly($reponse);
         $this->assertAuthenticated();
 
@@ -25,6 +26,32 @@ class InscriptionTest extends TestCase
         $this->assertNotSame('SecurePass123!', $utilisateur->mot_de_passe);
         $this->assertTrue(Hash::check('SecurePass123!', $utilisateur->mot_de_passe));
         $reponse->assertJsonMissing(['mot_de_passe']);
+        $reponse->assertJsonPath('nom', 'Eliana Lokoka');
+        $reponse->assertJsonMissingPath('prenom');
+    }
+
+    public function test_inscription_accepte_le_nom_complet_du_contrat_sans_prenom(): void
+    {
+        $reponse = $this->depuisLeFront()->postJson('/api/v1/auth/register', [
+            'nom' => 'Eliana Lokoka',
+            'email' => 'eliana.contrat@example.com',
+            'mot_de_passe' => 'SecurePass123!',
+            'mot_de_passe_confirmation' => 'SecurePass123!',
+            'pays' => 'CD',
+        ]);
+
+        $reponse->assertCreated();
+        $reponse->assertJsonPath('nom', 'Eliana Lokoka');
+        $reponse->assertJsonMissingPath('prenom');
+        $this->assertAuthenticated();
+
+        $utilisateur = Utilisateur::query()
+            ->where('email', 'eliana.contrat@example.com')
+            ->first();
+
+        $this->assertNotNull($utilisateur);
+        $this->assertSame('Eliana', $utilisateur->prenom);
+        $this->assertSame('Lokoka', $utilisateur->nom);
     }
 
     public function test_inscription_refuse_un_email_deja_pris(): void
@@ -90,7 +117,7 @@ class InscriptionTest extends TestCase
 
     private function depuisLeFront(): static
     {
-        return $this->withHeader('Origin', 'http://localhost');
+        return $this->withHeader('Origin', 'http://localhost:5173');
     }
 
     private function assertCookieSessionHttpOnly($reponse): void

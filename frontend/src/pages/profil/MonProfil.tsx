@@ -3,11 +3,11 @@ import { useQuery } from '@tanstack/react-query'
 import { Avatar, Badge, Button, Card, CardCorps, CardEntete } from '../../components/ui'
 import { useSession } from '../../features/auth/SessionProvider'
 import { nomDePays } from '../../lib/constants'
+import { libelleDomaine } from '../../lib/catalogue'
 import { profilPublic } from '../../api/talents'
 import { estLivre } from '../../lib/priorites'
 import { CompteursSuivi, ListeReseau } from '../talents/ListeReseau'
 import {
-  LIBELLES_DOMAINE,
   LIBELLES_NIVEAU,
   LIBELLES_ROLE_PROFIL,
   LIBELLES_TYPE_LIEN,
@@ -87,7 +87,7 @@ export function MonProfil() {
               <div className="flex flex-wrap gap-1.5">
                 {profil.domaines.map((domaine) => (
                   <Badge key={domaine} variante="neutre">
-                    {LIBELLES_DOMAINE[domaine]}
+                    {libelleDomaine(domaine)}
                   </Badge>
                 ))}
               </div>

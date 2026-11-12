@@ -61,6 +61,7 @@ class PublicationRessourceTest extends TestCase
 
     public function test_un_membre_publie_un_document(): void
     {
+        Storage::fake('local');
         Storage::fake('public');
 
         $alice = $this->membre('alice@example.com');
@@ -79,7 +80,12 @@ class PublicationRessourceTest extends TestCase
         $reponse->assertJsonPath('visibilite', 'publique');
         $reponse->assertJsonPath('auteur.id', $alice->id);
         $reponse->assertJsonPath('commentaires_count', 0);
-        $this->assertNotNull($reponse->json('fichier_url'));
+        $id = $reponse->json('id');
+        $this->assertStringContainsString('/api/v1/resources/'.$id.'/file', (string) $reponse->json('fichier_url'));
+
+        $chemin = \App\Models\Ressource::query()->findOrFail($id)->chemin_fichier;
+        Storage::disk('local')->assertExists($chemin);
+        Storage::disk('public')->assertMissing($chemin);
 
         $this->assertDatabaseHas('ressources', [
             'utilisateur_id' => $alice->id,

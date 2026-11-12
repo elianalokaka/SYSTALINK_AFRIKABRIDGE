@@ -1,6 +1,6 @@
 import { client } from './client'
 import type { Page } from './projets'
-import type { Domaine, Profil, Projet, RoleProfil, Talent } from '../types'
+import type { Domaine, Profil, Projet, RoleProfil, Talent, TalentSuggere } from '../types'
 
 /**
  * Module « Talents » : recherche de membres, profil public, portfolio.
@@ -38,5 +38,19 @@ export async function profilPublic(id: number): Promise<Profil> {
 
 export async function portfolio(id: number): Promise<Projet[]> {
   const { data } = await client.get<{ data: Projet[] }>(`/users/${id}/portfolio`)
+  return data.data
+}
+
+/**
+ * `GET /users/suggestions` — 403 si on n'est propriétaire d'aucun projet.
+ * N'appeler que lorsque c'est le cas (contrat + AGENTS.md).
+ */
+export async function suggestionsTalents(filtres: {
+  projet_id?: number
+  limit?: number
+} = {}): Promise<TalentSuggere[]> {
+  const { data } = await client.get<{ data: TalentSuggere[] }>('/users/suggestions', {
+    params: filtres,
+  })
   return data.data
 }

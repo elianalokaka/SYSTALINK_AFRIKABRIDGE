@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Ressource extends Model
 {
@@ -41,5 +42,43 @@ class Ressource extends Model
             'ressource_id',
             'competence_id',
         );
+    }
+
+    public function commentaires(): HasMany
+    {
+        return $this->hasMany(Commentaire::class, 'ressource_id');
+    }
+
+    public function estVisiblePour(Utilisateur $acteur): bool
+    {
+        if ($this->visibilite !== 'projet') {
+            return true;
+        }
+
+        if ($this->projet_id === null) {
+            return false;
+        }
+
+        return MembreProjet::query()
+            ->where('projet_id', $this->projet_id)
+            ->where('utilisateur_id', $acteur->id)
+            ->exists();
+    }
+
+    public function estModifiablePar(Utilisateur $acteur): bool
+    {
+        if ((int) $this->utilisateur_id === (int) $acteur->id) {
+            return true;
+        }
+
+        if ($this->projet_id === null) {
+            return false;
+        }
+
+        return MembreProjet::query()
+            ->where('projet_id', $this->projet_id)
+            ->where('utilisateur_id', $acteur->id)
+            ->where('role', 'proprietaire')
+            ->exists();
     }
 }

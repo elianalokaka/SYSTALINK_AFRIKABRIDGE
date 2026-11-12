@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button, Card, CardCorps, FormField, Input, Textarea } from '../../components/ui'
 import { creerProjet } from '../../api/projets'
-import { listeCompetences } from '../../api/profil'
+import { definirCompetences, listeCatalogues } from '../../api/profil'
 import { ErreurApi } from '../../api/erreurs'
+import { useSession } from '../../features/auth/SessionProvider'
 import { rafraichirProjets } from '../../lib/cache'
-import { LISTE_DOMAINES } from '../../lib/labels'
-import type { Domaine, ProjetCreate, StatutProjetCreation } from '../../types'
+import { competenceCataloguePour, domaineCataloguePour, domainesAffiches, domainesPourEnvoi } from '../../lib/catalogue'
+import type { ProjetCreate, StatutProjetCreation } from '../../types'
 
 const CLASSE_SELECT = 'h-9 rounded-md border border-border-strong bg-surface-1 px-3 text-sm text-fg-1'
 
@@ -24,20 +25,24 @@ const CLASSE_SELECT = 'h-9 rounded-md border border-border-strong bg-surface-1 p
 export function ProjetCreation() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const catalogue = useQuery({ queryKey: ['skills'], queryFn: listeCompetences })
+  const { profil, mettreAJourProfil } = useSession()
+  const catalogue = useQuery({ queryKey: ['skills'], queryFn: listeCatalogues })
 
   const [nom, setNom] = useState('')
   const [description, setDescription] = useState('')
   const [objectifs, setObjectifs] = useState('')
-  const [domaines, setDomaines] = useState<Domaine[]>([])
+  const [domaines, setDomaines] = useState<string[]>([])
+  const [domaineLibre, setDomaineLibre] = useState('')
   const [competences, setCompetences] = useState<number[]>([])
+  const [competenceLibre, setCompetenceLibre] = useState(false)
+  const [nomCompetenceLibre, setNomCompetenceLibre] = useState('')
   const [membres, setMembres] = useState(5)
   const [statut, setStatut] = useState<StatutProjetCreation>('recrutement')
   const [chargement, setChargement] = useState(false)
   const [erreurs, setErreurs] = useState<Record<string, string>>({})
   const [erreurGlobale, setErreurGlobale] = useState<string | null>(null)
 
-  function basculerDomaine(domaine: Domaine) {
+  function basculerDomaine(domaine: string) {
     setDomaines((prev) =>
       prev.includes(domaine) ? prev.filter((d) => d !== domaine) : [...prev, domaine]
     )
@@ -49,23 +54,56 @@ export function ProjetCreation() {
     )
   }
 
+  const competencesCatalogue = catalogue.data?.competences ?? []
+  const correspondanceDomaine = domaineCataloguePour(domaineLibre)
+  const correspondanceCompetence = competenceCataloguePour(nomCompetenceLibre, competencesCatalogue)
+  const domainesCases = domainesAffiches(catalogue.data?.domaines, domaines)
+
+  async function assurerCompetenceLibre(): Promise<number[]> {
+    const nomSaisi = nomCompetenceLibre.trim()
+    if (!competenceLibre || nomSaisi === '') return competences
+
+    const existante = competenceCataloguePour(nomSaisi, competencesCatalogue)
+    if (existante) {
+      return competences.includes(existante.id) ? competences : [...competences, existante.id]
+    }
+
+    const deja = (profil?.competences ?? []).map((comp) => ({
+      competence_id: comp.id,
+      niveau: comp.niveau,
+    }))
+    const enregistrees = await definirCompetences({
+      competences: [...deja, { nom: nomSaisi, niveau: 'intermediaire' }],
+    })
+    mettreAJourProfil({ competences: enregistrees })
+    const rafraichi = await catalogue.refetch()
+    const liste = rafraichi.data?.competences ?? enregistrees
+    const creee =
+      competenceCataloguePour(nomSaisi, liste) ??
+      enregistrees.find((comp) => competenceCataloguePour(nomSaisi, [comp]))
+    if (!creee) return competences
+    return competences.includes(creee.id) ? competences : [...competences, creee.id]
+  }
+
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setChargement(true)
     setErreurs({})
     setErreurGlobale(null)
 
-    const corps: ProjetCreate = {
-      nom,
-      description,
-      objectifs,
-      domaines,
-      competence_ids: competences,
-      nombre_membres_souhaite: membres,
-      statut,
-    }
-
     try {
+      const competenceIds = await assurerCompetenceLibre()
+
+      const corps: ProjetCreate = {
+        nom,
+        description,
+        objectifs,
+        domaines: domainesPourEnvoi(domaines, domaineLibre) as ProjetCreate['domaines'],
+        competence_ids: competenceIds,
+        nombre_membres_souhaite: membres,
+        statut,
+      }
+
       const projet = await creerProjet(corps)
       /* Sans ça, le nouveau projet resterait absent des listes pendant 30 s. */
       rafraichirProjets(queryClient)
@@ -172,7 +210,7 @@ export function ProjetCreation() {
                 <span className="text-xs text-fg-3">{domaines.length}/3</span>
               </div>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {LISTE_DOMAINES.map(([valeur, libelle]) => {
+                {domainesCases.map(([valeur, libelle]) => {
                   const coche = domaines.includes(valeur)
                   const desactive = !coche && domaines.length >= 3
                   return (
@@ -191,13 +229,50 @@ export function ProjetCreation() {
                     </label>
                   )
                 })}
+                <label className={`flex items-center gap-2 text-sm ${!domaines.includes('autre') && domaines.length >= 3 ? 'text-fg-disabled' : 'text-fg-2'}`}>
+                  <input
+                    type="checkbox"
+                    checked={domaines.includes('autre')}
+                    disabled={!domaines.includes('autre') && domaines.length >= 3}
+                    onChange={() => basculerDomaine('autre')}
+                    className="h-4 w-4 rounded-sm border border-border-strong bg-surface-1"
+                  />
+                  Autre
+                </label>
               </div>
+              {domaines.includes('autre') && (
+                <FormField
+                  id="domaine-libre"
+                  label="Précise le domaine"
+                  aide={
+                    correspondanceDomaine
+                      ? `Ce domaine existe déjà dans le catalogue : « ${correspondanceDomaine.libelle} ».`
+                      : domaineLibre.trim()
+                        ? `Ce domaine sera enregistré sous le nom « ${domaineLibre.trim()} ».`
+                        : 'Écris le domaine. S’il existe déjà, le nom du catalogue s’affiche.'
+                  }
+                >
+                  <Input
+                    id="domaine-libre"
+                    value={domaineLibre}
+                    onChange={(e) => {
+                      const saisie = e.target.value
+                      setDomaineLibre(saisie)
+                      const connu = domaineCataloguePour(saisie)
+                      if (connu && !domaines.includes(connu.valeur) && domaines.length < 3) {
+                        setDomaines((prev) => [...prev.filter((d) => d !== 'autre'), connu.valeur, 'autre'].slice(0, 3))
+                      }
+                    }}
+                    placeholder="Ex. agroécologie"
+                  />
+                </FormField>
+              )}
             </div>
 
             <div className="flex flex-col gap-2">
               <span className="text-sm font-medium text-fg-1">Compétences recherchées</span>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {(catalogue.data ?? []).map((comp) => (
+                {competencesCatalogue.map((comp) => (
                   <label key={comp.id} className="flex items-center gap-2 text-sm text-fg-2">
                     <input
                       type="checkbox"
@@ -209,6 +284,38 @@ export function ProjetCreation() {
                   </label>
                 ))}
               </div>
+              <label className="flex items-center gap-2 text-sm text-fg-2">
+                <input
+                  type="checkbox"
+                  checked={competenceLibre}
+                  onChange={(e) => {
+                    setCompetenceLibre(e.target.checked)
+                    setNomCompetenceLibre('')
+                  }}
+                  className="h-4 w-4 rounded-sm border border-border-strong bg-surface-1"
+                />
+                Autre — la compétence n’est pas dans la liste
+              </label>
+              {competenceLibre && (
+                <FormField
+                  id="competence-libre"
+                  label="Nom de la compétence"
+                  aide={
+                    correspondanceCompetence
+                      ? `Cette compétence existe déjà : « ${correspondanceCompetence.nom} ».`
+                      : nomCompetenceLibre.trim()
+                        ? 'Cette compétence sera ajoutée au catalogue.'
+                        : 'Écris le nom. S’il existe déjà (même avec une autre casse), le nom du catalogue s’affiche.'
+                  }
+                >
+                  <Input
+                    id="competence-libre"
+                    value={nomCompetenceLibre}
+                    onChange={(e) => setNomCompetenceLibre(e.target.value)}
+                    placeholder="Ex. Rust"
+                  />
+                </FormField>
+              )}
             </div>
 
             {erreurGlobale && (

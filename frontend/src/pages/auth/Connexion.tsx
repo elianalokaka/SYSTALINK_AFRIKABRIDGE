@@ -119,10 +119,6 @@ export function Connexion() {
             </form>
           </CardCorps>
         </Card>
-
-        <p className="mt-4 text-center text-xs text-fg-3">
-          Compte de démonstration : aminata@example.com · Demo1234!
-        </p>
       </div>
     </main>
   )

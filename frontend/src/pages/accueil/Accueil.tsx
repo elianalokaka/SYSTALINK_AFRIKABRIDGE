@@ -14,9 +14,10 @@ import { portfolio } from '../../api/talents'
 import { useSession } from '../../features/auth/SessionProvider'
 import { useDemandesRecues } from '../../features/equipes/useDemandesRecues'
 import { useTableauDeBord } from '../../features/dashboard/useTableauDeBord'
-import { LIBELLES_DOMAINE } from '../../lib/labels'
+import { libelleDomaine } from '../../lib/catalogue'
 import { dateCourte, lienSur } from '../ressources/outils'
 import { libelleStatut, varianteStatut } from '../projets/statut'
+import { TalentsSuggeres } from '../talents/TalentsSuggeres'
 
 /**
  * Tableau de bord — l'écran d'accueil après connexion.
@@ -164,7 +165,7 @@ export function Accueil() {
                         <div className="flex flex-wrap gap-1.5">
                           {projet.domaines.map((d) => (
                             <Badge key={d} variante="neutre">
-                              {LIBELLES_DOMAINE[d]}
+                              {libelleDomaine(d)}
                             </Badge>
                           ))}
                         </div>
@@ -191,6 +192,8 @@ export function Accueil() {
               )}
             </CardCorps>
           </Card>
+
+          <TalentsSuggeres />
         </>
       )}
 

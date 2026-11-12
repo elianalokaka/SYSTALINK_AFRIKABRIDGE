@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { Link } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import { Button, Card, CardCorps, EmptyState, Input, SkeletonTexte } from '../../components/ui'
+import { listeCatalogues } from '../../api/profil'
 import { listerProjets } from '../../api/projets'
-import { LISTE_DOMAINES } from '../../lib/labels'
+import { domainesAffiches } from '../../lib/catalogue'
 import { CarteProjet } from './CarteProjet'
 
 const CLASSE_SELECT = 'h-9 rounded-md border border-border-strong bg-surface-1 px-3 text-sm text-fg-1'
@@ -19,6 +20,9 @@ export function Projets() {
   const [q, setQ] = useState('')
   const [statut, setStatut] = useState('')
   const [domaine, setDomaine] = useState('')
+
+  const catalogue = useQuery({ queryKey: ['skills'], queryFn: listeCatalogues })
+  const domainesFiltres = domainesAffiches(catalogue.data?.domaines)
 
   const requete = useQuery({
     queryKey: ['projets', { q, statut, domaine }],
@@ -59,7 +63,7 @@ export function Projets() {
             className={CLASSE_SELECT}
           >
             <option value="">Tous les domaines</option>
-            {LISTE_DOMAINES.map(([valeur, libelle]) => (
+            {domainesFiltres.map(([valeur, libelle]) => (
               <option key={valeur} value={valeur}>
                 {libelle}
               </option>

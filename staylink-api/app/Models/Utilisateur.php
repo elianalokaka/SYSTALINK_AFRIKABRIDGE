@@ -23,6 +23,8 @@ class Utilisateur extends Authenticatable implements MustVerifyEmail
         'photo_profil',
         'biographie',
         'pays',
+        'region',
+        'role_profil',
         'domaine',
         'titre_professionnel',
     ];
@@ -50,6 +52,54 @@ class Utilisateur extends Authenticatable implements MustVerifyEmail
     public function getRememberTokenName(): string
     {
         return 'remember_token';
+    }
+
+    /**
+     * Nom affiché dans le contrat OpenAPI (prénom + nom).
+     */
+    public function nomComplet(): string
+    {
+        return trim($this->prenom.' '.$this->nom);
+    }
+
+    /**
+     * Le contrat n'expose qu'un `nom` complet. La table conserve prénom et nom.
+     *
+     * @return array{0: string, 1: string}
+     */
+    public static function decomposerNomComplet(string $nomComplet, ?string $prenom = null): array
+    {
+        if (filled($prenom)) {
+            return [trim($prenom), trim($nomComplet)];
+        }
+
+        $complet = trim($nomComplet);
+        $espace = mb_strpos($complet, ' ');
+
+        if ($espace === false) {
+            return [$complet, $complet];
+        }
+
+        return [
+            mb_substr($complet, 0, $espace),
+            trim(mb_substr($complet, $espace)),
+        ];
+    }
+
+    /**
+     * Domaines d'intérêt du profil (contrat ProfilUpdate.domaines).
+     */
+    public function domaines(): HasMany
+    {
+        return $this->hasMany(UtilisateurDomaine::class, 'utilisateur_id');
+    }
+
+    /**
+     * Liens publics du profil (contrat LienProfil).
+     */
+    public function liens(): HasMany
+    {
+        return $this->hasMany(UtilisateurLien::class, 'utilisateur_id');
     }
 
     /**

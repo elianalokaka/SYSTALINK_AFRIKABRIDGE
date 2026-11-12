@@ -18,10 +18,15 @@ import type {
  *   - `POST /users/me/photo` : multipart, jpg/png/webp, 2 Mo max (422 sur `photo`).
  */
 
-/** Le catalogue fermé des compétences — non paginé. */
+/** Catalogue des compétences (`data`) et des domaines déjà en base (`domaines`). */
+export async function listeCatalogues(): Promise<{ competences: Competence[]; domaines: string[] }> {
+  const { data } = await client.get<{ data: Competence[]; domaines?: string[] }>('/skills')
+  return { competences: data.data, domaines: data.domaines ?? [] }
+}
+
+/** Le catalogue des compétences — non paginé. */
 export async function listeCompetences(): Promise<Competence[]> {
-  const { data } = await client.get<{ data: Competence[] }>('/skills')
-  return data.data
+  return (await listeCatalogues()).competences
 }
 
 /** Modifie mon profil (PATCH partiel). */
@@ -30,9 +35,18 @@ export async function modifierProfil(corps: ProfilUpdate): Promise<ProfilPrive> 
   return data
 }
 
-/** Remplace TOUTES mes compétences. */
-export async function definirCompetences(corps: CompetencesUpdate): Promise<CompetenceUtilisateur[]> {
-  const { data } = await client.put<{ competences: CompetenceUtilisateur[] }>('/users/me/skills', corps)
+/** Remplace TOUTES mes compétences. Un `nom` sans id crée ou réutilise une entrée du catalogue. */
+export async function definirCompetences(corps: {
+  competences: Array<{
+    competence_id?: number
+    nom?: string
+    niveau?: CompetenceUtilisateur['niveau']
+  }>
+}): Promise<CompetenceUtilisateur[]> {
+  const { data } = await client.put<{ competences: CompetenceUtilisateur[] }>(
+    '/users/me/skills',
+    corps as CompetencesUpdate,
+  )
   return data.competences
 }
 

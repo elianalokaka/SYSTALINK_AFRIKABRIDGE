@@ -32,7 +32,7 @@ class PublicationRessourceService
         }
 
         $ressource = DB::transaction(function () use ($auteur, $donnees, $fichier) {
-            $chemin = $fichier?->store('ressources', 'public');
+            $chemin = $fichier?->store('ressources', 'local');
 
             $ressource = Ressource::query()->create([
                 'utilisateur_id' => $auteur->id,
@@ -51,7 +51,10 @@ class PublicationRessourceService
                 $ressource->competences()->sync($donnees['competence_ids']);
             }
 
-            return $ressource->load(['utilisateur', 'competences']);
+            $ressource->load(['utilisateur', 'competences']);
+            $ressource->loadCount('commentaires as commentaires_count');
+
+            return $ressource;
         });
 
         return [

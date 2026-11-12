@@ -26,6 +26,7 @@ import type { QueryClient } from '@tanstack/react-query'
  *   ['ressources', filtres]         bibliothèque
  *   ['ressource', id: string]       détail d'une ressource (id issu de l'URL)
  *   ['ressources-projet', id]       onglet « Ressources » d'un projet
+ *   ['suggestions-talents', projetId] talents suggérés (P1, GET /users/suggestions)
  *   ['talents', filtres]            recherche de talents
  *   ['talent', id: string]          profil public (id issu de l'URL)
  *   ['portfolio', id: string]       projets réalisés d'un membre
@@ -45,9 +46,11 @@ export function rafraichirProjets(queryClient: QueryClient, projetId?: number): 
 
   invalider(['projets'])
   invalider(['mes-projets'])
+  invalider(['skills'])
   invalider(['mes-demandes'])
   invalider(['demandes-recues'])
   invalider(['dashboard'])
+  invalider(['suggestions-talents'])
 
   if (projetId === undefined) {
     invalider(['projet'])
@@ -72,6 +75,8 @@ export function rafraichirTalents(queryClient: QueryClient): void {
   void queryClient.invalidateQueries({ queryKey: ['talents'] })
   void queryClient.invalidateQueries({ queryKey: ['talent'] })
   void queryClient.invalidateQueries({ queryKey: ['portfolio'] })
+  void queryClient.invalidateQueries({ queryKey: ['suggestions-talents'] })
+  void queryClient.invalidateQueries({ queryKey: ['skills'] })
 }
 
 /**
@@ -81,6 +86,7 @@ export function rafraichirTalents(queryClient: QueryClient): void {
 export function rafraichirSuivi(queryClient: QueryClient): void {
   void queryClient.invalidateQueries({ queryKey: ['talents'] })
   void queryClient.invalidateQueries({ queryKey: ['talent'] })
+  void queryClient.invalidateQueries({ queryKey: ['suggestions-talents'] })
   void queryClient.invalidateQueries({ queryKey: ['abonnes'] })
   void queryClient.invalidateQueries({ queryKey: ['abonnements'] })
 }

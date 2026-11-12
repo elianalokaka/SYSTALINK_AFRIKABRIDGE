@@ -452,6 +452,8 @@ class ClientSession {
   async requete(methode, chemin, { corps, json = true, brut = false } = {}) {
     const url = `${this.racine}${chemin}`;
     const entetes = { Accept: 'application/json' };
+    entetes.Origin = 'http://localhost:5173';
+    entetes.Referer = 'http://localhost:5173/';
     const cookie = this.enTeteCookie();
     if (cookie) entetes.Cookie = cookie;
     if (methode !== 'GET' && methode !== 'HEAD') {

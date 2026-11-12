@@ -1,3 +1,4 @@
+import { normaliserTexte } from '../lib/catalogue'
 import {
   CATALOGUE_COMPETENCES,
   competenceCatalogue,
@@ -25,6 +26,7 @@ import type {
   Ressource,
   StatutDemande,
   Talent,
+  TalentSuggere,
   TypeRessource,
   UtilisateurResume,
   VisibiliteRessource,
@@ -121,6 +123,21 @@ export function catalogueCompetences(): Competence[] {
   return CATALOGUE_COMPETENCES
 }
 
+export function catalogueDomaines(): string[] {
+  const noms = new Set<string>()
+  for (const profil of profils) {
+    for (const domaine of profil.domaines ?? []) {
+      if (domaine && domaine !== 'autre') noms.add(domaine)
+    }
+  }
+  for (const projet of projets) {
+    for (const domaine of projet.domaines ?? []) {
+      if (domaine && domaine !== 'autre') noms.add(domaine)
+    }
+  }
+  return [...noms]
+}
+
 /* ── Édition du profil ────────────────────────────────────────────────────── */
 
 export function mettreAJourProfil(id: number, patch: ProfilUpdate): ProfilPrive | null {
@@ -130,16 +147,40 @@ export function mettreAJourProfil(id: number, patch: ProfilUpdate): ProfilPrive 
   return profil
 }
 
+function resoudreCompetenceCatalogue(entree: {
+  competence_id?: number
+  nom?: string
+}): Competence | undefined {
+  if (entree.competence_id != null) {
+    return CATALOGUE_COMPETENCES.find((comp) => comp.id === entree.competence_id)
+  }
+
+  const nom = entree.nom?.trim() ?? ''
+  const clef = normaliserTexte(nom)
+  if (!clef) return undefined
+
+  const existante = CATALOGUE_COMPETENCES.find((comp) => normaliserTexte(comp.nom) === clef)
+  if (existante) return existante
+
+  const creee: Competence = {
+    id: CATALOGUE_COMPETENCES.reduce((max, comp) => Math.max(max, comp.id), 0) + 1,
+    nom,
+    categorie: 'autre',
+  }
+  CATALOGUE_COMPETENCES.push(creee)
+  return creee
+}
+
 export function definirCompetences(
   id: number,
-  entrees: Array<{ competence_id: number; niveau?: string | null }>
+  entrees: Array<{ competence_id?: number; nom?: string; niveau?: string | null }>
 ): void {
   const profil = profils.find((profil) => profil.id === id)
   if (!profil) return
 
   profil.competences = entrees
     .map((entree) => {
-      const source = CATALOGUE_COMPETENCES.find((comp) => comp.id === entree.competence_id)
+      const source = resoudreCompetenceCatalogue(entree)
       return source ? { ...source, niveau: entree.niveau ?? null } : null
     })
     .filter((comp): comp is CompetenceUtilisateur => comp !== null)
@@ -798,6 +839,67 @@ export interface FiltresTalentsDb {
   pays: string | null
   region: string | null
   roleProfil: string | null
+}
+
+/**
+ * `GET /users/suggestions`.
+ * 403 si aucun projet possédé ; 404 si `projetId` inconnu ; 403 si ce n'est pas le mien.
+ */
+export function suggestionsTalentsDb(
+  userId: number,
+  filtres: { projetId?: number; limit: number }
+): { code: 200; data: TalentSuggere[] } | { code: 403 | 404 } {
+  const possedes = mesProjets(userId, { role_equipe: 'proprietaire' })
+  if (possedes.length === 0) return { code: 403 }
+
+  let cibles = possedes.filter((projet) => projet.statut === 'recrutement')
+  if (filtres.projetId !== undefined) {
+    const projet = projetParId(filtres.projetId)
+    if (!projet) return { code: 404 }
+    if (projet.createur.id !== userId) return { code: 403 }
+    cibles = [projet]
+  }
+
+  const competenceIds = [...new Set(cibles.flatMap((projet) => projet.competences_recherchees.map((c) => c.id)))]
+  const exclus = new Set<number>([userId, ...cibles.flatMap((projet) => membresDuProjet(projet.id))])
+
+  const ranges = profils
+    .filter((profil) => !exclus.has(profil.id))
+    .map((profil) => {
+      const correspondantes = profil.competences.filter((comp) => competenceIds.includes(comp.id))
+      return { profil, correspondantes }
+    })
+    .filter((ligne) => competenceIds.length > 0 && ligne.correspondantes.length > 0)
+    .sort(
+      (a, b) =>
+        b.correspondantes.length - a.correspondantes.length || a.profil.nom.localeCompare(b.profil.nom, 'fr')
+    )
+    .slice(0, filtres.limit)
+
+  return {
+    code: 200,
+    data: ranges.map(({ profil, correspondantes }) => {
+      const pub = profilPublicDb(profil.id, userId) as Profil
+      return {
+        id: pub.id,
+        nom: pub.nom,
+        photo_url: pub.photo_url,
+        pays: pub.pays,
+        role_profil: pub.role_profil,
+        region: pub.region,
+        bio_courte: pub.bio_courte,
+        competences: pub.competences,
+        domaines: pub.domaines,
+        followers_count: pub.followers_count,
+        is_following: pub.is_following,
+        competences_correspondantes: correspondantes.map((comp) => ({
+          id: comp.id,
+          nom: comp.nom,
+          categorie: comp.categorie,
+        })),
+      }
+    }),
+  }
 }
 
 /** `GET /users` : l'utilisateur connecté est EXCLU des résultats ; tri par nom. */

@@ -1,6 +1,7 @@
 import { http, HttpResponse } from 'msw'
 import {
   catalogueCompetences,
+  catalogueDomaines,
   definirCompetences,
   definirPhoto,
   mettreAJourProfil,
@@ -35,7 +36,10 @@ function lireCommeDataUrl(fichier: File): Promise<string> {
 export const handlersProfil = [
   /* 1. Le catalogue fermé des compétences. */
   http.get('/api/v1/skills', () => {
-    return HttpResponse.json({ data: catalogueCompetences() }, { status: 200 })
+    return HttpResponse.json(
+      { data: catalogueCompetences(), domaines: catalogueDomaines() },
+      { status: 200 },
+    )
   }),
 
   /* 2. Modifier mon profil (PATCH partiel). */

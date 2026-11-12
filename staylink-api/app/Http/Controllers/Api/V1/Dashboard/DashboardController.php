@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api\V1\Dashboard;
 use App\Http\Controllers\Controller;
 use App\Models\Abonnement;
 use App\Models\Candidature;
-use App\Models\Invitation;
 use App\Models\MembreProjet;
 use App\Models\Projet;
 use App\Models\Utilisateur;
@@ -21,30 +20,31 @@ class DashboardController extends Controller
         $utilisateur = $request->user();
 
         $mesProjets = Projet::query()
-            ->select([
-                'id',
-                'nom',
-                'domaine',
-                'statut',
-                'progression',
-                'nombre_max_membres',
-            ])
             ->whereHas('membres', fn (Builder $query) => $query
                 ->where('utilisateurs.id', $utilisateur->id))
+            ->with('domaines')
             ->withCount('participations')
             ->orderByDesc('updated_at')
             ->orderByDesc('id')
             ->limit(5)
             ->get()
-            ->map(fn (Projet $projet): array => [
-                'id' => $projet->id,
-                'nom' => $projet->nom,
-                'domaine' => $projet->domaine,
-                'statut' => $projet->statut,
-                'progression' => $projet->progression,
-                'nombre_membres_souhaite' => $projet->nombre_max_membres,
-                'nombre_membres_actuel' => $projet->participations_count,
-            ])
+            ->map(function (Projet $projet): array {
+                $domaines = $projet->domaines->pluck('domaine')->values()->all();
+
+                if ($domaines === [] && filled($projet->domaine)) {
+                    $domaines = [$projet->domaine];
+                }
+
+                return [
+                    'id' => $projet->id,
+                    'nom' => $projet->nom,
+                    'domaines' => $domaines,
+                    'statut' => $projet->statut,
+                    'progression' => (int) $projet->progression,
+                    'nombre_membres_souhaite' => $projet->nombre_max_membres,
+                    'nombre_membres_actuel' => $projet->participations_count,
+                ];
+            })
             ->values();
 
         return response()->json([
@@ -59,10 +59,6 @@ class DashboardController extends Controller
                 ->count(),
             'mes_demandes_en_attente' => Candidature::query()
                 ->where('candidat_id', $utilisateur->id)
-                ->where('statut', 'en_attente')
-                ->count(),
-            'invitations_recues_en_attente' => Invitation::query()
-                ->where('destinataire_id', $utilisateur->id)
                 ->where('statut', 'en_attente')
                 ->count(),
             'followers_count' => Abonnement::query()

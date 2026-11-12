@@ -19,6 +19,7 @@ class PortfolioUtilisateurController extends Controller
             ->where('statut', 'termine')
             ->whereHas('membres', fn ($query) => $query->whereKey($id))
             ->with(['membres', 'domaines', 'competences', 'createur'])
+            ->withCount('participations')
             ->orderByRaw('date_fin DESC NULLS LAST')
             ->orderByDesc('id')
             ->get();

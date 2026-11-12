@@ -4,7 +4,6 @@ namespace Tests\Feature\Dashboard;
 
 use App\Models\Abonnement;
 use App\Models\Candidature;
-use App\Models\Invitation;
 use App\Models\MembreProjet;
 use App\Models\Projet;
 use App\Models\Utilisateur;
@@ -46,18 +45,6 @@ class DashboardTest extends TestCase
             'candidat_id' => $utilisateur->id,
         ]);
 
-        $invitationRecue = Invitation::query()->create([
-            'projet_id' => $projetExterne->id,
-            'expediteur_id' => $autreProprietaire->id,
-            'destinataire_id' => $utilisateur->id,
-        ]);
-        $invitationTraitee = Invitation::query()->create([
-            'projet_id' => $projetExterne->id,
-            'expediteur_id' => $autreProprietaire->id,
-            'destinataire_id' => $candidatExterne->id,
-        ]);
-        $invitationTraitee->update(['statut' => 'acceptee']);
-
         Abonnement::query()->create([
             'abonne_id' => $autreProprietaire->id,
             'suivi_id' => $utilisateur->id,
@@ -78,7 +65,7 @@ class DashboardTest extends TestCase
                 'mes_projets' => [[
                     'id',
                     'nom',
-                    'domaine',
+                    'domaines',
                     'statut',
                     'progression',
                     'nombre_membres_souhaite',
@@ -87,14 +74,12 @@ class DashboardTest extends TestCase
                 'projets_count',
                 'demandes_recues_en_attente',
                 'mes_demandes_en_attente',
-                'invitations_recues_en_attente',
                 'followers_count',
                 'following_count',
             ])
             ->assertJsonPath('projets_count', 6)
             ->assertJsonPath('demandes_recues_en_attente', 1)
             ->assertJsonPath('mes_demandes_en_attente', 1)
-            ->assertJsonPath('invitations_recues_en_attente', 1)
             ->assertJsonPath('followers_count', 2)
             ->assertJsonPath('following_count', 1);
 
@@ -103,10 +88,9 @@ class DashboardTest extends TestCase
             collect($reponse->json('mes_projets'))->pluck('id')->all()
         );
         $this->assertSame($projets[5]->id, $reponse->json('mes_projets.0.id'));
-        $this->assertSame('agriculture', $reponse->json('mes_projets.0.domaine'));
+        $this->assertSame(['agriculture'], $reponse->json('mes_projets.0.domaines'));
         $this->assertSame(1, $reponse->json('mes_projets.0.nombre_membres_actuel'));
         $this->assertSame('en_attente', $candidatureRecue->fresh()->statut);
-        $this->assertSame('en_attente', $invitationRecue->fresh()->statut);
     }
 
     public function test_dashboard_refuse_les_visiteurs_non_authentifies(): void
@@ -126,7 +110,6 @@ class DashboardTest extends TestCase
             ->assertJsonPath('projets_count', 0)
             ->assertJsonPath('demandes_recues_en_attente', 0)
             ->assertJsonPath('mes_demandes_en_attente', 0)
-            ->assertJsonPath('invitations_recues_en_attente', 0)
             ->assertJsonPath('followers_count', 0)
             ->assertJsonPath('following_count', 0);
     }
@@ -154,6 +137,8 @@ class DashboardTest extends TestCase
             'statut' => 'en_cours',
             'progression' => 40,
         ]);
+
+        $projet->domaines()->create(['domaine' => 'agriculture']);
 
         MembreProjet::query()->create([
             'projet_id' => $projet->id,
