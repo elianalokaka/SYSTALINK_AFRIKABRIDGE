@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Badge, Button, Card, CardCorps, FormField, Input, Textarea } from '../../components/ui'
 import { creerRessource, modifierRessource } from '../../api/ressources'
-import { listeCompetences } from '../../api/profil'
+import { listeCatalogues } from '../../api/profil'
 import { mesProjets } from '../../api/projets'
 import { ErreurApi, messageErreur } from '../../api/erreurs'
 import { rafraichirRessources } from '../../lib/cache'
@@ -45,7 +45,7 @@ export function FormulaireRessource({ ressource }: { ressource?: Ressource }) {
   const [erreurs, setErreurs] = useState<Record<string, string>>({})
   const [erreurGlobale, setErreurGlobale] = useState<string | null>(null)
 
-  const catalogue = useQuery({ queryKey: ['skills'], queryFn: listeCompetences })
+  const catalogue = useQuery({ queryKey: ['skills'], queryFn: listeCatalogues })
   const projets = useQuery({
     queryKey: ['mes-projets', 'formulaire-ressource'],
     queryFn: () => mesProjets({ per_page: 50 }),
@@ -272,7 +272,7 @@ export function FormulaireRessource({ ressource }: { ressource?: Ressource }) {
               <span className="text-sm font-medium text-fg-1">Compétences associées</span>
               <p className="text-xs text-fg-3">Elles aident les autres à retrouver ta ressource.</p>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {(catalogue.data ?? []).map((comp) => (
+                {(catalogue.data?.competences ?? []).map((comp) => (
                   <label key={comp.id} className="flex items-center gap-2 text-sm text-fg-2">
                     <input
                       type="checkbox"

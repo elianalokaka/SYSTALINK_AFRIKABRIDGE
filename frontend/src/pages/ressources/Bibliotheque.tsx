@@ -3,7 +3,7 @@ import { Link } from 'react-router'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { Button, Card, CardCorps, EmptyState, Input, SkeletonTexte } from '../../components/ui'
 import { listerRessources } from '../../api/ressources'
-import { listeCompetences } from '../../api/profil'
+import { listeCatalogues } from '../../api/profil'
 import { useSession } from '../../features/auth/SessionProvider'
 import { LISTE_TYPES_RESSOURCE } from '../../lib/labels'
 import type { TypeRessource } from '../../types'
@@ -26,7 +26,7 @@ export function Bibliotheque() {
   const [miennes, setMiennes] = useState(false)
   const [page, setPage] = useState(1)
 
-  const catalogue = useQuery({ queryKey: ['skills'], queryFn: listeCompetences })
+  const catalogue = useQuery({ queryKey: ['skills'], queryFn: listeCatalogues })
 
   const filtres = {
     q: q.trim() || undefined,
@@ -96,7 +96,7 @@ export function Bibliotheque() {
             className={CLASSE_SELECT}
           >
             <option value="">Toutes les compétences</option>
-            {(catalogue.data ?? []).map((comp) => (
+            {(catalogue.data?.competences ?? []).map((comp) => (
               <option key={comp.id} value={comp.id}>
                 {comp.nom}
               </option>
