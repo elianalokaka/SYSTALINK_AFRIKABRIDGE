@@ -7,8 +7,10 @@ import { listeCatalogues } from '../../api/profil'
 import { mesProjets } from '../../api/projets'
 import { ErreurApi, messageErreur } from '../../api/erreurs'
 import { rafraichirRessources } from '../../lib/cache'
-import { LIBELLES_TYPE_RESSOURCE, LISTE_TYPES_RESSOURCE } from '../../lib/labels'
+import { useLibelles } from '../../lib/labels'
 import type { Ressource, TypeRessource, VisibiliteRessource } from '../../types'
+import { useNomCompetence } from '../../lib/competences'
+import { useI18n } from '../../i18n'
 import { champsDuType, EXTENSIONS_FICHIER, TAILLE_MAX_FICHIER } from './outils'
 
 const CLASSE_SELECT = 'h-9 w-full rounded-md border border-border-strong bg-surface-1 px-3 text-sm text-fg-1'
@@ -25,6 +27,9 @@ const LANGAGES = ['php', 'javascript', 'typescript', 'python', 'java', 'sql', 'b
  * dans tous les autres cas on l'omet et le serveur décide (AGENTS.md § 2).
  */
 export function FormulaireRessource({ ressource }: { ressource?: Ressource }) {
+  const { t } = useI18n()
+  const L = useLibelles()
+  const nomComp = useNomCompetence()
   const edition = ressource !== undefined
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -60,11 +65,11 @@ export function FormulaireRessource({ ressource }: { ressource?: Ressource }) {
     const extension = f.name.split('.').pop()?.toLowerCase() ?? ''
     if (!EXTENSIONS_FICHIER.includes(extension)) {
       setFichier(null)
-      return setErreurs((e) => ({ ...e, fichier: 'Formats acceptés : pdf, docx, zip, png, jpg.' }))
+      return setErreurs((e) => ({ ...e, fichier: t('formRessource.formatsAcceptes') }))
     }
     if (f.size > TAILLE_MAX_FICHIER) {
       setFichier(null)
-      return setErreurs((e) => ({ ...e, fichier: 'Le fichier ne doit pas dépasser 10 Mo.' }))
+      return setErreurs((e) => ({ ...e, fichier: t('formRessource.fichierTropGros') }))
     }
     setFichier(f)
   }
@@ -78,9 +83,9 @@ export function FormulaireRessource({ ressource }: { ressource?: Ressource }) {
     setErreurs({})
     setErreurGlobale(null)
 
-    if (!titre.trim()) return setErreurs({ titre: 'Le titre est obligatoire.' })
+    if (!titre.trim()) return setErreurs({ titre: t('formRessource.titreObligatoire') })
     if (!edition && type === 'document' && !fichier) {
-      return setErreurs({ fichier: 'Choisis le fichier à partager.' })
+      return setErreurs({ fichier: t('formRessource.fichierObligatoire') })
     }
 
     setChargement(true)
@@ -118,8 +123,8 @@ export function FormulaireRessource({ ressource }: { ressource?: Ressource }) {
       } else {
         setErreurGlobale(
           messageErreur(erreur, {
-            403: "Tu n'as pas le droit de faire cela (membre du projet requis).",
-            413: 'Le fichier est trop volumineux (16 Mo maximum).',
+            403: t('formRessource.interdit'),
+            413: t('formRessource.tropVolumineux'),
           })
         )
       }
@@ -132,15 +137,15 @@ export function FormulaireRessource({ ressource }: { ressource?: Ressource }) {
     <div className="flex flex-col gap-6">
       <div>
         <Link to={edition ? `/ressources/${ressource.id}` : '/ressources'} className="mb-3 inline-flex min-h-9 items-center text-sm text-fg-2 hover:text-fg-1">
-          ← {edition ? 'Retour à la ressource' : 'Bibliothèque'}
+          ← {edition ? t('formRessource.retourRessource') : t('biblio.titre')}
         </Link>
         <h1 className="text-lg font-semibold text-fg-1">
-          {edition ? 'Modifier la ressource' : 'Partager une ressource'}
+          {edition ? t('formRessource.titreEdition') : t('formRessource.titreCreation')}
         </h1>
         <p className="mt-1 text-sm text-fg-2">
           {edition
-            ? 'Le type, le fichier et la visibilité ne peuvent pas être changés après publication.'
-            : 'Du code, un lien, un tutoriel, une API ou un document utile à la communauté.'}
+            ? t('formRessource.introEdition')
+            : t('formRessource.introCreation')}
         </p>
       </div>
 
@@ -149,10 +154,10 @@ export function FormulaireRessource({ ressource }: { ressource?: Ressource }) {
           <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
             {edition ? (
               <div className="flex items-center gap-2 text-sm text-fg-2">
-                Type : <Badge variante="accent">{LIBELLES_TYPE_RESSOURCE[ressource.type]}</Badge>
+                {t('formRessource.type')}<Badge variante="accent">{L.typeRessource[ressource.type]}</Badge>
               </div>
             ) : (
-              <FormField id="type" label="Type de ressource" obligatoire erreur={erreurs.type}>
+              <FormField id="type" label={t('formRessource.typeLabel')} obligatoire erreur={erreurs.type}>
                 <select
                   id="type"
                   value={type}
@@ -162,7 +167,7 @@ export function FormulaireRessource({ ressource }: { ressource?: Ressource }) {
                   }}
                   className={CLASSE_SELECT}
                 >
-                  {LISTE_TYPES_RESSOURCE.map(([valeur, libelle]) => (
+                  {L.listeTypesRessource.map(([valeur, libelle]) => (
                     <option key={valeur} value={valeur}>
                       {libelle}
                     </option>
@@ -171,14 +176,14 @@ export function FormulaireRessource({ ressource }: { ressource?: Ressource }) {
               </FormField>
             )}
 
-            <FormField id="titre" label="Titre" obligatoire aide="200 caractères maximum." erreur={erreurs.titre}>
+            <FormField id="titre" label={t('formRessource.titre')} obligatoire aide={t('formRessource.titreAide')} erreur={erreurs.titre}>
               <Input id="titre" value={titre} maxLength={200} onChange={(e) => setTitre(e.target.value)} />
             </FormField>
 
             <FormField
               id="description"
-              label="Description"
-              aide="2000 caractères maximum."
+              label={t('formRessource.description')}
+              aide={t('formRessource.descriptionAide')}
               erreur={erreurs.description}
             >
               <Textarea
@@ -187,16 +192,16 @@ export function FormulaireRessource({ ressource }: { ressource?: Ressource }) {
                 maxLength={2000}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="À quoi sert cette ressource ? Pour qui ?"
+                placeholder={t('formRessource.descriptionExemple')}
               />
             </FormField>
 
             {champs.url && (
               <FormField
                 id="url"
-                label="Lien (URL)"
+                label={t('formRessource.url')}
                 obligatoire={champs.urlObligatoire}
-                aide="Commence par https://"
+                aide={t('formRessource.urlAide')}
                 erreur={erreurs.url}
               >
                 <Input
@@ -212,11 +217,11 @@ export function FormulaireRessource({ ressource }: { ressource?: Ressource }) {
 
             {champs.code && (
               <>
-                <FormField id="langage" label="Langage" erreur={erreurs.langage}>
+                <FormField id="langage" label={t('formRessource.langage')} erreur={erreurs.langage}>
                   <Input
                     id="langage"
                     list="langages"
-                    placeholder="php, python, sql…"
+                    placeholder={t('formRessource.langageExemple')}
                     value={langage}
                     onChange={(e) => setLangage(e.target.value)}
                   />
@@ -228,8 +233,8 @@ export function FormulaireRessource({ ressource }: { ressource?: Ressource }) {
                 </FormField>
                 <FormField
                   id="code"
-                  label="Code"
-                  aide={`${code.length}/20000 caractères`}
+                  label={t('formRessource.code')}
+                  aide={t('formRessource.codeCompteur', { n: code.length })}
                   erreur={erreurs.contenu_code}
                 >
                   <Textarea
@@ -248,9 +253,9 @@ export function FormulaireRessource({ ressource }: { ressource?: Ressource }) {
             {champs.fichier && !edition && (
               <FormField
                 id="fichier"
-                label="Fichier"
+                label={t('formRessource.fichier')}
                 obligatoire
-                aide="pdf, docx, zip, png ou jpg — 10 Mo maximum."
+                aide={t('formRessource.fichierAide')}
                 erreur={erreurs.fichier}
               >
                 <input
@@ -262,15 +267,15 @@ export function FormulaireRessource({ ressource }: { ressource?: Ressource }) {
                 />
                 {fichier && (
                   <p className="mt-1 text-xs text-fg-3">
-                    {fichier.name} · {(fichier.size / 1024 / 1024).toFixed(2)} Mo
+                    {t('formRessource.fichierTaille', { nom: fichier.name, taille: (fichier.size / 1024 / 1024).toFixed(2) })}
                   </p>
                 )}
               </FormField>
             )}
 
             <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium text-fg-1">Compétences associées</span>
-              <p className="text-xs text-fg-3">Elles aident les autres à retrouver ta ressource.</p>
+              <span className="text-sm font-medium text-fg-1">{t('formRessource.competences')}</span>
+              <p className="text-xs text-fg-3">{t('formRessource.competencesAide')}</p>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {(catalogue.data?.competences ?? []).map((comp) => (
                   <label key={comp.id} className="flex items-center gap-2 text-sm text-fg-2">
@@ -280,7 +285,7 @@ export function FormulaireRessource({ ressource }: { ressource?: Ressource }) {
                       onChange={() => basculerCompetence(comp.id)}
                       className="h-4 w-4 rounded-sm border border-border-strong bg-surface-1"
                     />
-                    {comp.nom}
+                    {nomComp(comp.nom)}
                   </label>
                 ))}
               </div>
@@ -290,9 +295,9 @@ export function FormulaireRessource({ ressource }: { ressource?: Ressource }) {
             {!edition && (
               <FormField
                 id="projet"
-                label="Où la partager ?"
+                label={t('formRessource.ouPartager')}
                 erreur={erreurs.projet_id}
-                aide="Dans un de tes projets, elle n'est visible que par l'équipe, sauf si tu choisis de la rendre publique."
+                aide={t('formRessource.ouPartagerAide')}
               >
                 <select
                   id="projet"
@@ -303,10 +308,10 @@ export function FormulaireRessource({ ressource }: { ressource?: Ressource }) {
                   }}
                   className={CLASSE_SELECT}
                 >
-                  <option value="">Bibliothèque publique</option>
+                  <option value="">{t('formRessource.bibliothequePublique')}</option>
                   {(projets.data?.data ?? []).map((p) => (
                     <option key={p.id} value={p.id}>
-                      Projet : {p.nom}
+                      {t('formRessource.projetNom', { nom: p.nom })}
                     </option>
                   ))}
                 </select>
@@ -322,8 +327,7 @@ export function FormulaireRessource({ ressource }: { ressource?: Ressource }) {
                   className="mt-0.5 h-4 w-4 rounded-sm border border-border-strong bg-surface-1"
                 />
                 <span>
-                  Rendre aussi cette ressource <strong className="font-medium text-fg-1">publique</strong>{' '}
-                  (visible hors de l'équipe).
+                  {t('formRessource.rendrePublique1')}<strong className="font-medium text-fg-1">{t('formRessource.rendrePublique2')}</strong>{t('formRessource.rendrePublique3')}
                   {erreurs.visibilite && <span className="block text-xs text-danger">{erreurs.visibilite}</span>}
                 </span>
               </label>
@@ -341,10 +345,10 @@ export function FormulaireRessource({ ressource }: { ressource?: Ressource }) {
                 variante="secondaire"
                 onClick={() => navigate(edition ? `/ressources/${ressource.id}` : '/ressources')}
               >
-                Annuler
+                {t('commun.annuler')}
               </Button>
               <Button type="submit" chargement={chargement}>
-                {edition ? 'Enregistrer' : 'Publier la ressource'}
+                {edition ? t('formRessource.enregistrer') : t('formRessource.publier')}
               </Button>
             </div>
           </form>

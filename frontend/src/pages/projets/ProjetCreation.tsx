@@ -8,6 +8,9 @@ import { ErreurApi } from '../../api/erreurs'
 import { useSession } from '../../features/auth/SessionProvider'
 import { rafraichirProjets } from '../../lib/cache'
 import { competenceCataloguePour, domaineCataloguePour, domainesAffiches, domainesPourEnvoi } from '../../lib/catalogue'
+import { useLibelles } from '../../lib/labels'
+import { useI18n } from '../../i18n'
+import { useNomCompetence } from '../../lib/competences'
 import type { ProjetCreate, StatutProjetCreation } from '../../types'
 
 const CLASSE_SELECT = 'h-9 rounded-md border border-border-strong bg-surface-1 px-3 text-sm text-fg-1'
@@ -23,6 +26,9 @@ const CLASSE_SELECT = 'h-9 rounded-md border border-border-strong bg-surface-1 p
  *   - le créateur devient automatiquement `proprietaire`.
  */
 export function ProjetCreation() {
+  const { t } = useI18n()
+  const L = useLibelles()
+  const nomComp = useNomCompetence()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { profil, mettreAJourProfil } = useSession()
@@ -57,7 +63,7 @@ export function ProjetCreation() {
   const competencesCatalogue = catalogue.data?.competences ?? []
   const correspondanceDomaine = domaineCataloguePour(domaineLibre)
   const correspondanceCompetence = competenceCataloguePour(nomCompetenceLibre, competencesCatalogue)
-  const domainesCases = domainesAffiches(catalogue.data?.domaines, domaines)
+  const domainesCases = domainesAffiches(catalogue.data?.domaines, domaines, L.domaine)
 
   async function assurerCompetenceLibre(): Promise<number[]> {
     const nomSaisi = nomCompetenceLibre.trim()
@@ -112,7 +118,7 @@ export function ProjetCreation() {
       if (erreur instanceof ErreurApi && erreur.validation) {
         setErreurs(erreur.erreursParChamp())
       } else {
-        setErreurGlobale(erreur instanceof ErreurApi ? erreur.message : 'Une erreur est survenue.')
+        setErreurGlobale(erreur instanceof ErreurApi ? erreur.message : t('erreur.survenue'))
       }
     } finally {
       setChargement(false)
@@ -122,30 +128,30 @@ export function ProjetCreation() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-lg font-semibold text-fg-1">Créer un projet</h1>
+        <h1 className="text-lg font-semibold text-fg-1">{t('projetCreation.titre')}</h1>
         <p className="mt-1 text-sm text-fg-2">
-          Décris ton idée et les compétences que tu recherches. Tu deviendras automatiquement propriétaire.
+          {t('projetCreation.intro')}
         </p>
       </div>
 
       <Card>
         <CardCorps>
           <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
-            <FormField id="nom" label="Nom du projet" obligatoire erreur={erreurs.nom}>
+            <FormField id="nom" label={t('projetCreation.nom')} obligatoire erreur={erreurs.nom}>
               <Input
                 id="nom"
                 value={nom}
                 onChange={(e) => setNom(e.target.value)}
-                placeholder="Smart Agriculture RDC"
+                placeholder={t('projetCreation.nomExemple')}
                 invalide={Boolean(erreurs.nom)}
               />
             </FormField>
 
             <FormField
               id="description"
-              label="Description"
+              label={t('projetCreation.description')}
               obligatoire
-              aide="3000 caractères maximum."
+              aide={t('projetCreation.descriptionAide')}
               erreur={erreurs.description}
             >
               <Textarea
@@ -153,15 +159,15 @@ export function ProjetCreation() {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={4}
-                placeholder="Quel problème ton projet résout-il ?"
+                placeholder={t('projetCreation.descriptionExemple')}
               />
             </FormField>
 
             <FormField
               id="objectifs"
-              label="Objectifs"
+              label={t('projetCreation.objectifs')}
               obligatoire
-              aide="2000 caractères maximum."
+              aide={t('projetCreation.objectifsAide')}
               erreur={erreurs.objectifs}
             >
               <Textarea
@@ -169,16 +175,16 @@ export function ProjetCreation() {
                 value={objectifs}
                 onChange={(e) => setObjectifs(e.target.value)}
                 rows={3}
-                placeholder="Que veux-tu accomplir concrètement ?"
+                placeholder={t('projetCreation.objectifsExemple')}
               />
             </FormField>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <FormField
                 id="membres"
-                label="Membres recherchés"
+                label={t('projetCreation.membres')}
                 obligatoire
-                aide="Entre 2 et 50."
+                aide={t('projetCreation.membresAide')}
                 erreur={erreurs.nombre_membres_souhaite}
               >
                 <Input
@@ -191,22 +197,22 @@ export function ProjetCreation() {
                 />
               </FormField>
 
-              <FormField id="statut" label="Statut" obligatoire erreur={erreurs.statut}>
+              <FormField id="statut" label={t('projetCreation.statut')} obligatoire erreur={erreurs.statut}>
                 <select
                   id="statut"
                   value={statut}
                   onChange={(e) => setStatut(e.target.value as StatutProjetCreation)}
                   className={`${CLASSE_SELECT} w-full`}
                 >
-                  <option value="recrutement">Ouvert — je recrute</option>
-                  <option value="en_cours">En cours</option>
+                  <option value="recrutement">{t('projetCreation.statutOuvert')}</option>
+                  <option value="en_cours">{L.statutProjet.en_cours}</option>
                 </select>
               </FormField>
             </div>
 
             <div className="flex flex-col gap-2">
               <div className="flex items-baseline justify-between">
-                <span className="text-sm font-medium text-fg-1">Domaines</span>
+                <span className="text-sm font-medium text-fg-1">{t('projetCreation.domaines')}</span>
                 <span className="text-xs text-fg-3">{domaines.length}/3</span>
               </div>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -237,19 +243,19 @@ export function ProjetCreation() {
                     onChange={() => basculerDomaine('autre')}
                     className="h-4 w-4 rounded-sm border border-border-strong bg-surface-1"
                   />
-                  Autre
+                  {t('libre.autre')}
                 </label>
               </div>
               {domaines.includes('autre') && (
                 <FormField
                   id="domaine-libre"
-                  label="Précise le domaine"
+                  label={t('libre.preciseDomaine')}
                   aide={
                     correspondanceDomaine
-                      ? `Ce domaine existe déjà dans le catalogue : « ${correspondanceDomaine.libelle} ».`
+                      ? t('libre.domaineExiste', { nom: L.domaine[correspondanceDomaine.valeur] })
                       : domaineLibre.trim()
-                        ? `Ce domaine sera enregistré sous le nom « ${domaineLibre.trim()} ».`
-                        : 'Écris le domaine. S’il existe déjà, le nom du catalogue s’affiche.'
+                        ? t('libre.domaineEnregistre', { nom: domaineLibre.trim() })
+                        : t('libre.domaineIndice')
                   }
                 >
                   <Input
@@ -263,14 +269,14 @@ export function ProjetCreation() {
                         setDomaines((prev) => [...prev.filter((d) => d !== 'autre'), connu.valeur, 'autre'].slice(0, 3))
                       }
                     }}
-                    placeholder="Ex. agroécologie"
+                    placeholder={t('libre.domaineExemple')}
                   />
                 </FormField>
               )}
             </div>
 
             <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium text-fg-1">Compétences recherchées</span>
+              <span className="text-sm font-medium text-fg-1">{t('projetCreation.competences')}</span>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {competencesCatalogue.map((comp) => (
                   <label key={comp.id} className="flex items-center gap-2 text-sm text-fg-2">
@@ -280,9 +286,20 @@ export function ProjetCreation() {
                       onChange={() => basculerCompetence(comp.id)}
                       className="h-4 w-4 rounded-sm border border-border-strong bg-surface-1"
                     />
-                    {comp.nom}
+                    {nomComp(comp.nom)}
                   </label>
                 ))}
+                {competenceLibre && nomCompetenceLibre.trim() !== '' && !correspondanceCompetence && (
+                  <label className="flex items-center gap-2 text-sm text-fg-2">
+                    <input
+                      type="checkbox"
+                      checked
+                      readOnly
+                      className="h-4 w-4 rounded-sm border border-border-strong bg-surface-1"
+                    />
+                    {nomCompetenceLibre.trim()}
+                  </label>
+                )}
               </div>
               <label className="flex items-center gap-2 text-sm text-fg-2">
                 <input
@@ -294,25 +311,25 @@ export function ProjetCreation() {
                   }}
                   className="h-4 w-4 rounded-sm border border-border-strong bg-surface-1"
                 />
-                Autre — la compétence n’est pas dans la liste
+                {t('libre.autreCompetence')}
               </label>
               {competenceLibre && (
                 <FormField
                   id="competence-libre"
-                  label="Nom de la compétence"
+                  label={t('libre.nomCompetence')}
                   aide={
                     correspondanceCompetence
-                      ? `Cette compétence existe déjà : « ${correspondanceCompetence.nom} ».`
+                      ? t('libre.competenceExiste', { nom: nomComp(correspondanceCompetence.nom) })
                       : nomCompetenceLibre.trim()
-                        ? 'Cette compétence sera ajoutée au catalogue.'
-                        : 'Écris le nom. S’il existe déjà (même avec une autre casse), le nom du catalogue s’affiche.'
+                        ? t('libre.competenceAjoutee')
+                        : t('libre.competenceIndice')
                   }
                 >
                   <Input
                     id="competence-libre"
                     value={nomCompetenceLibre}
                     onChange={(e) => setNomCompetenceLibre(e.target.value)}
-                    placeholder="Ex. Rust"
+                    placeholder={t('libre.competenceExemple')}
                   />
                 </FormField>
               )}
@@ -325,7 +342,7 @@ export function ProjetCreation() {
             )}
 
             <Button type="submit" chargement={chargement}>
-              {chargement ? 'Création…' : 'Créer le projet'}
+              {chargement ? t('projetCreation.boutonEnCours') : t('projetCreation.bouton')}
             </Button>
           </form>
         </CardCorps>

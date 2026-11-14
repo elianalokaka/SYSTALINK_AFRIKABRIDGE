@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router'
 import { Button, Card, CardCorps, ChampMotDePasse, FormField, Input } from '../../components/ui'
 import { useTitreDocument } from '../../components/layout/useSuiviDeRoute'
 import { ErreurApi } from '../../api/erreurs'
+import { useI18n } from '../../i18n'
+import { MiseEnPageAuth } from './MiseEnPageAuth'
 import { useSession } from '../../features/auth/SessionProvider'
 import type { UserLogin } from '../../types'
 
@@ -18,7 +20,8 @@ import type { UserLogin } from '../../types'
  * C'est un hors-périmètre confirmé — on ne l'ajoute pas discrètement.
  */
 export function Connexion() {
-  useTitreDocument('Connexion')
+  const { t } = useI18n()
+  useTitreDocument(t('connexion.titre'))
   const { seConnecter } = useSession()
   const navigate = useNavigate()
   const [chargement, setChargement] = useState(false)
@@ -45,10 +48,10 @@ export function Connexion() {
       if (erreur instanceof ErreurApi) {
         if (erreur.validation) setErreurs(erreur.erreursParChamp())
         else if (erreur.tropDeRequetes) {
-          setErreurGlobale(`Trop de tentatives. Réessaie dans ${erreur.retryAfter ?? 60} secondes.`)
+          setErreurGlobale(t('connexion.tropDeTentatives', { secondes: erreur.retryAfter ?? 60 }))
         } else setErreurGlobale(erreur.message)
       } else {
-        setErreurGlobale('Une erreur inattendue est survenue.')
+        setErreurGlobale(t('erreur.inattendue'))
       }
     } finally {
       setChargement(false)
@@ -56,14 +59,13 @@ export function Connexion() {
   }
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-surface-0 px-4 py-10">
-      <div className="w-full max-w-sm">
+    <MiseEnPageAuth>
         <div className="mb-6">
-          <h1 className="text-lg font-semibold text-fg-1">Connexion</h1>
+          <h1 className="text-lg font-semibold text-fg-1">{t('connexion.titre')}</h1>
           <p className="mt-1 text-sm text-fg-2">
-            Pas encore de compte ?{' '}
+            {t('connexion.sansCompte')}{' '}
             <Link to="/inscription" className="text-accent hover:text-accent-hover">
-              Inscris-toi
+              {t('connexion.lienInscription')}
             </Link>
           </p>
         </div>
@@ -71,13 +73,13 @@ export function Connexion() {
         <Card>
           <CardCorps>
             <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
-              <FormField id="email" label="Adresse e-mail" obligatoire erreur={erreurs.email}>
+              <FormField id="email" label={t('connexion.email')} obligatoire erreur={erreurs.email}>
                 <Input
                   id="email"
                   type="email"
                   name="email"
                   autoComplete="email"
-                  placeholder="toi@exemple.com"
+                  placeholder={t('connexion.emailExemple')}
                   invalide={Boolean(erreurs.email)}
                   aria-describedby={erreurs.email ? 'email-erreur' : undefined}
                 />
@@ -85,7 +87,7 @@ export function Connexion() {
 
               <FormField
                 id="mot-de-passe"
-                label="Mot de passe"
+                label={t('connexion.motDePasse')}
                 obligatoire
                 erreur={erreurs.mot_de_passe}
               >
@@ -104,7 +106,7 @@ export function Connexion() {
                   name="se_souvenir"
                   className="h-4 w-4 rounded-sm border border-border-strong bg-surface-1"
                 />
-                Se souvenir de moi
+                {t('connexion.seSouvenir')}
               </label>
 
               {erreurGlobale && (
@@ -114,12 +116,11 @@ export function Connexion() {
               )}
 
               <Button type="submit" chargement={chargement} pleineLargeur>
-                {chargement ? 'Connexion…' : 'Se connecter'}
+                {chargement ? t('connexion.boutonEnCours') : t('connexion.bouton')}
               </Button>
             </form>
           </CardCorps>
         </Card>
-      </div>
-    </main>
+    </MiseEnPageAuth>
   )
 }

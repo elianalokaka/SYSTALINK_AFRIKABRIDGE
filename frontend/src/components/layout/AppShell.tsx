@@ -1,3 +1,4 @@
+import { Logo } from './Logo'
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router'
 import { Avatar, Button } from '../ui'
@@ -5,6 +6,8 @@ import { useSession } from '../../features/auth/SessionProvider'
 import { useDemandesRecues } from '../../features/equipes/useDemandesRecues'
 import { cn } from '../../lib/cn'
 import { useSuiviDeRoute } from './useSuiviDeRoute'
+import { SelecteurLangue } from './SelecteurLangue'
+import { useI18n, type Cle } from '../../i18n'
 
 /**
  * OSSATURE de l'application — le cadre commun à toutes les pages protégées.
@@ -21,14 +24,14 @@ import { useSuiviDeRoute } from './useSuiviDeRoute'
  */
 
 const LIENS = [
-  { to: '/', libelle: 'Accueil', end: true },
-  { to: '/projets', libelle: 'Projets' },
-  { to: '/mes-projets', libelle: 'Mes projets', pastille: true },
-  { to: '/mes-demandes', libelle: 'Mes demandes' },
-  { to: '/ressources', libelle: 'Bibliothèque' },
-  { to: '/talents', libelle: 'Talents' },
-  { to: '/profil', libelle: 'Mon profil' },
-] as const
+  { to: '/', libelle: 'nav.accueil', end: true },
+  { to: '/projets', libelle: 'nav.projets' },
+  { to: '/mes-projets', libelle: 'nav.mesProjets', pastille: true },
+  { to: '/mes-demandes', libelle: 'nav.mesDemandes' },
+  { to: '/ressources', libelle: 'nav.bibliotheque' },
+  { to: '/talents', libelle: 'nav.talents' },
+  { to: '/profil', libelle: 'nav.profil' },
+] as const satisfies readonly { to: string; libelle: Cle; end?: boolean; pastille?: boolean }[]
 
 function IconeMenu({ ouvert }: { ouvert: boolean }) {
   return (
@@ -39,6 +42,7 @@ function IconeMenu({ ouvert }: { ouvert: boolean }) {
 }
 
 export function AppShell() {
+  const { t } = useI18n()
   const { profil, seDeconnecter } = useSession()
   const navigate = useNavigate()
   const demandesRecues = useDemandesRecues()
@@ -66,7 +70,7 @@ export function AppShell() {
     navigate('/connexion', { replace: true })
   }
 
-  const libellePastille = `${enAttente} demande${enAttente > 1 ? 's' : ''} d'adhésion en attente`
+  const libellePastille = t('nav.demandesAttente', { count: enAttente })
   const pastille = (
     <span
       aria-label={libellePastille}
@@ -84,7 +88,7 @@ export function AppShell() {
 
   const liens = LIENS.map((lien) => (
     <NavLink key={lien.to} to={lien.to} end={'end' in lien} className={classeLien} onClick={() => setMenuOuvert(false)}>
-      {lien.libelle}
+      {t(lien.libelle)}
       {'pastille' in lien && enAttente > 0 && pastille}
     </NavLink>
   ))
@@ -100,24 +104,26 @@ export function AppShell() {
         }}
         className="sr-only z-20 rounded-md border border-border-strong bg-surface-3 text-sm text-fg-1 focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:px-3 focus:py-2"
       >
-        Aller au contenu
+        {t('nav.allerContenu')}
       </a>
       <header className="sticky top-0 z-10 border-b border-border-subtle bg-surface-1">
         <div className="mx-auto flex max-w-6xl items-center gap-x-4 px-4 py-2.5 sm:px-6 lg:gap-x-6">
-          <Link to="/" className="inline-flex shrink-0 items-center py-2 text-sm font-semibold text-fg-1">
+          <Link to="/" className="inline-flex shrink-0 items-center gap-2 py-2 text-sm font-semibold text-fg-1">
+            <Logo className="h-7 w-7 shrink-0 text-accent" />
             AfricaBridge
           </Link>
 
           {/* Grand écran : tous les liens sur la ligne, sans défilement. */}
-          <nav aria-label="Navigation principale" className="hidden flex-1 items-center gap-0.5 lg:flex">
+          <nav aria-label={t('nav.principale')} className="hidden flex-1 items-center gap-0.5 lg:flex">
             {liens}
           </nav>
 
           <div className="hidden shrink-0 items-center gap-2.5 lg:ml-auto lg:flex">
+            <SelecteurLangue />
             <span className="hidden max-w-40 truncate text-sm text-fg-2 xl:inline">{profil?.nom}</span>
             <Avatar nom={profil?.nom ?? ''} photoUrl={profil?.photo_url} taille="sm" />
             <Button taille="sm" variante="discret" onClick={onDeconnexion}>
-              Déconnexion
+              {t('nav.deconnexion')}
             </Button>
           </div>
 
@@ -132,7 +138,7 @@ export function AppShell() {
               type="button"
               aria-expanded={menuOuvert}
               aria-controls="menu-mobile"
-              aria-label={menuOuvert ? 'Fermer le menu' : 'Ouvrir le menu'}
+              aria-label={menuOuvert ? t('nav.fermerMenu') : t('nav.ouvrirMenu')}
               onClick={() => setMenuOuvert((o) => !o)}
               className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border-strong text-fg-1 transition-colors hover:bg-surface-2"
             >
@@ -152,7 +158,7 @@ export function AppShell() {
         >
           <div className="overflow-hidden">
             <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-3 sm:px-6">
-              <nav aria-label="Navigation principale" className="flex flex-col gap-0.5">
+              <nav aria-label={t('nav.principale')} className="flex flex-col gap-0.5">
                 {liens}
               </nav>
               <div className="flex items-center justify-between gap-3 border-t border-border-subtle pt-3">
@@ -161,9 +167,10 @@ export function AppShell() {
                   <span className="truncate text-sm text-fg-2">{profil?.nom}</span>
                 </div>
                 <Button taille="sm" variante="secondaire" onClick={onDeconnexion}>
-                  Déconnexion
+                  {t('nav.deconnexion')}
                 </Button>
               </div>
+              <SelecteurLangue className="self-start" />
             </div>
           </div>
         </div>

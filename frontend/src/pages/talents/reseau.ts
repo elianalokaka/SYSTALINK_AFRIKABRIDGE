@@ -1,3 +1,2 @@
-/** Libellés des compteurs de suivi (accord singulier / pluriel). */
-export const libelleAbonnes = (n: number) => `${n} ${n > 1 ? 'abonnés' : 'abonné'}`
-export const libelleAbonnements = (n: number) => `${n} ${n > 1 ? 'abonnements' : 'abonnement'}`
+// Fichier obsolète : les libellés d'abonnés sont dans i18n (clés `reseau.*`). À supprimer.
+export {}

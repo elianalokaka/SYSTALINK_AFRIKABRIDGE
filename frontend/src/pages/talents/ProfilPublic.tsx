@@ -4,17 +4,14 @@ import { Avatar, Badge, Button, Card, CardCorps, CardEntete, EmptyState, Skeleto
 import { portfolio, profilPublic } from '../../api/talents'
 import { ErreurApi } from '../../api/erreurs'
 import { useSession } from '../../features/auth/SessionProvider'
-import { nomDePays } from '../../lib/constants'
-import { libelleDomaine } from '../../lib/catalogue'
-import {
-  LIBELLES_NIVEAU,
-  LIBELLES_ROLE_PROFIL,
-  LIBELLES_TYPE_LIEN,
-} from '../../lib/labels'
+import { useNomDePays } from '../../lib/pays'
+import { useLibelles } from '../../lib/labels'
 import { estLivre } from '../../lib/priorites'
-import { dateCourte, domaineDe, lienSur } from '../ressources/outils'
+import { domaineDe, lienSur } from '../ressources/outils'
 import { BoutonSuivre } from './BoutonSuivre'
 import { CompteursSuivi, ListeReseau } from './ListeReseau'
+import { useDates, useI18n } from '../../i18n'
+import { useNomCompetence } from '../../lib/competences'
 
 /**
  * Profil PUBLIC d'un membre (`GET /users/{id}`) + « Projets réalisés » (`GET /users/{id}/portfolio`).
@@ -28,6 +25,11 @@ import { CompteursSuivi, ListeReseau } from './ListeReseau'
  * Le portfolio est une section indépendante : s'il échoue, le profil reste lisible.
  */
 export function ProfilPublic() {
+  const { t } = useI18n()
+  const nomComp = useNomCompetence()
+  const { date } = useDates()
+  const L = useLibelles()
+  const nomDePays = useNomDePays()
   const { id } = useParams()
   const { profil: moi } = useSession()
 
@@ -47,7 +49,7 @@ export function ProfilPublic() {
 
   const retour = (
     <Link to="/talents" className="inline-flex min-h-9 items-center text-sm text-fg-2 hover:text-fg-1">
-      ← Talents
+      {t('profilPublic.retour')}
     </Link>
   )
 
@@ -71,16 +73,16 @@ export function ProfilPublic() {
         {retour}
         <Card>
           <EmptyState
-            titre={introuvable ? 'Membre introuvable' : 'Impossible de charger ce profil'}
-            description={introuvable ? "Ce membre n'existe pas ou n'est plus disponible." : 'Vérifie ta connexion puis réessaie.'}
+            titre={introuvable ? t('profilPublic.introuvableTitre') : t('profilPublic.chargementImpossible')}
+            description={introuvable ? t('profilPublic.introuvableTexte') : t('commun.verifierConnexion')}
             action={
               introuvable ? (
                 <Link to="/talents">
-                  <Button variante="secondaire">Voir les talents</Button>
+                  <Button variante="secondaire">{t('profilPublic.voirTalents')}</Button>
                 </Link>
               ) : (
                 <Button variante="secondaire" onClick={() => void requete.refetch()}>
-                  Réessayer
+                  {t('commun.reessayer')}
                 </Button>
               )
             }
@@ -104,15 +106,15 @@ export function ProfilPublic() {
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="break-words text-lg font-semibold text-fg-1">{membre.nom}</h1>
-              <Badge variante="info">{LIBELLES_ROLE_PROFIL[membre.role_profil]}</Badge>
+              <Badge variante="info">{L.role[membre.role_profil]}</Badge>
             </div>
             <p className="mt-1 text-sm text-fg-2">{lieu}</p>
             {membre.bio ? (
               <p className="mt-3 whitespace-pre-line break-words text-sm text-fg-1">{membre.bio}</p>
             ) : (
-              <p className="mt-3 text-sm text-fg-3">Ce membre n’a pas encore de bio.</p>
+              <p className="mt-3 text-sm text-fg-3">{t('profilPublic.sansBio')}</p>
             )}
-            <p className="mt-3 text-xs text-fg-3">Membre depuis le {dateCourte(membre.created_at)}</p>
+            <p className="mt-3 text-xs text-fg-3">{t('profilPublic.membreDepuis', { date: date(membre.created_at) })}</p>
             {suiviLivre && (
               <div className="mt-3">
                 <CompteursSuivi nbAbonnes={membre.followers_count} nbAbonnements={membre.following_count} />
@@ -129,7 +131,7 @@ export function ProfilPublic() {
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
-          <CardEntete titre="Compétences" compteur={membre.competences.length} />
+          <CardEntete titre={t('profil.competences')} compteur={membre.competences.length} />
           <CardCorps>
             {membre.competences.length > 0 ? (
               <ul className="flex flex-col gap-2">
@@ -138,44 +140,44 @@ export function ProfilPublic() {
                     key={comp.id}
                     className="flex items-center justify-between gap-3 border-b border-border-subtle pb-2 text-sm last:border-b-0 last:pb-0"
                   >
-                    <span className="text-fg-1">{comp.nom}</span>
-                    <Badge variante="neutre">{comp.niveau ? LIBELLES_NIVEAU[comp.niveau] : 'Non précisé'}</Badge>
+                    <span className="text-fg-1">{nomComp(comp.nom)}</span>
+                    <Badge variante="neutre">{comp.niveau ? L.niveau[comp.niveau] : L.niveauNonPrecise}</Badge>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-fg-3">Aucune compétence renseignée.</p>
+              <p className="text-sm text-fg-3">{t('profilPublic.aucuneCompetence')}</p>
             )}
           </CardCorps>
         </Card>
 
         <div className="flex flex-col gap-6">
           <Card>
-            <CardEntete titre="Domaines d’intérêt" compteur={membre.domaines.length} />
+            <CardEntete titre={t('profil.domaines')} compteur={membre.domaines.length} />
             <CardCorps>
               {membre.domaines.length > 0 ? (
                 <div className="flex flex-wrap gap-1.5">
                   {membre.domaines.map((d) => (
                     <Badge key={d} variante="neutre">
-                      {libelleDomaine(d)}
+                      {L.domaine[d] ?? d}
                     </Badge>
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-fg-3">Aucun domaine d’intérêt.</p>
+                <p className="text-sm text-fg-3">{t('profil.aucunDomaine')}</p>
               )}
             </CardCorps>
           </Card>
 
           <Card>
-            <CardEntete titre="Liens" compteur={membre.liens.length} />
+            <CardEntete titre={t('profil.liens')} compteur={membre.liens.length} />
             <CardCorps className="flex flex-col gap-2">
               {membre.liens.length > 0 ? (
                 membre.liens.map((lien) => {
                   const sur = lienSur(lien.url)
                   return (
                     <div key={lien.url} className="flex items-center justify-between gap-3 text-sm">
-                      <span className="shrink-0 text-fg-2">{LIBELLES_TYPE_LIEN[lien.type]}</span>
+                      <span className="shrink-0 text-fg-2">{L.typeLien[lien.type]}</span>
                       {sur ? (
                         <a
                           href={sur}
@@ -186,13 +188,13 @@ export function ProfilPublic() {
                           {domaineDe(sur)}
                         </a>
                       ) : (
-                        <span className="truncate text-fg-3">Lien non valide</span>
+                        <span className="truncate text-fg-3">{t('profilPublic.lienInvalide')}</span>
                       )}
                     </div>
                   )
                 })
               ) : (
-                <p className="text-sm text-fg-3">Aucun lien.</p>
+                <p className="text-sm text-fg-3">{t('profil.aucunLien')}</p>
               )}
             </CardCorps>
           </Card>
@@ -208,15 +210,15 @@ export function ProfilPublic() {
       )}
 
       <Card>
-        <CardEntete titre="Projets réalisés" compteur={projets.data?.length ?? membre.projets_realises_count} />
+        <CardEntete titre={t('profilPublic.projetsRealises')} compteur={projets.data?.length ?? membre.projets_realises_count} />
         <CardCorps>
           {projets.isPending ? (
             <SkeletonTexte lignes={2} />
           ) : projets.isError ? (
             <p className="text-sm text-fg-3">
-              Projets réalisés indisponibles pour le moment.{' '}
+              {t('profilPublic.projetsIndispo')}{' '}
               <button type="button" onClick={() => void projets.refetch()} className="text-accent hover:text-accent-hover">
-                Réessayer
+                {t('commun.reessayer')}
               </button>
             </p>
           ) : projets.data.length > 0 ? (
@@ -233,13 +235,13 @@ export function ProfilPublic() {
                         {projet.nom}
                       </Link>
                       {projet.date_fin && (
-                        <span className="text-xs tabular-nums text-fg-3">Terminé le {dateCourte(projet.date_fin)}</span>
+                        <span className="text-xs tabular-nums text-fg-3">{t('profilPublic.termineLe', { date: date(projet.date_fin) })}</span>
                       )}
                     </div>
                     <div className="flex flex-wrap items-center gap-1.5">
                       {projet.domaines.map((d) => (
                         <Badge key={d} variante="neutre">
-                          {libelleDomaine(d)}
+                          {L.domaine[d] ?? d}
                         </Badge>
                       ))}
                     </div>
@@ -250,7 +252,7 @@ export function ProfilPublic() {
                         rel="noopener noreferrer"
                         className="truncate py-1 text-sm text-accent hover:text-accent-hover"
                       >
-                        Voir la réalisation · {domaineDe(realisation)}
+                        {t('profilPublic.voirRealisation', { domaine: domaineDe(realisation) })}
                       </a>
                     )}
                   </li>
@@ -258,7 +260,7 @@ export function ProfilPublic() {
               })}
             </ul>
           ) : (
-            <p className="text-sm text-fg-3">Aucun projet terminé pour l’instant.</p>
+            <p className="text-sm text-fg-3">{t('profilPublic.aucunProjet')}</p>
           )}
         </CardCorps>
       </Card>

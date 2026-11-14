@@ -1,3 +1,4 @@
+import { useI18n } from '../../i18n'
 import { cn } from '../../lib/cn'
 
 type Taille = 'sm' | 'md' | 'lg'
@@ -23,11 +24,12 @@ export interface SpinnerProps {
  * C'est volontaire — sur un bouton primaire il devient sombre (accent-fg),
  * sur un bouton secondaire il devient clair. Aucune couleur en dur.
  */
-export function Spinner({ taille = 'md', label = 'Chargement…', className }: SpinnerProps) {
+export function Spinner({ taille = 'md', label, className }: SpinnerProps) {
+  const { t } = useI18n()
   return (
     <span
       role="status"
-      aria-label={label}
+      aria-label={label ?? t('commun.chargement')}
       className={cn(
         'inline-block shrink-0 animate-spin rounded-full border-current border-t-transparent',
         TAILLES[taille],

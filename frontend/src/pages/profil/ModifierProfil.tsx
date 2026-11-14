@@ -5,14 +5,11 @@ import { Avatar, Button, Card, CardCorps, CardEntete, FormField, Input, Textarea
 import { definirCompetences, envoyerPhoto, listeCatalogues, modifierProfil } from '../../api/profil'
 import { ErreurApi } from '../../api/erreurs'
 import { useSession } from '../../features/auth/SessionProvider'
-import { PAYS } from '../../lib/constants'
 import { competenceCataloguePour, domaineCataloguePour, domainesAffiches, domainesPourEnvoi } from '../../lib/catalogue'
-import {
-  LISTE_NIVEAUX,
-  LISTE_ROLES_PROFIL,
-  LISTE_TYPES_LIEN,
-  type TypeLien,
-} from '../../lib/labels'
+import { useNomsDePays } from '../../lib/pays'
+import { useI18n } from '../../i18n'
+import { useNomCompetence } from '../../lib/competences'
+import { useLibelles, type TypeLien } from '../../lib/labels'
 import type { CompetenceUtilisateur, LienProfil, NiveauCompetence, ProfilUpdate, RoleProfil } from '../../types'
 
 /**
@@ -41,6 +38,10 @@ const CLASSE_SELECT_PLEIN = `${CLASSE_SELECT} w-full`
  * le kit, et des règles d'upload du contrat.
  */
 export function ModifierProfil() {
+  const { t } = useI18n()
+  const L = useLibelles()
+  const nomComp = useNomCompetence()
+  const listePays = useNomsDePays()
   const { profil, mettreAJourProfil } = useSession()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -125,13 +126,18 @@ export function ModifierProfil() {
 
   /* ── Handlers : Compétences ───────────────────────────────────────────── */
   const competencesCatalogue = catalogue.data?.competences ?? []
-  const disponibles = competencesCatalogue.filter(
-    (comp) => !competences.some((deja) => deja.id === comp.id)
-  )
+  /* Même règle que les domaines : le catalogue affiché contient les compétences
+     déjà en base ET celles saisies à l'instant, même si elles sont déjà cochées. */
+  const competencesProposees = [
+    ...competencesCatalogue,
+    ...competences
+      .filter((comp) => !competenceCataloguePour(comp.nom, competencesCatalogue))
+      .map((comp) => ({ id: comp.id, nom: comp.nom, categorie: comp.categorie })),
+  ].sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
 
   const correspondanceDomaine = domaineCataloguePour(domaineLibre)
   const correspondanceCompetence = competenceCataloguePour(nomCompetenceLibre, competencesCatalogue)
-  const domainesCases = domainesAffiches(catalogue.data?.domaines, domaines)
+  const domainesCases = domainesAffiches(catalogue.data?.domaines, domaines, L.domaine)
 
   function ajouterCompetence() {
     if (competenceLibre) {
@@ -153,10 +159,12 @@ export function ModifierProfil() {
         ])
       }
       setNomCompetenceLibre('')
+      setCompetenceLibre(false)
       return
     }
 
     const id = Number(selection)
+    if (competences.some((deja) => deja.id === id)) return
     const source = competencesCatalogue.find((comp) => comp.id === id)
     if (!source) return
     setCompetences((prev) => [...prev, { ...source, niveau: niveauAjout }])
@@ -186,7 +194,7 @@ export function ModifierProfil() {
       setCompetences(enregistrees)
       await catalogue.refetch()
     } catch (erreur) {
-      setErreurSkills(erreur instanceof ErreurApi ? erreur.message : 'Une erreur est survenue.')
+      setErreurSkills(erreur instanceof ErreurApi ? erreur.message : t('erreur.survenue'))
     } finally {
       setChargementSkills(false)
     }
@@ -213,7 +221,7 @@ export function ModifierProfil() {
       if (erreur instanceof ErreurApi && erreur.validation) {
         setErreurPhoto(erreur.messageChamp('photo') ?? erreur.message)
       } else {
-        setErreurPhoto(erreur instanceof ErreurApi ? erreur.message : 'Une erreur est survenue.')
+        setErreurPhoto(erreur instanceof ErreurApi ? erreur.message : t('erreur.survenue'))
       }
     } finally {
       setChargementPhoto(false)
@@ -223,41 +231,41 @@ export function ModifierProfil() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-lg font-semibold text-fg-1">Modifier mon profil</h1>
-        <p className="mt-1 text-sm text-fg-2">Les changements sont appliqués par bloc.</p>
+        <h1 className="text-lg font-semibold text-fg-1">{t('modifierProfil.titre')}</h1>
+        <p className="mt-1 text-sm text-fg-2">{t('modifierProfil.intro')}</p>
       </div>
 
       {/* 1. Informations */}
       <Card>
-        <CardEntete titre="Informations" />
+        <CardEntete titre={t('modifierProfil.informations')} />
         <CardCorps>
           <form onSubmit={onEnregistrerInformations} className="flex flex-col gap-4" noValidate>
             <div className="grid gap-4 sm:grid-cols-2">
-              <FormField id="nom" label="Nom complet" obligatoire erreur={erreursInfo.nom}>
+              <FormField id="nom" label={t('modifierProfil.nom')} obligatoire erreur={erreursInfo.nom}>
                 <Input id="nom" value={nom} onChange={(e) => setNom(e.target.value)} invalide={Boolean(erreursInfo.nom)} />
               </FormField>
 
-              <FormField id="region" label="Ville ou région" erreur={erreursInfo.region}>
-                <Input id="region" value={region} onChange={(e) => setRegion(e.target.value)} placeholder="Dakar" />
+              <FormField id="region" label={t('modifierProfil.region')} erreur={erreursInfo.region}>
+                <Input id="region" value={region} onChange={(e) => setRegion(e.target.value)} placeholder={t('modifierProfil.regionExemple')} />
               </FormField>
             </div>
 
-            <FormField id="bio" label="Bio" aide="500 caractères maximum." erreur={erreursInfo.bio}>
+            <FormField id="bio" label={t('modifierProfil.bio')} aide={t('modifierProfil.bioAide')} erreur={erreursInfo.bio}>
               <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} rows={4} />
             </FormField>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <FormField id="pays" label="Pays" obligatoire erreur={erreursInfo.pays}>
+              <FormField id="pays" label={t('modifierProfil.pays')} obligatoire erreur={erreursInfo.pays}>
                 <select id="pays" value={pays} onChange={(e) => setPays(e.target.value)} className={CLASSE_SELECT_PLEIN}>
-                  {PAYS.map((p) => (
+                  {listePays.map((p) => (
                     <option key={p.code} value={p.code}>{p.nom}</option>
                   ))}
                 </select>
               </FormField>
 
-              <FormField id="role" label="Rôle" obligatoire erreur={erreursInfo.role_profil}>
+              <FormField id="role" label={t('modifierProfil.role')} obligatoire erreur={erreursInfo.role_profil}>
                 <select id="role" value={role} onChange={(e) => setRole(e.target.value as RoleProfil)} className={CLASSE_SELECT_PLEIN}>
-                  {LISTE_ROLES_PROFIL.map(([valeur, libelle]) => (
+                  {L.listeRoles.map(([valeur, libelle]) => (
                     <option key={valeur} value={valeur}>{libelle}</option>
                   ))}
                 </select>
@@ -265,7 +273,7 @@ export function ModifierProfil() {
             </div>
 
             <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium text-fg-1">Domaines d’intérêt</span>
+              <span className="text-sm font-medium text-fg-1">{t('modifierProfil.domaines')}</span>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {domainesCases.map(([valeur, libelle]) => (
                   <label key={valeur} className="flex items-center gap-2 text-sm text-fg-2">
@@ -285,19 +293,19 @@ export function ModifierProfil() {
                     onChange={() => basculerDomaine('autre')}
                     className="h-4 w-4 rounded-sm border border-border-strong bg-surface-1"
                   />
-                  Autre
+                  {t('libre.autre')}
                 </label>
               </div>
               {domaines.includes('autre') && (
                 <FormField
                   id="domaine-libre"
-                  label="Précise le domaine"
+                  label={t('libre.preciseDomaine')}
                   aide={
                     correspondanceDomaine
-                      ? `Ce domaine existe déjà dans le catalogue : « ${correspondanceDomaine.libelle} ».`
+                      ? t('libre.domaineExiste', { nom: L.domaine[correspondanceDomaine.valeur] })
                       : domaineLibre.trim()
-                        ? `Ce domaine sera enregistré sous le nom « ${domaineLibre.trim()} ».`
-                        : 'Écris le domaine. S’il existe déjà, le nom du catalogue s’affiche.'
+                        ? t('libre.domaineEnregistre', { nom: domaineLibre.trim() })
+                        : t('libre.domaineIndice')
                   }
                 >
                   <Input
@@ -311,7 +319,7 @@ export function ModifierProfil() {
                         setDomaines((prev) => [...prev.filter((d) => d !== 'autre'), connu.valeur, 'autre'])
                       }
                     }}
-                    placeholder="Ex. agroécologie"
+                    placeholder={t('libre.domaineExemple')}
                   />
                 </FormField>
               )}
@@ -319,43 +327,43 @@ export function ModifierProfil() {
 
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-fg-1">Liens</span>
+                <span className="text-sm font-medium text-fg-1">{t('modifierProfil.liens')}</span>
                 <Button type="button" taille="sm" variante="discret" onClick={ajouterLien}>
-                  Ajouter un lien
+                  {t('modifierProfil.ajouterLien')}
                 </Button>
               </div>
               <p className="text-xs text-fg-3">
-                Ton GitHub, ton LinkedIn, ton portfolio… Ces liens apparaissent sur ton profil.
+                {t('modifierProfil.liensAide')}
               </p>
-              {liens.length === 0 && <p className="text-sm text-fg-3">Aucun lien.</p>}
+              {liens.length === 0 && <p className="text-sm text-fg-3">{t('modifierProfil.aucunLien')}</p>}
               {liens.map((lien, index) => (
                 <div key={index} className="flex items-end gap-2">
                   <select
-                    aria-label="Type de lien"
+                    aria-label={t('modifierProfil.typeLien')}
                     value={lien.type}
                     onChange={(e) => changerLien(index, { type: e.target.value as TypeLien })}
                     className={`${CLASSE_SELECT} w-32 shrink-0`}
                   >
-                    {LISTE_TYPES_LIEN.map(([valeur, libelle]) => (
+                    {L.listeTypesLien.map(([valeur, libelle]) => (
                       <option key={valeur} value={valeur}>{libelle}</option>
                     ))}
                   </select>
                   <Input
-                    aria-label="URL du lien"
+                    aria-label={t('modifierProfil.urlLien')}
                     value={lien.url}
                     onChange={(e) => changerLien(index, { url: e.target.value })}
                     placeholder="https://…"
                     className="min-w-0 flex-1"
                   />
                   <Button type="button" taille="sm" variante="discret" onClick={() => setLiens((prev) => prev.filter((_, i) => i !== index))}>
-                    Retirer
+                    {t('modifierProfil.retirer')}
                   </Button>
                 </div>
               ))}
             </div>
 
             <Button type="submit" chargement={chargementInfo}>
-              {chargementInfo ? 'Enregistrement…' : 'Enregistrer les informations'}
+              {chargementInfo ? t('modifierProfil.enregistrement') : t('modifierProfil.enregistrerInfos')}
             </Button>
           </form>
         </CardCorps>
@@ -363,17 +371,17 @@ export function ModifierProfil() {
 
       {/* 2. Compétences */}
       <Card>
-        <CardEntete titre="Compétences" compteur={competences.length} />
+        <CardEntete titre={t('modifierProfil.competences')} compteur={competences.length} />
         <CardCorps className="flex flex-col gap-4">
           {competences.length === 0 && (
-            <p className="text-sm text-fg-3">Aucune compétence pour l’instant.</p>
+            <p className="text-sm text-fg-3">{t('modifierProfil.aucuneCompetence')}</p>
           )}
           <ul className="flex flex-col gap-2">
             {competences.map((comp) => (
               <li key={comp.id} className="flex items-center gap-2">
-                <span className="min-w-0 flex-1 truncate text-sm text-fg-1">{comp.nom}</span>
+                <span className="min-w-0 flex-1 truncate text-sm text-fg-1">{nomComp(comp.nom)}</span>
                 <select
-                  aria-label={`Niveau de ${comp.nom}`}
+                  aria-label={t('modifierProfil.niveauDe', { nom: nomComp(comp.nom) })}
                   value={comp.niveau ?? ''}
                   onChange={(e) =>
                     changerNiveau(comp.id, e.target.value === '' ? null : (e.target.value as NiveauCompetence))
@@ -382,13 +390,13 @@ export function ModifierProfil() {
                 >
                   {/* Option vide : un niveau non renseigné s'affiche comme tel,
                       au lieu de laisser croire qu'il vaut « Débutant ». */}
-                  <option value="">Niveau…</option>
-                  {LISTE_NIVEAUX.map(([valeur, libelle]) => (
+                  <option value="">{t('modifierProfil.niveauVide')}</option>
+                  {L.listeNiveaux.map(([valeur, libelle]) => (
                     <option key={valeur} value={valeur}>{libelle}</option>
                   ))}
                 </select>
                 <Button type="button" taille="sm" variante="discret" onClick={() => retirerCompetence(comp.id)}>
-                  Retirer
+                  {t('modifierProfil.retirer')}
                 </Button>
               </li>
             ))}
@@ -406,50 +414,50 @@ export function ModifierProfil() {
                 }}
                 className="h-4 w-4 rounded-sm border border-border-strong bg-surface-1"
               />
-              Autre — la compétence n’est pas dans la liste
+              {t('libre.autreCompetence')}
             </label>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
               {competenceLibre ? (
                 <FormField
                   id="competence-libre"
-                  label="Nom de la compétence"
+                  label={t('libre.nomCompetence')}
                   aide={
                     correspondanceCompetence
-                      ? `Cette compétence existe déjà : « ${correspondanceCompetence.nom} ».`
+                      ? t('libre.competenceExiste', { nom: nomComp(correspondanceCompetence.nom) })
                       : nomCompetenceLibre.trim()
-                        ? 'Cette compétence sera ajoutée au catalogue.'
-                        : 'Écris le nom. S’il existe déjà (même avec une autre casse), le nom du catalogue s’affiche.'
+                        ? t('libre.competenceAjoutee')
+                        : t('libre.competenceIndice')
                   }
                 >
                   <Input
                     id="competence-libre"
                     value={nomCompetenceLibre}
                     onChange={(e) => setNomCompetenceLibre(e.target.value)}
-                    placeholder="Ex. Rust"
+                    placeholder={t('libre.competenceExemple')}
                   />
                 </FormField>
               ) : (
                 <select
-                  aria-label="Ajouter une compétence"
+                  aria-label={t('modifierProfil.ajouterCompetence')}
                   value={selection}
                   onChange={(e) => setSelection(e.target.value)}
                   className={`${CLASSE_SELECT} w-full sm:flex-1`}
                 >
                   <option value="" disabled>
-                    {disponibles.length > 0 ? 'Choisir une compétence…' : 'Toutes les compétences sont ajoutées'}
+                    {competencesProposees.length > 0 ? t('modifierProfil.choisirCompetence') : t('modifierProfil.toutesAjoutees')}
                   </option>
-                  {disponibles.map((comp) => (
-                    <option key={comp.id} value={comp.id}>{comp.nom}</option>
+                  {competencesProposees.map((comp) => (
+                    <option key={comp.id} value={comp.id}>{nomComp(comp.nom)}</option>
                   ))}
                 </select>
               )}
               <select
-                aria-label="Niveau"
+                aria-label={t('modifierProfil.niveau')}
                 value={niveauAjout}
                 onChange={(e) => setNiveauAjout(e.target.value as NiveauCompetence)}
                 className={`${CLASSE_SELECT} w-full shrink-0 sm:w-36`}
               >
-                {LISTE_NIVEAUX.map(([valeur, libelle]) => (
+                {L.listeNiveaux.map(([valeur, libelle]) => (
                   <option key={valeur} value={valeur}>{libelle}</option>
                 ))}
               </select>
@@ -459,7 +467,7 @@ export function ModifierProfil() {
                 disabled={competenceLibre ? nomCompetenceLibre.trim() === '' : selection === ''}
                 onClick={ajouterCompetence}
               >
-                Ajouter
+                {t('modifierProfil.ajouter')}
               </Button>
             </div>
           </div>
@@ -471,26 +479,26 @@ export function ModifierProfil() {
           )}
 
           <Button type="button" chargement={chargementSkills} disabled={chargementSkills} onClick={onEnregistrerCompetences}>
-            {chargementSkills ? 'Enregistrement…' : 'Enregistrer mes compétences'}
+            {chargementSkills ? t('modifierProfil.enregistrement') : t('modifierProfil.enregistrerCompetences')}
           </Button>
         </CardCorps>
       </Card>
 
       {/* 3. Photo */}
       <Card>
-        <CardEntete titre="Photo de profil" />
+        <CardEntete titre={t('modifierProfil.photo')} />
         <CardCorps className="flex flex-col gap-4">
           <div className="flex items-center gap-4">
             <Avatar nom={profil.nom} photoUrl={apercu ?? profil.photo_url} taille="lg" />
             <div className="flex flex-col gap-1 text-sm text-fg-2">
-              <span>jpg, png ou webp — 2 Mo maximum.</span>
+              <span>{t('modifierProfil.photoAide')}</span>
               {fichier && <span className="text-fg-1">{fichier.name}</span>}
             </div>
           </div>
 
           <input
             type="file"
-            aria-label="Choisir une photo de profil"
+            aria-label={t('modifierProfil.choisirPhoto')}
             accept="image/jpeg,image/png,image/webp"
             onChange={onChoisirFichier}
             className="text-sm text-fg-2 file:mr-3 file:cursor-pointer file:rounded-md file:border file:border-border file:bg-surface-2 file:px-3 file:py-1.5 file:text-sm file:text-fg-1 file:transition-colors hover:file:bg-surface-3"
@@ -509,7 +517,7 @@ export function ModifierProfil() {
             disabled={!fichier}
             onClick={onEnregistrerPhoto}
           >
-            {chargementPhoto ? 'Envoi…' : 'Enregistrer la photo'}
+            {chargementPhoto ? t('modifierProfil.envoi') : t('modifierProfil.enregistrerPhoto')}
           </Button>
         </CardCorps>
       </Card>

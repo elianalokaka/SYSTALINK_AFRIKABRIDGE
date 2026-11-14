@@ -20,15 +20,16 @@ import { demandesDuProjet, membresDuProjet, retirerMembre, traiterDemande } from
 import { useSession } from '../../features/auth/SessionProvider'
 import { useDemandesRecues } from '../../features/equipes/useDemandesRecues'
 import { oublierProjet, rafraichirProjets } from '../../lib/cache'
-import { libelleDomaine } from '../../lib/catalogue'
-import { LIBELLES_ROLE_PROFIL } from '../../lib/labels'
-import { libelleStatutDemande, varianteStatutDemande } from '../equipes/statutDemande'
+import { useLibelles } from '../../lib/labels'
+import { varianteStatutDemande } from '../equipes/statutDemande'
 import { Discussion } from '../messagerie/Discussion'
 import { OngletRessources } from '../ressources/OngletRessources'
 import { TalentsSuggeres } from '../talents/TalentsSuggeres'
 import { BoutonRejoindre } from './BoutonRejoindre'
-import { libelleStatut, varianteStatut } from './statut'
+import { varianteStatut } from './statut'
 import type { DemandeAdhesion, Projet } from '../../types'
+import { useI18n } from '../../i18n'
+import { useNomCompetence } from '../../lib/competences'
 
 /**
  * Détail d'un projet, organisé en ONGLETS.
@@ -40,6 +41,8 @@ import type { DemandeAdhesion, Projet } from '../../types'
  *   - « Demandes »→ propriétaire uniquement, accepter / refuser.
  */
 export function ProjetDetail() {
+  const { t } = useI18n()
+  const L = useLibelles()
   const { id } = useParams()
   const { profil } = useSession()
   const navigate = useNavigate()
@@ -60,8 +63,8 @@ export function ProjetDetail() {
 
   async function onSupprimer() {
     const confirme = await confirmer({
-      titre: 'Supprimer définitivement ce projet ?',
-      description: 'Ses ressources et ses discussions seront supprimées avec lui. Cette action est irréversible.',
+      titre: t('projetDetail.confirmerTitre'),
+      description: t('projetDetail.confirmerTexte'),
     })
     if (!confirme) return
     setErreurAction(null)
@@ -97,18 +100,18 @@ export function ProjetDetail() {
   if (introuvable) {
     return (
       <EmptyState
-        titre="Projet introuvable"
-        description="Ce projet n'existe pas ou a été supprimé."
-        action={<Button variante="secondaire" onClick={() => navigate('/projets')}>Retour aux projets</Button>}
+        titre={t('projetDetail.introuvableTitre')}
+        description={t('projetDetail.introuvableTexte')}
+        action={<Button variante="secondaire" onClick={() => navigate('/projets')}>{t('projetDetail.retourProjets')}</Button>}
       />
     )
   }
   if (!requete.data) {
     return (
       <EmptyState
-        titre="Impossible de charger ce projet"
+        titre={t('projetDetail.chargementImpossible')}
         description={messageErreur(requete.error)}
-        action={<Button variante="secondaire" onClick={() => requete.refetch()}>Réessayer</Button>}
+        action={<Button variante="secondaire" onClick={() => requete.refetch()}>{t('commun.reessayer')}</Button>}
       />
     )
   }
@@ -117,17 +120,17 @@ export function ProjetDetail() {
   const estProprietaire = projet.createur.id === profil?.id
 
   const onglets = [
-    { id: 'vue', libelle: 'Vue' },
-    { id: 'equipe', libelle: 'Équipe', compteur: projet.nombre_membres_actuel },
+    { id: 'vue', libelle: t('projetDetail.ongletVue') },
+    { id: 'equipe', libelle: t('projetDetail.ongletEquipe'), compteur: projet.nombre_membres_actuel },
     /* La discussion est réservée aux membres (le propriétaire en est un) : 403 sinon. */
     ...(projet.is_member
       ? [
-          { id: 'discussion', libelle: 'Discussion' },
-          { id: 'ressources', libelle: 'Ressources' },
+          { id: 'discussion', libelle: t('projetDetail.ongletDiscussion') },
+          { id: 'ressources', libelle: t('projetDetail.ongletRessources') },
         ]
       : []),
     ...(estProprietaire
-      ? [{ id: 'demandes', libelle: 'Demandes', compteur: demandesRecues.data?.parProjet[projet.id] || undefined }]
+      ? [{ id: 'demandes', libelle: t('projetDetail.ongletDemandes'), compteur: demandesRecues.data?.parProjet[projet.id] || undefined }]
       : []),
   ]
 
@@ -135,19 +138,19 @@ export function ProjetDetail() {
     <div className="flex flex-col gap-6">
       <div>
         <Link to={'/projets'} className="mb-3 inline-flex min-h-9 items-center text-sm text-fg-2 hover:text-fg-1">
-          ← Tous les projets
+          {t('projetDetail.tousProjets')}
         </Link>
 
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-xl font-semibold text-fg-1">{projet.nom}</h1>
-              <Badge variante={varianteStatut(projet.statut)}>{libelleStatut(projet.statut)}</Badge>
+              <Badge variante={varianteStatut(projet.statut)}>{L.statutProjet[projet.statut]}</Badge>
             </div>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {projet.domaines.map((domaine) => (
                 <Badge key={domaine} variante="neutre">
-                  {libelleDomaine(domaine)}
+                  {L.domaine[domaine] ?? domaine}
                 </Badge>
               ))}
             </div>
@@ -156,10 +159,10 @@ export function ProjetDetail() {
           {estProprietaire ? (
             <div className="flex gap-2">
               <Button variante="secondaire" onClick={() => navigate(`/projets/${projet.id}/modifier`)}>
-                Modifier
+                {t('projetDetail.modifier')}
               </Button>
               <Button variante="danger" onClick={onSupprimer}>
-                Supprimer
+                {t('commun.supprimer')}
               </Button>
             </div>
           ) : (
@@ -193,32 +196,34 @@ export function ProjetDetail() {
 /* ── Onglet « Vue » ───────────────────────────────────────────────────────── */
 
 function VueProjet({ projet, estProprietaire }: { projet: Projet; estProprietaire: boolean }) {
+  const { t } = useI18n()
+  const L = useLibelles()
+  const nomComp = useNomCompetence()
   return (
     <>
       <Card>
         <CardCorps className="flex flex-col gap-3">
           <div className="flex items-center justify-between gap-3">
-            <span className="text-sm text-fg-2">Avancement</span>
+            <span className="text-sm text-fg-2">{t('projetDetail.avancement')}</span>
             <span className="text-sm font-medium text-fg-1">{projet.progression} %</span>
           </div>
           <ProgressBar valeur={projet.progression} afficherValeur={false} />
           <p className="text-xs text-fg-3">
-            {projet.nombre_membres_actuel} membre{projet.nombre_membres_actuel > 1 ? 's' : ''} sur{' '}
-            {projet.nombre_membres_souhaite} recherché{projet.nombre_membres_souhaite > 1 ? 's' : ''}
+            {t('projetDetail.effectif', { count: projet.nombre_membres_actuel, souhaite: projet.nombre_membres_souhaite })}
           </p>
         </CardCorps>
       </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
-          <CardEntete titre="Description" />
+          <CardEntete titre={t('projetDetail.description')} />
           <CardCorps>
             <p className="text-sm text-fg-1">{projet.description}</p>
           </CardCorps>
         </Card>
 
         <Card>
-          <CardEntete titre="Objectifs" />
+          <CardEntete titre={t('projetDetail.objectifs')} />
           <CardCorps>
             <p className="text-sm text-fg-1">{projet.objectifs}</p>
           </CardCorps>
@@ -226,30 +231,30 @@ function VueProjet({ projet, estProprietaire }: { projet: Projet; estProprietair
       </div>
 
       <Card>
-        <CardEntete titre="Compétences recherchées" compteur={projet.competences_recherchees.length} />
+        <CardEntete titre={t('projetDetail.competences')} compteur={projet.competences_recherchees.length} />
         <CardCorps>
           {projet.competences_recherchees.length > 0 ? (
             <div className="flex flex-wrap gap-1.5">
               {projet.competences_recherchees.map((comp) => (
                 <Badge key={comp.id} variante="accent">
-                  {comp.nom}
+                  {nomComp(comp.nom)}
                 </Badge>
               ))}
             </div>
           ) : (
-            <p className="text-sm text-fg-3">Aucune compétence recherchée.</p>
+            <p className="text-sm text-fg-3">{t('projetDetail.aucuneCompetence')}</p>
           )}
         </CardCorps>
       </Card>
 
       <Card>
-        <CardEntete titre="Créé par" />
+        <CardEntete titre={t('projetDetail.creePar')} />
         <CardCorps className="flex items-center gap-3">
           <Avatar nom={projet.createur.nom} photoUrl={projet.createur.photo_url} taille="md" />
           <div className="min-w-0">
             <Link to={`/talents/${projet.createur.id}`} className="block truncate py-1 text-sm font-medium text-fg-1 hover:text-accent">{projet.createur.nom}</Link>
             <p className="truncate text-xs text-fg-2">
-              {LIBELLES_ROLE_PROFIL[projet.createur.role_profil]}
+              {L.role[projet.createur.role_profil]}
             </p>
           </div>
         </CardCorps>
@@ -264,7 +269,7 @@ function VueProjet({ projet, estProprietaire }: { projet: Projet; estProprietair
 
       {projet.lien_realisation && (
         <Card>
-          <CardEntete titre="Livrable" />
+          <CardEntete titre={t('projetDetail.livrable')} />
           <CardCorps>
             <a
               href={projet.lien_realisation}
@@ -284,6 +289,8 @@ function VueProjet({ projet, estProprietaire }: { projet: Projet; estProprietair
 /* ── Onglet « Équipe » ────────────────────────────────────────────────────── */
 
 function OngletEquipe({ projetId, estProprietaire }: { projetId: number; estProprietaire: boolean }) {
+  const { t } = useI18n()
+  const L = useLibelles()
   const queryClient = useQueryClient()
   const { profil } = useSession()
   const requete = useQuery({ queryKey: ['membres', projetId], queryFn: () => membresDuProjet(projetId) })
@@ -296,8 +303,8 @@ function OngletEquipe({ projetId, estProprietaire }: { projetId: number; estProp
     } catch (e) {
       setErreur(
         messageErreur(e, {
-          404: "Cette personne ne fait déjà plus partie de l'équipe.",
-          409: "Le propriétaire ne peut pas quitter son propre projet : supprime-le à la place.",
+          404: t('projetDetail.dejaPlusMembre'),
+          409: t('projetDetail.proprioNePeutQuitter'),
         })
       )
     }
@@ -319,7 +326,7 @@ function OngletEquipe({ projetId, estProprietaire }: { projetId: number; estProp
 
   return (
     <Card>
-      <CardEntete titre="Membres" compteur={membres.length} />
+      <CardEntete titre={t('projetDetail.membres')} compteur={membres.length} />
       <CardCorps className="flex flex-col gap-2">
         {erreur && (
           <p role="alert" className="text-sm text-danger">
@@ -340,16 +347,16 @@ function OngletEquipe({ projetId, estProprietaire }: { projetId: number; estProp
                 <div className="min-w-0">
                   <Link to={`/talents/${membre.utilisateur.id}`} className="block truncate py-1 text-sm font-medium text-fg-1 hover:text-accent">{membre.utilisateur.nom}</Link>
                   <p className="truncate text-xs text-fg-2">
-                    {LIBELLES_ROLE_PROFIL[membre.utilisateur.role_profil]}
+                    {L.role[membre.utilisateur.role_profil]}
                   </p>
                 </div>
               </div>
 
               <div className="flex shrink-0 items-center gap-2">
-                {membre.role_equipe === 'proprietaire' && <Badge variante="accent">Propriétaire</Badge>}
+                {membre.role_equipe === 'proprietaire' && <Badge variante="accent">{t('projetDetail.proprietaire')}</Badge>}
                 {peutAgir && (
                   <Button taille="sm" variante="discret" onClick={() => onRetirer(membre.utilisateur.id)}>
-                    {moi ? 'Quitter' : 'Retirer'}
+                    {moi ? t('projetDetail.quitter') : t('projetDetail.retirer')}
                   </Button>
                 )}
               </div>
@@ -364,6 +371,8 @@ function OngletEquipe({ projetId, estProprietaire }: { projetId: number; estProp
 /* ── Onglet « Demandes » (propriétaire) ───────────────────────────────────── */
 
 function OngletDemandes({ projetId }: { projetId: number }) {
+  const { t } = useI18n()
+  const L = useLibelles()
   const queryClient = useQueryClient()
   const requete = useQuery({
     queryKey: ['demandes-projet', projetId, 'en_attente'],
@@ -381,15 +390,15 @@ function OngletDemandes({ projetId }: { projetId: number }) {
         type: 'succes',
         texte:
           decision === 'acceptee'
-            ? `${demande.utilisateur.nom} fait maintenant partie de l'équipe.`
-            : `La demande de ${demande.utilisateur.nom} a été refusée.`,
+            ? t('projetDetail.accepteeMsg', { nom: demande.utilisateur.nom })
+            : t('projetDetail.refuseeMsg', { nom: demande.utilisateur.nom }),
       })
     } catch (e) {
       setRetour({
         type: 'erreur',
         texte: messageErreur(e, {
-          404: 'Cette demande a été annulée par son auteur.',
-          409: 'Cette demande a déjà été traitée, ou ton équipe est complète.',
+          404: t('projetDetail.demandeAnnulee'),
+          409: t('projetDetail.demandeTraitee'),
         }),
       })
     } finally {
@@ -413,7 +422,7 @@ function OngletDemandes({ projetId }: { projetId: number }) {
 
   return (
     <Card>
-      <CardEntete titre="Demandes d'adhésion" compteur={demandes.length} />
+      <CardEntete titre={t('projetDetail.demandesTitre')} compteur={demandes.length} />
       <CardCorps className="flex flex-col gap-2">
         {retour && (
           <p role="status" className={retour.type === 'erreur' ? 'text-sm text-danger' : 'text-sm text-success'}>
@@ -422,8 +431,8 @@ function OngletDemandes({ projetId }: { projetId: number }) {
         )}
         {demandes.length === 0 ? (
           <EmptyState
-            titre="Aucune demande pour l'instant"
-            description="Les talents qui veulent rejoindre ton équipe apparaîtront ici."
+            titre={t('projetDetail.aucuneDemande')}
+            description={t('projetDetail.aucuneDemandeTexte')}
           />
         ) : (
           demandes.map((demande) => (
@@ -442,7 +451,7 @@ function OngletDemandes({ projetId }: { projetId: number }) {
                   {demande.message ? (
                     <p className="text-xs text-fg-2">« {demande.message} »</p>
                   ) : (
-                    <p className="text-xs text-fg-3">Sans message.</p>
+                    <p className="text-xs text-fg-3">{t('demandes.sansMessage')}</p>
                   )}
                 </div>
               </div>
@@ -456,15 +465,15 @@ function OngletDemandes({ projetId }: { projetId: number }) {
                       chargement={enCours === demande.id}
                       onClick={() => onDecision(demande, 'refusee')}
                     >
-                      Refuser
+                      {t('projetDetail.refuser')}
                     </Button>
                     <Button taille="sm" chargement={enCours === demande.id} onClick={() => onDecision(demande, 'acceptee')}>
-                      Accepter
+                      {t('projetDetail.accepter')}
                     </Button>
                   </>
                 ) : (
                   <Badge variante={varianteStatutDemande(demande.statut)}>
-                    {libelleStatutDemande(demande.statut)}
+                    {L.statutDemande[demande.statut]}
                   </Badge>
                 )}
               </div>

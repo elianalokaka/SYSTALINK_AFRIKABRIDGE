@@ -14,10 +14,11 @@ import { portfolio } from '../../api/talents'
 import { useSession } from '../../features/auth/SessionProvider'
 import { useDemandesRecues } from '../../features/equipes/useDemandesRecues'
 import { useTableauDeBord } from '../../features/dashboard/useTableauDeBord'
-import { libelleDomaine } from '../../lib/catalogue'
-import { dateCourte, lienSur } from '../ressources/outils'
-import { libelleStatut, varianteStatut } from '../projets/statut'
+import { lienSur } from '../ressources/outils'
+import { varianteStatut } from '../projets/statut'
 import { TalentsSuggeres } from '../talents/TalentsSuggeres'
+import { useLibelles } from '../../lib/labels'
+import { useDates, useI18n } from '../../i18n'
 
 /**
  * Tableau de bord — l'écran d'accueil après connexion.
@@ -42,6 +43,7 @@ function Tuile({
   valeur: number | null
   alerte?: boolean
 }) {
+  const { t } = useI18n()
   return (
     <Link to={to} className="block">
       <Card className="h-full transition-colors hover:border-border-strong">
@@ -49,7 +51,7 @@ function Tuile({
           <span className="text-2xl font-semibold tabular-nums text-fg-1">{valeur ?? '—'}</span>
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm text-fg-2">{libelle}</span>
-            {alerte && valeur !== null && valeur > 0 && <Badge variante="attente">À traiter</Badge>}
+            {alerte && valeur !== null && valeur > 0 && <Badge variante="attente">{t('accueil.aTraiter')}</Badge>}
           </div>
         </CardCorps>
       </Card>
@@ -58,6 +60,9 @@ function Tuile({
 }
 
 export function Accueil() {
+  const { t } = useI18n()
+  const { date } = useDates()
+  const L = useLibelles()
   const { profil } = useSession()
   const tableau = useTableauDeBord()
   const demandesRecues = useDemandesRecues()
@@ -74,18 +79,18 @@ export function Accueil() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="break-words text-lg font-semibold text-fg-1">Bonjour {prenom}</h1>
-        <p className="mt-1 text-sm text-fg-2">Voici où en sont tes projets et tes demandes bien.</p>
+        <h1 className="break-words text-lg font-semibold text-fg-1">{t('accueil.bonjour', { prenom })}</h1>
+        <p className="mt-1 text-sm text-fg-2">{t('accueil.intro')}</p>
       </div>
 
       {profilIncomplet && (
         <Card>
           <CardCorps className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-fg-1">
-              Complète ton profil (bio, compétences) pour apparaître dans les recherches de talents.
+              {t('accueil.completerTexte')}
             </p>
             <Link to="/profil/modifier" className="shrink-0">
-              <Button variante="secondaire">Compléter mon profil</Button>
+              <Button variante="secondaire">{t('accueil.completer')}</Button>
             </Link>
           </CardCorps>
         </Card>
@@ -100,11 +105,11 @@ export function Accueil() {
       ) : tableau.isError || !donnees ? (
         <Card>
           <EmptyState
-            titre="Impossible de charger ton tableau de bord"
-            description="Vérifie ta connexion puis réessaie."
+            titre={t('accueil.chargementImpossible')}
+            description={t('commun.verifierConnexion')}
             action={
               <Button variante="secondaire" onClick={() => void tableau.refetch()}>
-                Réessayer
+                {t('commun.reessayer')}
               </Button>
             }
           />
@@ -112,33 +117,33 @@ export function Accueil() {
       ) : (
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <Tuile to="/mes-projets" libelle="Mes projets" valeur={donnees.projets_count} />
+            <Tuile to="/mes-projets" libelle={t('accueil.tuileProjets')} valeur={donnees.projets_count} />
             <Tuile
               to="/mes-projets"
-              libelle="Demandes à traiter"
+              libelle={t('accueil.tuileATraiter')}
               valeur={donnees.demandes_recues_en_attente}
               alerte
             />
-            <Tuile to="/mes-demandes" libelle="Mes demandes en attente" valeur={donnees.mes_demandes_en_attente} />
+            <Tuile to="/mes-demandes" libelle={t('accueil.tuileEnAttente')} valeur={donnees.mes_demandes_en_attente} />
           </div>
 
           <div className="flex flex-wrap gap-3">
             <Link to="/projets/nouveau">
-              <Button>Créer un projet</Button>
+              <Button>{t('projets.creer')}</Button>
             </Link>
             <Link to="/projets">
-              <Button variante="secondaire">Explorer les projets</Button>
+              <Button variante="secondaire">{t('projets.titre')}</Button>
             </Link>
             <Link to="/talents">
-              <Button variante="secondaire">Trouver des talents</Button>
+              <Button variante="secondaire">{t('accueil.trouverTalents')}</Button>
             </Link>
             <Link to="/ressources/nouveau">
-              <Button variante="secondaire">Partager une ressource</Button>
+              <Button variante="secondaire">{t('biblio.partager')}</Button>
             </Link>
           </div>
 
           <Card>
-            <CardEntete titre="Mes projets récents" compteur={donnees.projets_count} />
+            <CardEntete titre={t('accueil.projetsRecents')} compteur={donnees.projets_count} />
             <CardCorps>
               {donnees.projets.length > 0 ? (
                 <ul className="flex flex-col gap-4">
@@ -156,16 +161,16 @@ export function Accueil() {
                           <div className="flex items-center gap-2">
                             {enAttente > 0 && (
                               <Badge variante="attente">
-                                {enAttente} demande{enAttente > 1 ? 's' : ''}
+                                {t('accueil.demandes', { count: enAttente })}
                               </Badge>
                             )}
-                            <Badge variante={varianteStatut(projet.statut)}>{libelleStatut(projet.statut)}</Badge>
+                            <Badge variante={varianteStatut(projet.statut)}>{L.statutProjet[projet.statut]}</Badge>
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-1.5">
                           {projet.domaines.map((d) => (
                             <Badge key={d} variante="neutre">
-                              {libelleDomaine(d)}
+                              {L.domaine[d] ?? d}
                             </Badge>
                           ))}
                         </div>
@@ -176,15 +181,15 @@ export function Accueil() {
                 </ul>
               ) : (
                 <EmptyState
-                  titre="Tu n'as pas encore de projet"
-                  description="Crée le tien ou rejoins une équipe qui recrute."
+                  titre={t('accueil.aucunProjetTitre')}
+                  description={t('accueil.aucunProjetTexte')}
                   action={
                     <div className="flex flex-wrap justify-center gap-3">
                       <Link to="/projets/nouveau">
-                        <Button>Créer un projet</Button>
+                        <Button>{t('projets.creer')}</Button>
                       </Link>
                       <Link to="/projets">
-                        <Button variante="secondaire">Explorer les projets</Button>
+                        <Button variante="secondaire">{t('projets.titre')}</Button>
                       </Link>
                     </div>
                   }
@@ -198,12 +203,12 @@ export function Accueil() {
       )}
 
       <Card>
-        <CardEntete titre="Mes projets réalisés" compteur={realises.data?.length} />
+        <CardEntete titre={t('accueil.realises')} compteur={realises.data?.length} />
         <CardCorps>
           {realises.isPending ? (
             <SkeletonTexte lignes={2} />
           ) : realises.isError ? (
-            <p className="text-sm text-fg-3">Projets réalisés indisponibles pour le moment.</p>
+            <p className="text-sm text-fg-3">{t('accueil.realisesIndispo')}</p>
           ) : realises.data.length > 0 ? (
             <ul className="flex flex-col gap-3">
               {realises.data.map((projet) => {
@@ -216,17 +221,17 @@ export function Accueil() {
                     <span className="flex items-center gap-3 text-xs text-fg-3">
                       {realisation && (
                         <a href={realisation} target="_blank" rel="noopener noreferrer" className="py-1 text-accent hover:text-accent-hover">
-                          Voir la réalisation
+                          {t('accueil.voirRealisation')}
                         </a>
                       )}
-                      {projet.date_fin && <span className="tabular-nums">Terminé le {dateCourte(projet.date_fin)}</span>}
+                      {projet.date_fin && <span className="tabular-nums">{t('profilPublic.termineLe', { date: date(projet.date_fin) })}</span>}
                     </span>
                   </li>
                 )
               })}
             </ul>
           ) : (
-            <p className="text-sm text-fg-3">Tes projets terminés apparaîtront ici, dans ton portfolio.</p>
+            <p className="text-sm text-fg-3">{t('accueil.realisesVide')}</p>
           )}
         </CardCorps>
       </Card>

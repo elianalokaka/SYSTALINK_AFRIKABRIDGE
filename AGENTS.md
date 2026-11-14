@@ -223,7 +223,7 @@ Rayons : `--radius-sm: 4px` · `--radius-md: 6px` (défaut) · `--radius-lg: 8px
    Du blanc sur `#f55800` donne **3.34:1** → échec WCAG. Vérifié par calcul.
 2. **Les champs utilisent `border-border-strong`**, pas `border`. Quand la bordure est le seul
    repère d'un contrôle, WCAG 1.4.11 exige 3:1 (`border-strong` = 3.09:1, `border` = 1.60:1).
-3. **L'accent est réservé à l'ACTION**, jamais à un état. Les états ont leur propre échelle
+3. **L'accent est réservé à l'ACTION**, jamais à un état. **Seule exception décidée : le logo de la marque** (favicon, barre de navigation, écran de connexion), qui est orange. Les états ont leur propre échelle
    sémantique. Sinon l'accent perd son sens.
 4. **Le focus visible est posé UNE fois**, sur `:focus-visible` dans `index.css`.
    Aucun composant ne le redéfinit.
@@ -396,8 +396,10 @@ qu'aucun `node_modules` n'apparaît** avant de commiter.
 | **8** | `feat/dashboard` | tableau de bord (repli P0, bascule P1 prête) + projets réalisés | ✅ **code prêt · à tester puis fusionner** |
 | **9** | `feat/follow` | suivi entre développeurs : bouton Suivre (optimiste), compteurs, carte « Réseau » (Abonnés / Abonnements) ; P1 simulé comme livré, interrupteur `priorites.follow` | ✅ fusionné |
 | **10** | `feat/commentaires` | fil de commentaires sous une ressource (publier, supprimer en 2 temps, pagination, compteurs) ; P1 simulé comme livré, interrupteur `priorites.commentaires` | ✅ fusionné |
-| **11** | `feat/finitions` | passe finale UX : focus sur le 1er champ invalide, boîte de confirmation accessible (remplace 3 `window.confirm`), afficher/masquer le mot de passe | ✅ **code prêt · à tester puis fusionner** |
-| **12+** | à définir | le reste du P1 (suggestions, `/stats`), si le planning tient | ⬜ |
+| **11** | `feat/finitions` | passe finale UX : focus sur le 1er champ invalide, boîte de confirmation accessible (remplace 3 `window.confirm`), afficher/masquer le mot de passe | ✅ fusionné |
+| **12** | `feat/identite-visuelle` | logo AfricaBridge : favicon (SVG, ICO, PNG, icône tactile), logo dans la barre de navigation, écran de connexion / inscription en deux colonnes (identité à gauche, formulaire à droite) | ✅ fusionné |
+| **13** | `feat/langues` | site bilingue FR / EN : infrastructure `src/i18n/` (dictionnaires typés, pluriels, `useI18n`), bouton de langue (connexion, inscription, barre de navigation), pays traduits ; modules traduits un par un | 🟡 **phases 1-4 codées (auth, navigation, composants communs, pays, enums, compétences, dates, profil, talents, suivi, demandes, projets, ressources, commentaires, discussion, accueil) · reste : tests finaux, merge vers `frontend` quand l'utilisateur est rassuré** |
+| **14+** | à définir | le reste du P1 (suggestions, `/stats`), si le planning tient | ⬜ |
 
 **Pourquoi cet ordre** : le design system d'abord (sinon chaque module réinvente ses boutons) ;
 puis `api-et-auth` (c'est là que vit le code le plus risqué du projet — le rejeu 419, les deux
@@ -438,11 +440,27 @@ racines, le curseur). Prouver ça tôt évite de découvrir le problème la veil
   `useConfirmation.tsx` (`<dialog>` natif modal, focus initial sur Annuler, Échap, clic sur le fond, focus rendu au
   bouton) remplacent les 3 `window.confirm` (projet, ressource, message) ; (3) `ChampMotDePasse.tsx` (Afficher/Masquer,
   `aria-pressed`, nom accessible constant) sur Connexion et Inscription (2 champs). Hypothèse : `ASSUMPTIONS.md` A-22.
+- **Module 12 (`feat/identite-visuelle`) codé + `tsc` 0** : le logo (3 pétales autour d'un triangle, `#F55800`) est le SVG
+  fourni, dans `public/favicon.svg` (source graphique) et en composant `components/layout/Logo.tsx` (décoratif, couleur =
+  jeton `accent`). Favicon : SVG + `favicon.ico` (16/32/48) + `favicon-32.png` + `apple-touch-icon.png` (180, fond sombre).
+  Navbar : logo 28 px + nom. Connexion / Inscription : `pages/auth/MiseEnPageAuth.tsx` (2 colonnes ≥ 1024 px, logo 128 px,
+  nom, description ; en dessous, logo + nom + phrase d'accroche puis formulaire). Le `<h1>` reste celui du formulaire.
 - **Règles permanentes** : le site est **toujours responsive** (vérifier 320 / 375 / 768 px) · à la fin de
   chaque module, **rappeler à l'utilisateur de mettre le dépôt à jour** (commit, push, PR, fusion, `git pull`).
   - Règle : **toute nouvelle écriture appelle `rafraichirProjets()`** ; les clés de cache sont
     documentées en tête de `lib/cache.ts`.
 
+- **Module 13 (`feat/langues`), phase 1 codée + `tsc` 0** : `src/i18n/` (`fr.ts` = référence, `en.ts` typé `Record<keyof typeof fr, string>`,
+  `traduire.ts` pur avec pluriels `_one`/`_other` et `{variables}`, `I18nProvider`, `useI18n()` → `{ langue, locale, changerLangue, t }`).
+  Langue en `localStorage` (`africabridge_langue`), `<html lang>` mis à jour, **aucun remontage** de l'arbre (l'état des formulaires est
+  conservé). `SelecteurLangue` (connexion, inscription, barre, menu mobile). Traduits : connexion, inscription, navigation, 404,
+  composants communs, noms de pays (`lib/pays.ts`). **Règle : plus aucun texte visible en dur dans un composant** — clé dans
+  `fr.ts` ET `en.ts`. **Phase 2 codée** : libellés d'enums via `useLibelles()` (`lib/labels.ts` : `L.role[x]`, `L.domaine[x]`, `L.listeRoles`…, valeur→clé typée), noms de
+  compétences via `useNomCompetence()` (`lib/competences.ts`, repli sur le nom de l'API), dates via `useDates()` (`i18n/dates.ts`, fini les `'fr-FR'`
+  en dur), pages profil, modifier profil, talents, profil public, réseau/suivi, mes demandes. **Phases 3-4 codées** : projets (liste, carte, création, édition, détail, rejoindre), messages d'erreur HTTP par défaut
+  (`api/erreurs.ts` + `traduireCourant`), ressources, commentaires (pluriels), discussion (« Hier / Aujourd'hui »), accueil, libellés d'accessibilité.
+  Balayage final fait : plus de texte visible en dur hors `pages/atelier/` (page de dev, volontairement non traduite) et hors mocks.
+  `pages/talents/reseau.ts` est vide et à supprimer. Hypothèses : `A-23`, `V-17`.
 ### À faire, dans l'ordre
 1. **Tester puis fusionner `feat/finitions`** (scénario dans le récap du module). Reste de la passe finale : test lecteur d'écran, répétition du scénario de démonstration, préparation de la bascule vers le vrai backend (`INTEGRATION.md`).
 2. Le reste du P1 si le backend le livre (suggestions, `/stats`).

@@ -4,6 +4,7 @@ import { messageErreur } from '../../api/erreurs'
 import { useDiscussion } from '../../features/messagerie/useDiscussion'
 import { useSession } from '../../features/auth/SessionProvider'
 import type { Message } from '../../types'
+import { useDates, useI18n, type Cle } from '../../i18n'
 
 const LONGUEUR_MAX = 2000
 /** Deux messages du même auteur à moins de 5 min d'écart forment un seul groupe. */
@@ -13,17 +14,14 @@ const SEUIL_BAS_PX = 80
 
 /* ── Dates : conversion à l'AFFICHAGE uniquement, les données restent en UTC (A-11) ── */
 
-const heure = (iso: string) =>
-  new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-
-function libelleJour(iso: string): string {
+function libelleJour(iso: string, locale: string, t: (cle: Cle) => string): string {
   const jour = new Date(iso)
   const aujourdhui = new Date()
   const hier = new Date()
   hier.setDate(aujourdhui.getDate() - 1)
-  if (jour.toDateString() === aujourdhui.toDateString()) return "Aujourd'hui"
-  if (jour.toDateString() === hier.toDateString()) return 'Hier'
-  return jour.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+  if (jour.toDateString() === aujourdhui.toDateString()) return t('discussion.aujourdhui')
+  if (jour.toDateString() === hier.toDateString()) return t('discussion.hier')
+  return jour.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })
 }
 
 /**
@@ -34,6 +32,7 @@ function libelleJour(iso: string): string {
  * collée dessous. Les bulles ne dépassent jamais ~85 % de la largeur.
  */
 export function Discussion({ projetId, proprietaireId }: { projetId: number; proprietaireId: number }) {
+  const { t } = useI18n()
   const { profil } = useSession()
   const fil = useDiscussion(projetId)
   const { confirmer, dialogue } = useConfirmation()
@@ -92,8 +91,8 @@ export function Discussion({ projetId, proprietaireId }: { projetId: number; pro
     } catch (e) {
       setErreur(
         messageErreur(e, {
-          403: "Tu ne fais plus partie de ce projet : tu ne peux plus écrire.",
-          422: 'Le message doit contenir entre 1 et 2000 caractères.',
+          403: t('discussion.ecritureInterdite'),
+          422: t('discussion.longueur'),
         })
       )
     } finally {
@@ -111,15 +110,15 @@ export function Discussion({ projetId, proprietaireId }: { projetId: number; pro
 
   async function supprimer(message: Message) {
     const confirme = await confirmer({
-      titre: 'Supprimer ce message ?',
-      description: 'Il sera supprimé pour tout le monde. Cette action est irréversible.',
+      titre: t('discussion.supprimerTitre'),
+      description: t('discussion.supprimerTexte'),
     })
     if (!confirme) return
     setErreur(null)
     try {
       await fil.supprimer(message.id)
     } catch (e) {
-      setErreur(messageErreur(e, { 403: "Tu ne peux supprimer que tes messages (ou tous, si tu es propriétaire)." }))
+      setErreur(messageErreur(e, { 403: t('discussion.suppressionInterdite') }))
     }
   }
 
@@ -137,14 +136,14 @@ export function Discussion({ projetId, proprietaireId }: { projetId: number; pro
     return (
       <Card>
         <EmptyState
-          titre="Discussion indisponible"
+          titre={t('discussion.indisponible')}
           description={messageErreur(fil.erreurFatale, {
-            403: 'La discussion est réservée aux membres du projet.',
-            404: "Ce projet n'existe plus.",
+            403: t('discussion.reservee'),
+            404: t('discussion.projetDisparu'),
           })}
           action={
             <Button variante="secondaire" onClick={fil.reessayer}>
-              Réessayer
+              {t('commun.reessayer')}
             </Button>
           }
         />
@@ -156,7 +155,7 @@ export function Discussion({ projetId, proprietaireId }: { projetId: number; pro
     <Card className="flex flex-col overflow-hidden">
       {fil.reconnexion && (
         <p role="status" className="border-b border-border-subtle bg-pending-bg px-4 py-2 text-xs text-pending">
-          Connexion perdue — nouvelle tentative automatique…
+          {t('discussion.reconnexion')}
         </p>
       )}
 
@@ -166,7 +165,7 @@ export function Discussion({ projetId, proprietaireId }: { projetId: number; pro
           onScroll={surDefilement}
           className="flex h-[min(60dvh,34rem)] min-h-64 flex-col gap-1 overflow-y-auto px-3 py-4 sm:px-4"
           aria-live="polite"
-          aria-label="Messages de la discussion"
+          aria-label={t('discussion.zoneMessages')}
         >
           {messages.length > 0 && !fil.historiqueComplet && (
             <div className="mb-2 flex justify-center">
@@ -176,15 +175,15 @@ export function Discussion({ projetId, proprietaireId }: { projetId: number; pro
                 chargement={fil.historiqueEnCours}
                 onClick={() => void fil.chargerHistorique()}
               >
-                Messages précédents
+                {t('discussion.precedents')}
               </Button>
             </div>
           )}
 
           {messages.length === 0 ? (
             <EmptyState
-              titre="Aucun message pour l'instant"
-              description="Lance la discussion : présente-toi ou propose une première tâche à l'équipe."
+              titre={t('discussion.videTitre')}
+              description={t('discussion.videTexte')}
             />
           ) : (
             messages.map((message, index) => (
@@ -203,7 +202,7 @@ export function Discussion({ projetId, proprietaireId }: { projetId: number; pro
         {nouveaux > 0 && (
           <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center">
             <Button taille="sm" className="pointer-events-auto shadow-lg" onClick={() => descendre()}>
-              ↓ {nouveaux === 1 ? 'Nouveau message' : `${nouveaux} nouveaux messages`}
+              ↓ {t('discussion.nouveaux', { count: nouveaux })}
             </Button>
           </div>
         )}
@@ -217,17 +216,17 @@ export function Discussion({ projetId, proprietaireId }: { projetId: number; pro
         )}
         <div className="flex items-end gap-2">
           <Textarea
-            aria-label="Ton message"
+            aria-label={t('discussion.tonMessage')}
             rows={2}
             maxLength={LONGUEUR_MAX}
-            placeholder="Écris un message… (Entrée pour envoyer, Maj+Entrée pour passer à la ligne)"
+            placeholder={t('discussion.placeholder')}
             value={saisie}
             onChange={(e) => setSaisie(e.target.value)}
             onKeyDown={surTouche}
             className="min-h-11 max-h-40 flex-1 resize-none"
           />
           <Button type="submit" chargement={envoiEnCours} disabled={saisie.trim().length === 0}>
-            Envoyer
+            {t('discussion.envoyer')}
           </Button>
         </div>
         {saisie.length > LONGUEUR_MAX - 200 && (
@@ -254,7 +253,10 @@ function LigneMessage({
   peutSupprimer: boolean
   onSupprimer: () => void
 }) {
-  const nouveauJour = !precedent || libelleJour(precedent.created_at) !== libelleJour(message.created_at)
+  const { t } = useI18n()
+  const { heure, locale } = useDates()
+  const jour = (iso: string) => libelleJour(iso, locale, t)
+  const nouveauJour = !precedent || jour(precedent.created_at) !== jour(message.created_at)
   const nouveauGroupe =
     nouveauJour ||
     precedent.auteur.id !== message.auteur.id ||
@@ -265,7 +267,7 @@ function LigneMessage({
       {nouveauJour && (
         <div className="my-2 flex items-center gap-3 text-xs text-fg-3">
           <span className="h-px flex-1 bg-border-subtle" />
-          <span className="capitalize">{libelleJour(message.created_at)}</span>
+          <span className="capitalize">{jour(message.created_at)}</span>
           <span className="h-px flex-1 bg-border-subtle" />
         </div>
       )}
@@ -301,14 +303,15 @@ function LigneMessage({
 
 /** Visible au survol (souris) ET au focus clavier ; toujours visible sur écran tactile. */
 function BoutonSupprimer({ onClick }: { onClick: () => void }) {
+  const { t } = useI18n()
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label="Supprimer ce message"
+      aria-label={t('discussion.supprimerCeMessage')}
       className="shrink-0 rounded-md px-1.5 py-1 text-xs text-fg-3 transition-colors hover:bg-danger-bg hover:text-danger focus-visible:opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100"
     >
-      Supprimer
+      {t('discussion.supprimer')}
     </button>
   )
 }

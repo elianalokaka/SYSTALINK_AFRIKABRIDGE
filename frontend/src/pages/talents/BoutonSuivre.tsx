@@ -4,6 +4,7 @@ import { useSession } from '../../features/auth/SessionProvider'
 import { useSuivi } from '../../features/suivi/useSuivi'
 import { ErreurApi, messageErreur } from '../../api/erreurs'
 import { estLivre } from '../../lib/priorites'
+import { useI18n } from '../../i18n'
 
 /**
  * Bouton « Suivre / Suivi » (P1 — `POST` / `DELETE /users/{id}/follow`).
@@ -27,6 +28,7 @@ export function BoutonSuivre({
   membre: { id: number; nom: string; is_following: boolean }
   taille?: 'sm' | 'md'
 }) {
+  const { t } = useI18n()
   const { profil: moi } = useSession()
   const { enCours, erreur, basculer } = useSuivi(membre.id)
   const [annonce, setAnnonce] = useState('')
@@ -50,7 +52,7 @@ export function BoutonSuivre({
     setSuivi(veutSuivre)
     setAnnonce('')
     basculer(veutSuivre)
-    setAnnonce(veutSuivre ? `Tu suis maintenant ${membre.nom}.` : `Tu ne suis plus ${membre.nom}.`)
+    setAnnonce(t(veutSuivre ? 'suivre.tuSuis' : 'suivre.tuNeSuisPlus', { nom: membre.nom }))
   }
 
   return (
@@ -59,18 +61,18 @@ export function BoutonSuivre({
         taille={taille}
         variante={suivi ? 'secondaire' : 'principal'}
         aria-pressed={suivi}
-        aria-label={`Suivre ${membre.nom}`}
+        aria-label={t('suivre.nom', { nom: membre.nom })}
         aria-busy={enCours || undefined}
         onClick={onClick}
       >
-        {suivi ? 'Suivi' : 'Suivre'}
+        {suivi ? t('suivre.suivi') : t('suivre.suivre')}
       </Button>
       <span role="status" className="sr-only">
         {annonce}
       </span>
       {erreur && !(erreur instanceof ErreurApi && erreur.conflit) && (
         <span role="alert" className="text-xs text-danger">
-          {messageErreur(erreur, { 404: 'Ce membre n’existe plus.' })}
+          {messageErreur(erreur, { 404: t('suivre.membreDisparu') })}
         </span>
       )}
     </>

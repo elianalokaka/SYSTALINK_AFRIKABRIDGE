@@ -5,7 +5,9 @@ import { Badge, Button, Card, CardCorps, EmptyState, SkeletonTexte } from '../..
 import { annulerDemande, mesDemandes } from '../../api/equipes'
 import { messageErreur } from '../../api/erreurs'
 import { rafraichirProjets } from '../../lib/cache'
-import { libelleStatutDemande, varianteStatutDemande } from './statutDemande'
+import { varianteStatutDemande } from './statutDemande'
+import { useLibelles } from '../../lib/labels'
+import { useDates, useI18n } from '../../i18n'
 
 /**
  * « Mes demandes » — les demandes d'adhésion que J'AI envoyées.
@@ -14,6 +16,9 @@ import { libelleStatutDemande, varianteStatutDemande } from './statutDemande'
  * conservé (on peut voir la décision), et un refus permet de redemander.
  */
 export function MesDemandes() {
+  const { t } = useI18n()
+  const L = useLibelles()
+  const { date } = useDates()
   const queryClient = useQueryClient()
   const requete = useQuery({ queryKey: ['mes-demandes'], queryFn: () => mesDemandes() })
 
@@ -25,7 +30,7 @@ export function MesDemandes() {
       await annulerDemande(id)
     } catch (e) {
       setErreur(
-        messageErreur(e, { 409: 'Cette demande a déjà été traitée.', 404: 'Cette demande n’existe plus.' })
+        messageErreur(e, { 409: t('demandes.dejaTraitee'), 404: t('demandes.introuvable') })
       )
     }
     /* Aussi les fiches projet : leur `ma_demande_statut` vient de changer. */
@@ -35,8 +40,8 @@ export function MesDemandes() {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h1 className="text-lg font-semibold text-fg-1">Mes demandes</h1>
-        <p className="mt-1 text-sm text-fg-2">Les demandes d'adhésion que tu as envoyées.</p>
+        <h1 className="text-lg font-semibold text-fg-1">{t('demandes.titre')}</h1>
+        <p className="mt-1 text-sm text-fg-2">{t('demandes.intro')}</p>
       </div>
 
       {erreur && (
@@ -64,17 +69,16 @@ export function MesDemandes() {
                     {demande.projet.nom}
                   </Link>
                   <p className="mt-0.5 text-xs text-fg-3">
-                    {demande.message || 'Sans message.'} · envoyée le{' '}
-                    {new Date(demande.created_at).toLocaleDateString('fr-FR')}
+                    {demande.message || t('demandes.sansMessage')} · {t('demandes.envoyeeLe', { date: date(demande.created_at) })}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variante={varianteStatutDemande(demande.statut)}>
-                    {libelleStatutDemande(demande.statut)}
+                    {L.statutDemande[demande.statut]}
                   </Badge>
                   {demande.statut === 'en_attente' && (
                     <Button taille="sm" variante="discret" onClick={() => onAnnuler(demande.id)}>
-                      Annuler
+                      {t('demandes.annuler')}
                     </Button>
                   )}
                 </div>
@@ -85,11 +89,11 @@ export function MesDemandes() {
       ) : (
         <Card>
           <EmptyState
-            titre="Aucune demande"
-            description="Explore les projets et rejoins une équipe qui te ressemble."
+            titre={t('demandes.videTitre')}
+            description={t('demandes.videTexte')}
             action={
               <Link to="/projets">
-                <Button>Explorer les projets</Button>
+                <Button>{t('demandes.explorer')}</Button>
               </Link>
             }
           />

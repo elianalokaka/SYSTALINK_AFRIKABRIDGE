@@ -1,4 +1,5 @@
 import { cn } from '../../lib/cn'
+import { useI18n } from '../../i18n'
 
 export interface ProgressBarProps {
   /** Valeur 0-100. Correspond à `ProjetResume.progression` du contrat. */
@@ -27,16 +28,17 @@ export interface ProgressBarProps {
 export function ProgressBar({
   valeur,
   afficherValeur = true,
-  label = 'Progression',
+  label,
   className,
 }: ProgressBarProps) {
+  const { t } = useI18n()
   const borne = Math.min(100, Math.max(0, valeur))
 
   return (
     <div className={cn('flex items-center gap-2', className)}>
       <div
         role="progressbar"
-        aria-label={label}
+        aria-label={label ?? t('progression.label')}
         aria-valuenow={borne}
         aria-valuemin={0}
         aria-valuemax={100}
