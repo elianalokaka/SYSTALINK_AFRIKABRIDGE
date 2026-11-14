@@ -223,7 +223,7 @@ Rayons : `--radius-sm: 4px` · `--radius-md: 6px` (défaut) · `--radius-lg: 8px
    Du blanc sur `#f55800` donne **3.34:1** → échec WCAG. Vérifié par calcul.
 2. **Les champs utilisent `border-border-strong`**, pas `border`. Quand la bordure est le seul
    repère d'un contrôle, WCAG 1.4.11 exige 3:1 (`border-strong` = 3.09:1, `border` = 1.60:1).
-3. **L'accent est réservé à l'ACTION**, jamais à un état. Les états ont leur propre échelle
+3. **L'accent est réservé à l'ACTION**, jamais à un état. **Seule exception décidée : le logo de la marque** (favicon, barre de navigation, écran de connexion), qui est orange. Les états ont leur propre échelle
    sémantique. Sinon l'accent perd son sens.
 4. **Le focus visible est posé UNE fois**, sur `:focus-visible` dans `index.css`.
    Aucun composant ne le redéfinit.
@@ -396,8 +396,9 @@ qu'aucun `node_modules` n'apparaît** avant de commiter.
 | **8** | `feat/dashboard` | tableau de bord (repli P0, bascule P1 prête) + projets réalisés | ✅ **code prêt · à tester puis fusionner** |
 | **9** | `feat/follow` | suivi entre développeurs : bouton Suivre (optimiste), compteurs, carte « Réseau » (Abonnés / Abonnements) ; P1 simulé comme livré, interrupteur `priorites.follow` | ✅ fusionné |
 | **10** | `feat/commentaires` | fil de commentaires sous une ressource (publier, supprimer en 2 temps, pagination, compteurs) ; P1 simulé comme livré, interrupteur `priorites.commentaires` | ✅ fusionné |
-| **11** | `feat/finitions` | passe finale UX : focus sur le 1er champ invalide, boîte de confirmation accessible (remplace 3 `window.confirm`), afficher/masquer le mot de passe | ✅ **code prêt · à tester puis fusionner** |
-| **12+** | à définir | le reste du P1 (suggestions, `/stats`), si le planning tient | ⬜ |
+| **11** | `feat/finitions` | passe finale UX : focus sur le 1er champ invalide, boîte de confirmation accessible (remplace 3 `window.confirm`), afficher/masquer le mot de passe | ✅ fusionné |
+| **12** | `feat/identite-visuelle` | logo AfricaBridge : favicon (SVG, ICO, PNG, icône tactile), logo dans la barre de navigation, écran de connexion / inscription en deux colonnes (identité à gauche, formulaire à droite) | ✅ **code prêt · à tester puis fusionner** |
+| **13+** | à définir | le reste du P1 (suggestions, `/stats`), si le planning tient | ⬜ |
 
 **Pourquoi cet ordre** : le design system d'abord (sinon chaque module réinvente ses boutons) ;
 puis `api-et-auth` (c'est là que vit le code le plus risqué du projet — le rejeu 419, les deux
@@ -438,6 +439,11 @@ racines, le curseur). Prouver ça tôt évite de découvrir le problème la veil
   `useConfirmation.tsx` (`<dialog>` natif modal, focus initial sur Annuler, Échap, clic sur le fond, focus rendu au
   bouton) remplacent les 3 `window.confirm` (projet, ressource, message) ; (3) `ChampMotDePasse.tsx` (Afficher/Masquer,
   `aria-pressed`, nom accessible constant) sur Connexion et Inscription (2 champs). Hypothèse : `ASSUMPTIONS.md` A-22.
+- **Module 12 (`feat/identite-visuelle`) codé + `tsc` 0** : le logo (3 pétales autour d'un triangle, `#F55800`) est le SVG
+  fourni, dans `public/favicon.svg` (source graphique) et en composant `components/layout/Logo.tsx` (décoratif, couleur =
+  jeton `accent`). Favicon : SVG + `favicon.ico` (16/32/48) + `favicon-32.png` + `apple-touch-icon.png` (180, fond sombre).
+  Navbar : logo 28 px + nom. Connexion / Inscription : `pages/auth/MiseEnPageAuth.tsx` (2 colonnes ≥ 1024 px, logo 128 px,
+  nom, description ; en dessous, logo + nom + phrase d'accroche puis formulaire). Le `<h1>` reste celui du formulaire.
 - **Règles permanentes** : le site est **toujours responsive** (vérifier 320 / 375 / 768 px) · à la fin de
   chaque module, **rappeler à l'utilisateur de mettre le dépôt à jour** (commit, push, PR, fusion, `git pull`).
   - Règle : **toute nouvelle écriture appelle `rafraichirProjets()`** ; les clés de cache sont

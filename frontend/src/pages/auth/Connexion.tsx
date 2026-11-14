@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router'
 import { Button, Card, CardCorps, ChampMotDePasse, FormField, Input } from '../../components/ui'
 import { useTitreDocument } from '../../components/layout/useSuiviDeRoute'
 import { ErreurApi } from '../../api/erreurs'
+import { MiseEnPageAuth } from './MiseEnPageAuth'
 import { useSession } from '../../features/auth/SessionProvider'
 import type { UserLogin } from '../../types'
 
@@ -56,8 +57,7 @@ export function Connexion() {
   }
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-surface-0 px-4 py-10">
-      <div className="w-full max-w-sm">
+    <MiseEnPageAuth>
         <div className="mb-6">
           <h1 className="text-lg font-semibold text-fg-1">Connexion</h1>
           <p className="mt-1 text-sm text-fg-2">
@@ -123,7 +123,6 @@ export function Connexion() {
         <p className="mt-4 text-center text-xs text-fg-3">
           Compte de démonstration : aminata@example.com · Demo1234!
         </p>
-      </div>
-    </main>
+    </MiseEnPageAuth>
   )
 }
