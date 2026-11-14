@@ -745,7 +745,10 @@ l'interface, le front pourra ajouter l'en-tête `Accept-Language` dans `api/clie
 2. Passer en EN, aller sur **Sign up** : la langue est conservée ; la liste des pays est en anglais et triée.
 3. Se connecter (`aminata@example.com`) : la barre de navigation est en anglais ; le bouton de langue y est aussi.
 4. Réduire la fenêtre à 375 px : le menu mobile contient le bouton de langue sous la liste des liens.
-5. Ne **pas** appuyer sur F5 pendant la démonstration (la base simulée se réinitialise).
+5. Passer en EN puis parcourir **Accueil, Projets (liste, détail, création), Ressources (liste, détail, commentaires, formulaire), Messagerie** : tout est en anglais, « 1 comment / 2 comments », « Yesterday / Today » ; repasser en FR sans recharger.
+6. Ne **pas** appuyer sur F5 pendant la démonstration (la base simulée se réinitialise).
+
+**Reste en français, volontairement** : contenu saisi par les utilisateurs, données de démonstration (mocks), messages de validation du serveur, page `/atelier` (outil de développement).
 
 ---
 

@@ -398,7 +398,7 @@ qu'aucun `node_modules` n'apparaît** avant de commiter.
 | **10** | `feat/commentaires` | fil de commentaires sous une ressource (publier, supprimer en 2 temps, pagination, compteurs) ; P1 simulé comme livré, interrupteur `priorites.commentaires` | ✅ fusionné |
 | **11** | `feat/finitions` | passe finale UX : focus sur le 1er champ invalide, boîte de confirmation accessible (remplace 3 `window.confirm`), afficher/masquer le mot de passe | ✅ fusionné |
 | **12** | `feat/identite-visuelle` | logo AfricaBridge : favicon (SVG, ICO, PNG, icône tactile), logo dans la barre de navigation, écran de connexion / inscription en deux colonnes (identité à gauche, formulaire à droite) | ✅ fusionné |
-| **13** | `feat/langues` | site bilingue FR / EN : infrastructure `src/i18n/` (dictionnaires typés, pluriels, `useI18n`), bouton de langue (connexion, inscription, barre de navigation), pays traduits ; modules traduits un par un | 🟡 **phases 1-2 codées (auth, navigation, composants communs, pays, libellés d'enums, compétences, dates, profil, talents, suivi, mes demandes) · reste : projets, ressources, commentaires, discussion, accueil** |
+| **13** | `feat/langues` | site bilingue FR / EN : infrastructure `src/i18n/` (dictionnaires typés, pluriels, `useI18n`), bouton de langue (connexion, inscription, barre de navigation), pays traduits ; modules traduits un par un | 🟡 **phases 1-4 codées (auth, navigation, composants communs, pays, enums, compétences, dates, profil, talents, suivi, demandes, projets, ressources, commentaires, discussion, accueil) · reste : tests finaux, merge vers `frontend` quand l'utilisateur est rassuré** |
 | **14+** | à définir | le reste du P1 (suggestions, `/stats`), si le planning tient | ⬜ |
 
 **Pourquoi cet ordre** : le design system d'abord (sinon chaque module réinvente ses boutons) ;
@@ -457,8 +457,10 @@ racines, le curseur). Prouver ça tôt évite de découvrir le problème la veil
   composants communs, noms de pays (`lib/pays.ts`). **Règle : plus aucun texte visible en dur dans un composant** — clé dans
   `fr.ts` ET `en.ts`. **Phase 2 codée** : libellés d'enums via `useLibelles()` (`lib/labels.ts` : `L.role[x]`, `L.domaine[x]`, `L.listeRoles`…, valeur→clé typée), noms de
   compétences via `useNomCompetence()` (`lib/competences.ts`, repli sur le nom de l'API), dates via `useDates()` (`i18n/dates.ts`, fini les `'fr-FR'`
-  en dur), pages profil, modifier profil, talents, profil public, réseau/suivi, mes demandes. Reste à traduire : projets/équipes,
-  ressources/commentaires, discussion, accueil. `pages/talents/reseau.ts` est vide et à supprimer. Hypothèses : `A-23`, `V-17`.
+  en dur), pages profil, modifier profil, talents, profil public, réseau/suivi, mes demandes. **Phases 3-4 codées** : projets (liste, carte, création, édition, détail, rejoindre), messages d'erreur HTTP par défaut
+  (`api/erreurs.ts` + `traduireCourant`), ressources, commentaires (pluriels), discussion (« Hier / Aujourd'hui »), accueil, libellés d'accessibilité.
+  Balayage final fait : plus de texte visible en dur hors `pages/atelier/` (page de dev, volontairement non traduite) et hors mocks.
+  `pages/talents/reseau.ts` est vide et à supprimer. Hypothèses : `A-23`, `V-17`.
 ### À faire, dans l'ordre
 1. **Tester puis fusionner `feat/finitions`** (scénario dans le récap du module). Reste de la passe finale : test lecteur d'écran, répétition du scénario de démonstration, préparation de la bascule vers le vrai backend (`INTEGRATION.md`).
 2. Le reste du P1 si le backend le livre (suggestions, `/stats`).
