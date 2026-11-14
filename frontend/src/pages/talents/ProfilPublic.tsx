@@ -4,7 +4,7 @@ import { Avatar, Badge, Button, Card, CardCorps, CardEntete, EmptyState, Skeleto
 import { portfolio, profilPublic } from '../../api/talents'
 import { ErreurApi } from '../../api/erreurs'
 import { useSession } from '../../features/auth/SessionProvider'
-import { nomDePays } from '../../lib/constants'
+import { useNomDePays } from '../../lib/pays'
 import {
   LIBELLES_DOMAINE,
   LIBELLES_NIVEAU,
@@ -28,6 +28,7 @@ import { CompteursSuivi, ListeReseau } from './ListeReseau'
  * Le portfolio est une section indépendante : s'il échoue, le profil reste lisible.
  */
 export function ProfilPublic() {
+  const nomDePays = useNomDePays()
   const { id } = useParams()
   const { profil: moi } = useSession()
 

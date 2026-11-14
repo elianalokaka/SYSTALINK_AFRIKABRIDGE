@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef } from 'react'
+import { useI18n } from '../../i18n'
 import { Button } from './Button'
 
 export interface BoiteConfirmationProps {
@@ -27,10 +28,11 @@ export interface BoiteConfirmationProps {
 export function BoiteConfirmation({
   titre,
   description,
-  libelleConfirmer = 'Supprimer',
+  libelleConfirmer,
   onConfirmer,
   onAnnuler,
 }: BoiteConfirmationProps) {
+  const { t } = useI18n()
   const ref = useRef<HTMLDialogElement>(null)
   const refAnnuler = useRef<HTMLButtonElement>(null)
   const idTitre = useId()
@@ -68,10 +70,10 @@ export function BoiteConfirmation({
         )}
         <div className="mt-3 flex flex-wrap justify-end gap-2">
           <Button ref={refAnnuler} variante="secondaire" onClick={onAnnuler}>
-            Annuler
+            {t('commun.annuler')}
           </Button>
           <Button variante="danger" onClick={onConfirmer}>
-            {libelleConfirmer}
+            {libelleConfirmer ?? t('commun.supprimer')}
           </Button>
         </div>
       </div>

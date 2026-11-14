@@ -397,8 +397,9 @@ qu'aucun `node_modules` n'apparaît** avant de commiter.
 | **9** | `feat/follow` | suivi entre développeurs : bouton Suivre (optimiste), compteurs, carte « Réseau » (Abonnés / Abonnements) ; P1 simulé comme livré, interrupteur `priorites.follow` | ✅ fusionné |
 | **10** | `feat/commentaires` | fil de commentaires sous une ressource (publier, supprimer en 2 temps, pagination, compteurs) ; P1 simulé comme livré, interrupteur `priorites.commentaires` | ✅ fusionné |
 | **11** | `feat/finitions` | passe finale UX : focus sur le 1er champ invalide, boîte de confirmation accessible (remplace 3 `window.confirm`), afficher/masquer le mot de passe | ✅ fusionné |
-| **12** | `feat/identite-visuelle` | logo AfricaBridge : favicon (SVG, ICO, PNG, icône tactile), logo dans la barre de navigation, écran de connexion / inscription en deux colonnes (identité à gauche, formulaire à droite) | ✅ **code prêt · à tester puis fusionner** |
-| **13+** | à définir | le reste du P1 (suggestions, `/stats`), si le planning tient | ⬜ |
+| **12** | `feat/identite-visuelle` | logo AfricaBridge : favicon (SVG, ICO, PNG, icône tactile), logo dans la barre de navigation, écran de connexion / inscription en deux colonnes (identité à gauche, formulaire à droite) | ✅ fusionné |
+| **13** | `feat/langues` | site bilingue FR / EN : infrastructure `src/i18n/` (dictionnaires typés, pluriels, `useI18n`), bouton de langue (connexion, inscription, barre de navigation), pays traduits ; modules traduits un par un | 🟡 **phase 1 codée (auth, navigation, composants communs, pays) · le reste suit module par module** |
+| **14+** | à définir | le reste du P1 (suggestions, `/stats`), si le planning tient | ⬜ |
 
 **Pourquoi cet ordre** : le design system d'abord (sinon chaque module réinvente ses boutons) ;
 puis `api-et-auth` (c'est là que vit le code le plus risqué du projet — le rejeu 419, les deux
@@ -449,6 +450,13 @@ racines, le curseur). Prouver ça tôt évite de découvrir le problème la veil
   - Règle : **toute nouvelle écriture appelle `rafraichirProjets()`** ; les clés de cache sont
     documentées en tête de `lib/cache.ts`.
 
+- **Module 13 (`feat/langues`), phase 1 codée + `tsc` 0** : `src/i18n/` (`fr.ts` = référence, `en.ts` typé `Record<keyof typeof fr, string>`,
+  `traduire.ts` pur avec pluriels `_one`/`_other` et `{variables}`, `I18nProvider`, `useI18n()` → `{ langue, locale, changerLangue, t }`).
+  Langue en `localStorage` (`africabridge_langue`), `<html lang>` mis à jour, **aucun remontage** de l'arbre (l'état des formulaires est
+  conservé). `SelecteurLangue` (connexion, inscription, barre, menu mobile). Traduits : connexion, inscription, navigation, 404,
+  composants communs, noms de pays (`lib/pays.ts`). **Règle : plus aucun texte visible en dur dans un composant** — clé dans
+  `fr.ts` ET `en.ts`. Reste à traduire (phases suivantes) : profil/talents, projets/équipes, discussion/ressources/commentaires,
+  tableau de bord, libellés d'enums (`lib/labels.ts`), compétences, dates. Hypothèses : `A-23`, `V-17`.
 ### À faire, dans l'ordre
 1. **Tester puis fusionner `feat/finitions`** (scénario dans le récap du module). Reste de la passe finale : test lecteur d'écran, répétition du scénario de démonstration, préparation de la bascule vers le vrai backend (`INTEGRATION.md`).
 2. Le reste du P1 si le backend le livre (suggestions, `/stats`).

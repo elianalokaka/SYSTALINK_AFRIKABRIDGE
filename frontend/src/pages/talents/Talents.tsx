@@ -3,7 +3,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { Button, Card, CardCorps, EmptyState, Input, SkeletonTexte } from '../../components/ui'
 import { listeCompetences } from '../../api/profil'
 import { rechercherTalents } from '../../api/talents'
-import { PAYS } from '../../lib/constants'
+import { useNomsDePays } from '../../lib/pays'
 import { LISTE_DOMAINES, LISTE_ROLES_PROFIL } from '../../lib/labels'
 import { cn } from '../../lib/cn'
 import type { Domaine, RoleProfil } from '../../types'
@@ -21,6 +21,7 @@ const PAR_PAGE = 12
  * Le serveur exclut déjà l'utilisateur connecté des résultats.
  */
 export function Talents() {
+  const listePays = useNomsDePays()
   const [q, setQ] = useState('')
   const [role, setRole] = useState<RoleProfil | ''>('')
   const [domaine, setDomaine] = useState<Domaine | ''>('')
@@ -131,7 +132,7 @@ export function Talents() {
               className={CLASSE_SELECT}
             >
               <option value="">Tous les pays</option>
-              {PAYS.map((p) => (
+              {listePays.map((p) => (
                 <option key={p.code} value={p.code}>
                   {p.nom}
                 </option>

@@ -1,6 +1,6 @@
 import { Link } from 'react-router'
 import { Avatar, Badge, Card, CardCorps } from '../../components/ui'
-import { nomDePays } from '../../lib/constants'
+import { useNomDePays } from '../../lib/pays'
 import { LIBELLES_ROLE_PROFIL } from '../../lib/labels'
 import { estLivre } from '../../lib/priorites'
 import type { Talent } from '../../types'
@@ -22,6 +22,7 @@ import { libelleAbonnes } from './reseau'
  * (cf. ASSUMPTIONS.md A-10).
  */
 export function CarteTalent({ talent }: { talent: Talent }) {
+  const nomDePays = useNomDePays()
   const lieu = [talent.region, nomDePays(talent.pays)].filter(Boolean).join(', ')
 
   return (

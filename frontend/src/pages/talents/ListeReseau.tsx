@@ -3,7 +3,7 @@ import { Link } from 'react-router'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { Avatar, Badge, Button, Card, CardCorps, CardEntete, EmptyState, SkeletonTexte, Tabs } from '../../components/ui'
 import { abonnements, abonnes } from '../../api/suivi'
-import { nomDePays } from '../../lib/constants'
+import { useNomDePays } from '../../lib/pays'
 import { LIBELLES_ROLE_PROFIL } from '../../lib/labels'
 import { libelleAbonnements, libelleAbonnes } from './reseau'
 
@@ -35,6 +35,7 @@ export function ListeReseau({
   nbAbonnes: number
   nbAbonnements: number
 }) {
+  const nomDePays = useNomDePays()
   const [onglet, setOnglet] = useState<OngletReseau>('abonnes')
   const [page, setPage] = useState(1)
 
