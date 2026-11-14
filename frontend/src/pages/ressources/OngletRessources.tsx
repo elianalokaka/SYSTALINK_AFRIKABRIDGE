@@ -4,7 +4,7 @@ import { Badge, Button, Card, CardCorps, CardEntete, EmptyState, SkeletonTexte }
 import { listerRessources } from '../../api/ressources'
 import { ErreurApi } from '../../api/erreurs'
 import { useLibelles } from '../../lib/labels'
-import { useDates } from '../../i18n'
+import { useDates, useI18n } from '../../i18n'
 
 /**
  * Onglet « Ressources » d'un projet — réservé aux membres.
@@ -13,6 +13,7 @@ import { useDates } from '../../i18n'
  * PAS une erreur d'interface (A-8) → section vide, sans alerte.
  */
 export function OngletRessources({ projetId }: { projetId: number }) {
+  const { t } = useI18n()
   const { date } = useDates()
   const L = useLibelles()
   const requete = useQuery({
@@ -37,29 +38,29 @@ export function OngletRessources({ projetId }: { projetId: number }) {
   return (
     <Card>
       <CardEntete
-        titre="Ressources du projet"
+        titre={t('ongletRessources.titre')}
         compteur={liste.length}
         action={
           <Link to={`/ressources/nouveau?projet=${projetId}`}>
-            <Button taille="sm">Partager ici</Button>
+            <Button taille="sm">{t('ongletRessources.partagerIci')}</Button>
           </Link>
         }
       />
       <CardCorps className="flex flex-col gap-2">
         {requete.isError && !interdit ? (
           <EmptyState
-            titre="Impossible de charger les ressources"
-            description="Vérifie ta connexion puis réessaie."
+            titre={t('ongletRessources.chargementImpossible')}
+            description={t('commun.verifierConnexion')}
             action={
               <Button variante="secondaire" onClick={() => void requete.refetch()}>
-                Réessayer
+                {t('commun.reessayer')}
               </Button>
             }
           />
         ) : liste.length === 0 ? (
           <EmptyState
-            titre="Aucune ressource pour l'instant"
-            description="Partage un lien, un extrait de code ou un document avec ton équipe."
+            titre={t('ongletRessources.videTitre')}
+            description={t('ongletRessources.videTexte')}
           />
         ) : (
           liste.map((ressource) => (

@@ -2,14 +2,16 @@ import { Avatar, Badge, Card, CardCorps } from '../../components/ui'
 import { useLibelles } from '../../lib/labels'
 import type { Ressource } from '../../types'
 import { estLivre } from '../../lib/priorites'
-import { libelleCommentaires } from './commentaires'
-import { useDates } from '../../i18n'
+import { useDates, useI18n } from '../../i18n'
+import { useNomCompetence } from '../../lib/competences'
 
 /**
  * Carte d'une ressource en liste. Comme `CarteProjet`, elle n'est pas
  * cliquable en soi : la page qui la rend l'enveloppe dans un `<Link>`.
  */
 export function CarteRessource({ ressource }: { ressource: Ressource }) {
+  const { t } = useI18n()
+  const nomComp = useNomCompetence()
   const { date } = useDates()
   const L = useLibelles()
   return (
@@ -32,7 +34,7 @@ export function CarteRessource({ ressource }: { ressource: Ressource }) {
           <div className="flex flex-wrap gap-1.5">
             {ressource.competences.slice(0, 3).map((comp) => (
               <Badge key={comp.id} variante="neutre">
-                {comp.nom}
+                {nomComp(comp.nom)}
               </Badge>
             ))}
             {ressource.competences.length > 3 && (
@@ -47,7 +49,7 @@ export function CarteRessource({ ressource }: { ressource: Ressource }) {
             <span className="truncate text-xs text-fg-2">{ressource.auteur.nom}</span>
           </div>
           <span className="shrink-0 text-xs tabular-nums text-fg-3">
-            {estLivre('commentaires') && ressource.commentaires_count > 0 && `${libelleCommentaires(ressource.commentaires_count)} · `}
+            {estLivre('commentaires') && ressource.commentaires_count > 0 && `${t('commentaires.nombre', { count: ressource.commentaires_count })} · `}
             {date(ressource.created_at)}
           </span>
         </div>

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Navigate } from 'react-router'
 import { Spinner } from '../../components/ui'
 import { useSession } from './SessionProvider'
+import { useI18n } from '../../i18n'
 
 /**
  * Garde de route : exige une session ouverte.
@@ -16,12 +17,13 @@ import { useSession } from './SessionProvider'
  * évite seulement d'afficher un écran qui échouerait en 401.
  */
 export function RequiertSession({ children }: { children: ReactNode }) {
+  const { t } = useI18n()
   const { profil, chargement } = useSession()
 
   if (chargement) {
     return (
       <main className="flex min-h-dvh items-center justify-center bg-surface-0">
-        <Spinner taille="lg" label="Chargement de ta session…" />
+        <Spinner taille="lg" label={t('session.chargement')} />
       </main>
     )
   }
