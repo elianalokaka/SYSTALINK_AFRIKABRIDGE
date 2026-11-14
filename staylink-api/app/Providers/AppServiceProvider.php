@@ -42,5 +42,12 @@ class AppServiceProvider extends ServiceProvider
 
             return Limit::perMinute(30)->by('ecriture:'.$acteur);
         });
+
+        // Au-dessus du sondage de discussion (toutes les 5 s) : 12/min suffisent, 300 laisse la marge.
+        RateLimiter::for('lectures', function (Request $request) {
+            $acteur = $request->user()?->id ?? $request->ip();
+
+            return Limit::perMinute(300)->by('lecture:'.$acteur);
+        });
     }
 }

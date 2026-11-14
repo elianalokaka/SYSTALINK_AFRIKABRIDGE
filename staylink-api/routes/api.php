@@ -59,7 +59,7 @@ Route::prefix('v1')->group(function () {
         ->middleware('throttle:60,1')
         ->name('stats.index');
 
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'throttle:lectures'])->group(function () {
 
         Route::get('/auth/me', ProfilConnecteController::class)
             ->name('auth.me');
@@ -80,6 +80,7 @@ Route::prefix('v1')->group(function () {
             ->name('skills.index');
 
         Route::patch('/users/me', ModifierProfilController::class)
+            ->middleware('throttle:ecritures')
             ->name('users.me.update');
 
         Route::put('/users/me/skills', RemplacerCompetencesController::class)
@@ -87,6 +88,7 @@ Route::prefix('v1')->group(function () {
             ->name('users.me.skills.update');
 
         Route::post('/users/me/photo', UploadPhotoProfilController::class)
+            ->middleware('throttle:ecritures')
             ->name('users.me.photo.update');
 
         Route::get('/users', RechercherTalentsController::class)
@@ -129,28 +131,34 @@ Route::prefix('v1')->group(function () {
             ->whereNumber('id')
             ->name('projects.show');
         Route::patch('/projects/{id}', ModifierProjetController::class)
+            ->middleware('throttle:ecritures')
             ->whereNumber('id')
             ->name('projects.update');
         Route::delete('/projects/{id}', SupprimerProjetController::class)
+            ->middleware('throttle:ecritures')
             ->whereNumber('id')
             ->name('projects.destroy');
         Route::get('/projects/{id}/join-requests', ListerDemandesProjetController::class)
             ->whereNumber('id')
             ->name('projects.join-requests.index');
         Route::post('/projects/{id}/join-requests', DeposerDemandeAdhesionController::class)
+            ->middleware('throttle:ecritures')
             ->whereNumber('id')
             ->name('projects.join-requests.store');
         Route::get('/projects/{id}/members', ListerMembresProjetController::class)
             ->whereNumber('id')
             ->name('projects.members.index');
         Route::delete('/projects/{id}/members/{userId}', RetirerMembreProjetController::class)
+            ->middleware('throttle:ecritures')
             ->whereNumber('id')
             ->whereNumber('userId')
             ->name('projects.members.destroy');
         Route::patch('/join-requests/{id}', DeciderDemandeAdhesionController::class)
+            ->middleware('throttle:ecritures')
             ->whereNumber('id')
             ->name('join-requests.update');
         Route::delete('/join-requests/{id}', AnnulerDemandeAdhesionController::class)
+            ->middleware('throttle:ecritures')
             ->whereNumber('id')
             ->name('join-requests.destroy');
         Route::get('/projects/{id}/messages', LireMessagesController::class)
@@ -186,9 +194,11 @@ Route::prefix('v1')->group(function () {
             ->whereNumber('id')
             ->name('resources.show');
         Route::patch('/resources/{id}', ModifierRessourceController::class)
+            ->middleware('throttle:ecritures')
             ->whereNumber('id')
             ->name('resources.update');
         Route::delete('/resources/{id}', SupprimerRessourceController::class)
+            ->middleware('throttle:ecritures')
             ->whereNumber('id')
             ->name('resources.destroy');
         Route::delete('/comments/{id}', SupprimerCommentaireController::class)
