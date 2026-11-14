@@ -20,12 +20,12 @@ import { demandesDuProjet, membresDuProjet, retirerMembre, traiterDemande } from
 import { useSession } from '../../features/auth/SessionProvider'
 import { useDemandesRecues } from '../../features/equipes/useDemandesRecues'
 import { oublierProjet, rafraichirProjets } from '../../lib/cache'
-import { LIBELLES_DOMAINE, LIBELLES_ROLE_PROFIL } from '../../lib/labels'
-import { libelleStatutDemande, varianteStatutDemande } from '../equipes/statutDemande'
+import { useLibelles } from '../../lib/labels'
+import { varianteStatutDemande } from '../equipes/statutDemande'
 import { Discussion } from '../messagerie/Discussion'
 import { OngletRessources } from '../ressources/OngletRessources'
 import { BoutonRejoindre } from './BoutonRejoindre'
-import { libelleStatut, varianteStatut } from './statut'
+import { varianteStatut } from './statut'
 import type { DemandeAdhesion, Projet } from '../../types'
 
 /**
@@ -38,6 +38,7 @@ import type { DemandeAdhesion, Projet } from '../../types'
  *   - « Demandes »→ propriétaire uniquement, accepter / refuser.
  */
 export function ProjetDetail() {
+  const L = useLibelles()
   const { id } = useParams()
   const { profil } = useSession()
   const navigate = useNavigate()
@@ -140,12 +141,12 @@ export function ProjetDetail() {
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-xl font-semibold text-fg-1">{projet.nom}</h1>
-              <Badge variante={varianteStatut(projet.statut)}>{libelleStatut(projet.statut)}</Badge>
+              <Badge variante={varianteStatut(projet.statut)}>{L.statutProjet[projet.statut]}</Badge>
             </div>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {projet.domaines.map((domaine) => (
                 <Badge key={domaine} variante="neutre">
-                  {LIBELLES_DOMAINE[domaine]}
+                  {L.domaine[domaine]}
                 </Badge>
               ))}
             </div>
@@ -191,6 +192,7 @@ export function ProjetDetail() {
 /* ── Onglet « Vue » ───────────────────────────────────────────────────────── */
 
 function VueProjet({ projet }: { projet: Projet }) {
+  const L = useLibelles()
   return (
     <>
       <Card>
@@ -247,7 +249,7 @@ function VueProjet({ projet }: { projet: Projet }) {
           <div className="min-w-0">
             <Link to={`/talents/${projet.createur.id}`} className="block truncate py-1 text-sm font-medium text-fg-1 hover:text-accent">{projet.createur.nom}</Link>
             <p className="truncate text-xs text-fg-2">
-              {LIBELLES_ROLE_PROFIL[projet.createur.role_profil]}
+              {L.role[projet.createur.role_profil]}
             </p>
           </div>
         </CardCorps>
@@ -275,6 +277,7 @@ function VueProjet({ projet }: { projet: Projet }) {
 /* ── Onglet « Équipe » ────────────────────────────────────────────────────── */
 
 function OngletEquipe({ projetId, estProprietaire }: { projetId: number; estProprietaire: boolean }) {
+  const L = useLibelles()
   const queryClient = useQueryClient()
   const { profil } = useSession()
   const requete = useQuery({ queryKey: ['membres', projetId], queryFn: () => membresDuProjet(projetId) })
@@ -331,7 +334,7 @@ function OngletEquipe({ projetId, estProprietaire }: { projetId: number; estProp
                 <div className="min-w-0">
                   <Link to={`/talents/${membre.utilisateur.id}`} className="block truncate py-1 text-sm font-medium text-fg-1 hover:text-accent">{membre.utilisateur.nom}</Link>
                   <p className="truncate text-xs text-fg-2">
-                    {LIBELLES_ROLE_PROFIL[membre.utilisateur.role_profil]}
+                    {L.role[membre.utilisateur.role_profil]}
                   </p>
                 </div>
               </div>
@@ -355,6 +358,7 @@ function OngletEquipe({ projetId, estProprietaire }: { projetId: number; estProp
 /* ── Onglet « Demandes » (propriétaire) ───────────────────────────────────── */
 
 function OngletDemandes({ projetId }: { projetId: number }) {
+  const L = useLibelles()
   const queryClient = useQueryClient()
   const requete = useQuery({
     queryKey: ['demandes-projet', projetId, 'en_attente'],
@@ -455,7 +459,7 @@ function OngletDemandes({ projetId }: { projetId: number }) {
                   </>
                 ) : (
                   <Badge variante={varianteStatutDemande(demande.statut)}>
-                    {libelleStatutDemande(demande.statut)}
+                    {L.statutDemande[demande.statut]}
                   </Badge>
                 )}
               </div>

@@ -1,11 +1,12 @@
 import { Link } from 'react-router'
 import { Avatar, Badge, Card, CardCorps } from '../../components/ui'
 import { useNomDePays } from '../../lib/pays'
-import { LIBELLES_ROLE_PROFIL } from '../../lib/labels'
+import { useLibelles } from '../../lib/labels'
 import { estLivre } from '../../lib/priorites'
 import type { Talent } from '../../types'
 import { BoutonSuivre } from './BoutonSuivre'
-import { libelleAbonnes } from './reseau'
+import { useI18n } from '../../i18n'
+import { useNomCompetence } from '../../lib/competences'
 
 /**
  * Carte d'un talent en liste.
@@ -22,6 +23,9 @@ import { libelleAbonnes } from './reseau'
  * (cf. ASSUMPTIONS.md A-10).
  */
 export function CarteTalent({ talent }: { talent: Talent }) {
+  const L = useLibelles()
+  const { t } = useI18n()
+  const nomComp = useNomCompetence()
   const nomDePays = useNomDePays()
   const lieu = [talent.region, nomDePays(talent.pays)].filter(Boolean).join(', ')
 
@@ -44,7 +48,7 @@ export function CarteTalent({ talent }: { talent: Talent }) {
         </div>
 
         <div>
-          <Badge variante="info">{LIBELLES_ROLE_PROFIL[talent.role_profil]}</Badge>
+          <Badge variante="info">{L.role[talent.role_profil]}</Badge>
         </div>
 
         {talent.bio_courte && <p className="line-clamp-2 break-words text-sm text-fg-2">{talent.bio_courte}</p>}
@@ -53,7 +57,7 @@ export function CarteTalent({ talent }: { talent: Talent }) {
           <div className="mt-auto flex flex-wrap gap-1.5 border-t border-border-subtle pt-3">
             {talent.competences.slice(0, 4).map((comp) => (
               <Badge key={comp.id} variante="neutre">
-                {comp.nom}
+                {nomComp(comp.nom)}
               </Badge>
             ))}
             {talent.competences.length > 4 && (
@@ -64,7 +68,7 @@ export function CarteTalent({ talent }: { talent: Talent }) {
 
         {estLivre('follow') && (
           <div className="relative z-10 flex flex-wrap items-center justify-between gap-2 border-t border-border-subtle pt-3">
-            <span className="text-xs tabular-nums text-fg-3">{libelleAbonnes(talent.followers_count)}</span>
+            <span className="text-xs tabular-nums text-fg-3">{t('reseau.abonnes', { count: talent.followers_count })}</span>
             <BoutonSuivre membre={talent} />
           </div>
         )}

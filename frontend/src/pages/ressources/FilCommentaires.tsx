@@ -6,12 +6,11 @@ import { commentaires, commenter, supprimerCommentaire } from '../../api/comment
 import { ErreurApi, messageErreur } from '../../api/erreurs'
 import { useSession } from '../../features/auth/SessionProvider'
 import { rafraichirCommentaires } from '../../lib/cache'
-import { LIBELLES_ROLE_PROFIL } from '../../lib/labels'
+import { useLibelles } from '../../lib/labels'
 import type { Ressource } from '../../types'
 import { LONGUEUR_MAX_COMMENTAIRE } from './commentaires'
-import { dateCourte } from './outils'
+import { useDates } from '../../i18n'
 
-const heure = (iso: string) => new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 const PAR_PAGE = 10
 
 /**
@@ -25,6 +24,8 @@ const PAR_PAGE = 10
  * - Tri : hypothèse A-1 (plus récent en premier) — jamais retrié côté front.
  */
 export function FilCommentaires({ ressource }: { ressource: Ressource }) {
+  const { date, heure } = useDates()
+  const L = useLibelles()
   const queryClient = useQueryClient()
   const { profil: moi } = useSession()
   const estAuteurRessource = moi?.id === ressource.auteur.id
@@ -143,9 +144,9 @@ export function FilCommentaires({ ressource }: { ressource: Ressource }) {
                             <Link to={`/talents/${commentaire.auteur.id}`} className="py-1 text-sm font-semibold text-fg-1 hover:text-accent">
                               {commentaire.auteur.nom}
                             </Link>
-                            <span className="text-xs text-fg-3">{LIBELLES_ROLE_PROFIL[commentaire.auteur.role_profil]}</span>
+                            <span className="text-xs text-fg-3">{L.role[commentaire.auteur.role_profil]}</span>
                             <span className="text-xs tabular-nums text-fg-3">
-                              le {dateCourte(commentaire.created_at)} à {heure(commentaire.created_at)}
+                              le {date(commentaire.created_at)} à {heure(commentaire.created_at)}
                             </span>
                           </div>
                           <p className="mt-1 whitespace-pre-wrap break-words text-sm text-fg-1">{commentaire.contenu}</p>

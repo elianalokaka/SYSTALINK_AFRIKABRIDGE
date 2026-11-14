@@ -5,7 +5,7 @@ import { Button, Card, CardCorps, EmptyState, Input, SkeletonTexte } from '../..
 import { listerRessources } from '../../api/ressources'
 import { listeCompetences } from '../../api/profil'
 import { useSession } from '../../features/auth/SessionProvider'
-import { LISTE_TYPES_RESSOURCE } from '../../lib/labels'
+import { useLibelles } from '../../lib/labels'
 import type { TypeRessource } from '../../types'
 import { CarteRessource } from './CarteRessource'
 
@@ -19,6 +19,7 @@ const PAR_PAGE = 12
  * Ils sont appliqués côté SERVEUR. Un changement de filtre ramène à la page 1.
  */
 export function Bibliotheque() {
+  const L = useLibelles()
   const { profil } = useSession()
   const [q, setQ] = useState('')
   const [type, setType] = useState<TypeRessource | ''>('')
@@ -83,7 +84,7 @@ export function Bibliotheque() {
             className={CLASSE_SELECT}
           >
             <option value="">Tous les types</option>
-            {LISTE_TYPES_RESSOURCE.map(([valeur, libelle]) => (
+            {L.listeTypesRessource.map(([valeur, libelle]) => (
               <option key={valeur} value={valeur}>
                 {libelle}
               </option>

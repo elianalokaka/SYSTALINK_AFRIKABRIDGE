@@ -14,9 +14,10 @@ import { portfolio } from '../../api/talents'
 import { useSession } from '../../features/auth/SessionProvider'
 import { useDemandesRecues } from '../../features/equipes/useDemandesRecues'
 import { useTableauDeBord } from '../../features/dashboard/useTableauDeBord'
-import { LIBELLES_DOMAINE } from '../../lib/labels'
-import { dateCourte, lienSur } from '../ressources/outils'
-import { libelleStatut, varianteStatut } from '../projets/statut'
+import { useLibelles } from '../../lib/labels'
+import { lienSur } from '../ressources/outils'
+import { varianteStatut } from '../projets/statut'
+import { useDates } from '../../i18n'
 
 /**
  * Tableau de bord — l'écran d'accueil après connexion.
@@ -57,6 +58,8 @@ function Tuile({
 }
 
 export function Accueil() {
+  const { date } = useDates()
+  const L = useLibelles()
   const { profil } = useSession()
   const tableau = useTableauDeBord()
   const demandesRecues = useDemandesRecues()
@@ -158,13 +161,13 @@ export function Accueil() {
                                 {enAttente} demande{enAttente > 1 ? 's' : ''}
                               </Badge>
                             )}
-                            <Badge variante={varianteStatut(projet.statut)}>{libelleStatut(projet.statut)}</Badge>
+                            <Badge variante={varianteStatut(projet.statut)}>{L.statutProjet[projet.statut]}</Badge>
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-1.5">
                           {projet.domaines.map((d) => (
                             <Badge key={d} variante="neutre">
-                              {LIBELLES_DOMAINE[d]}
+                              {L.domaine[d]}
                             </Badge>
                           ))}
                         </div>
@@ -216,7 +219,7 @@ export function Accueil() {
                           Voir la réalisation
                         </a>
                       )}
-                      {projet.date_fin && <span className="tabular-nums">Terminé le {dateCourte(projet.date_fin)}</span>}
+                      {projet.date_fin && <span className="tabular-nums">Terminé le {date(projet.date_fin)}</span>}
                     </span>
                   </li>
                 )

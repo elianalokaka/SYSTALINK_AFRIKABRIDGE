@@ -7,7 +7,7 @@ import { listeCompetences } from '../../api/profil'
 import { mesProjets } from '../../api/projets'
 import { ErreurApi, messageErreur } from '../../api/erreurs'
 import { rafraichirRessources } from '../../lib/cache'
-import { LIBELLES_TYPE_RESSOURCE, LISTE_TYPES_RESSOURCE } from '../../lib/labels'
+import { useLibelles } from '../../lib/labels'
 import type { Ressource, TypeRessource, VisibiliteRessource } from '../../types'
 import { champsDuType, EXTENSIONS_FICHIER, TAILLE_MAX_FICHIER } from './outils'
 
@@ -25,6 +25,7 @@ const LANGAGES = ['php', 'javascript', 'typescript', 'python', 'java', 'sql', 'b
  * dans tous les autres cas on l'omet et le serveur décide (AGENTS.md § 2).
  */
 export function FormulaireRessource({ ressource }: { ressource?: Ressource }) {
+  const L = useLibelles()
   const edition = ressource !== undefined
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -149,7 +150,7 @@ export function FormulaireRessource({ ressource }: { ressource?: Ressource }) {
           <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
             {edition ? (
               <div className="flex items-center gap-2 text-sm text-fg-2">
-                Type : <Badge variante="accent">{LIBELLES_TYPE_RESSOURCE[ressource.type]}</Badge>
+                Type : <Badge variante="accent">{L.typeRessource[ressource.type]}</Badge>
               </div>
             ) : (
               <FormField id="type" label="Type de ressource" obligatoire erreur={erreurs.type}>
@@ -162,7 +163,7 @@ export function FormulaireRessource({ ressource }: { ressource?: Ressource }) {
                   }}
                   className={CLASSE_SELECT}
                 >
-                  {LISTE_TYPES_RESSOURCE.map(([valeur, libelle]) => (
+                  {L.listeTypesRessource.map(([valeur, libelle]) => (
                     <option key={valeur} value={valeur}>
                       {libelle}
                     </option>

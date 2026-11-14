@@ -1,3 +1,5 @@
+import { useMemo } from 'react'
+import { useI18n, type Cle } from '../i18n'
 import type {
   CategorieCompetence,
   Domaine,
@@ -11,103 +13,123 @@ import type {
 } from '../types'
 
 /**
- * Libellés d'affichage des énumérations.
+ * Libellés d'affichage des énumérations, dans la langue active.
  *
- * Le contrat ne fournit les libellés QUE pour `StatutProjet` (« Ouvert » /
- * « En cours » / « Terminé »). Tous les autres sont décidés ici, en français.
+ * Les textes vivent dans `i18n/fr.ts` / `en.ts` (clés `enum.<groupe>.<valeur>`). Ici on ne
+ * garde que la CORRESPONDANCE valeur d'enum → clé, typée `Record<Enum, Cle>` :
+ *  - ajouter une valeur d'enum au contrat ne compile plus tant qu'elle n'a pas de clé ;
+ *  - une clé inexistante dans les dictionnaires ne compile pas non plus.
+ * On ne peut donc jamais afficher un enum sans libellé, dans aucune des deux langues.
  *
- * GARANTIE DE COMPLÉTUDE : chaque table est typée `Record<Enum, string>`.
- * Si on ajoute une valeur d'enum au contrat, ce fichier NE COMPILE PLUS tant
- * que le libellé n'est pas ajouté — on ne peut donc jamais afficher un enum
- * sans libellé. C'est voulu : c'est la source unique, jamais recopiée.
+ * Usage : `const L = useLibelles()` puis `L.role[profil.role_profil]`, `L.domaine[d]`,
+ * ou `L.listeDomaines` pour un menu déroulant.
+ * Le contrat n'impose des libellés QUE pour `StatutProjet` (« Ouvert » / « En cours » / « Terminé »).
  */
 
 export type TypeLien = LienProfil['type']
 
-export const LIBELLES_ROLE_PROFIL: Record<RoleProfil, string> = {
-  developpeur_frontend: 'Développeur frontend',
-  developpeur_backend: 'Développeur backend',
-  fullstack: 'Développeur full-stack',
-  designer_ui_ux: 'Designer UI/UX',
-  ingenieur_iot: 'Ingénieur IoT',
-  data_scientist: 'Data scientist',
-  chef_de_projet: 'Chef de projet',
-  etudiant: 'Étudiant',
-  entrepreneur: 'Entrepreneur',
-  autre: 'Autre',
+const CLES_ROLE: Record<RoleProfil, Cle> = {
+  developpeur_frontend: 'enum.role.developpeur_frontend',
+  developpeur_backend: 'enum.role.developpeur_backend',
+  fullstack: 'enum.role.fullstack',
+  designer_ui_ux: 'enum.role.designer_ui_ux',
+  ingenieur_iot: 'enum.role.ingenieur_iot',
+  data_scientist: 'enum.role.data_scientist',
+  chef_de_projet: 'enum.role.chef_de_projet',
+  etudiant: 'enum.role.etudiant',
+  entrepreneur: 'enum.role.entrepreneur',
+  autre: 'enum.role.autre',
+}
+const CLES_DOMAINE: Record<Domaine, Cle> = {
+  agriculture: 'enum.domaine.agriculture',
+  sante: 'enum.domaine.sante',
+  education: 'enum.domaine.education',
+  fintech: 'enum.domaine.fintech',
+  energie: 'enum.domaine.energie',
+  transport: 'enum.domaine.transport',
+  iot: 'enum.domaine.iot',
+  intelligence_artificielle: 'enum.domaine.intelligence_artificielle',
+  commerce: 'enum.domaine.commerce',
+  environnement: 'enum.domaine.environnement',
+  administration: 'enum.domaine.administration',
+  autre: 'enum.domaine.autre',
+}
+const CLES_STATUT_PROJET: Record<StatutProjet, Cle> = {
+  recrutement: 'enum.statutProjet.recrutement',
+  en_cours: 'enum.statutProjet.en_cours',
+  termine: 'enum.statutProjet.termine',
+}
+const CLES_STATUT_DEMANDE: Record<StatutDemande, Cle> = {
+  en_attente: 'enum.statutDemande.en_attente',
+  acceptee: 'enum.statutDemande.acceptee',
+  refusee: 'enum.statutDemande.refusee',
+}
+const CLES_CATEGORIE: Record<CategorieCompetence, Cle> = {
+  langage: 'enum.categorie.langage',
+  framework: 'enum.categorie.framework',
+  outil: 'enum.categorie.outil',
+  domaine_technique: 'enum.categorie.domaine_technique',
+  design: 'enum.categorie.design',
+  gestion_projet: 'enum.categorie.gestion_projet',
+  autre: 'enum.categorie.autre',
+}
+const CLES_NIVEAU: Record<NiveauCompetence, Cle> = {
+  debutant: 'enum.niveau.debutant',
+  intermediaire: 'enum.niveau.intermediaire',
+  avance: 'enum.niveau.avance',
+}
+const CLES_TYPE_LIEN: Record<TypeLien, Cle> = {
+  github: 'enum.typeLien.github',
+  gitlab: 'enum.typeLien.gitlab',
+  linkedin: 'enum.typeLien.linkedin',
+  portfolio: 'enum.typeLien.portfolio',
+  twitter: 'enum.typeLien.twitter',
+  autre: 'enum.typeLien.autre',
+}
+const CLES_TYPE_RESSOURCE: Record<TypeRessource, Cle> = {
+  code: 'enum.typeRessource.code',
+  lien: 'enum.typeRessource.lien',
+  tutoriel: 'enum.typeRessource.tutoriel',
+  api: 'enum.typeRessource.api',
+  document: 'enum.typeRessource.document',
+  article: 'enum.typeRessource.article',
+  autre: 'enum.typeRessource.autre',
+}
+const CLES_VISIBILITE: Record<VisibiliteRessource, Cle> = {
+  projet: 'enum.visibilite.projet',
+  publique: 'enum.visibilite.publique',
 }
 
-export const LIBELLES_DOMAINE: Record<Domaine, string> = {
-  agriculture: 'Agriculture',
-  sante: 'Santé',
-  education: 'Éducation',
-  fintech: 'Fintech',
-  energie: 'Énergie',
-  transport: 'Transport',
-  iot: 'IoT',
-  intelligence_artificielle: 'Intelligence artificielle',
-  commerce: 'Commerce',
-  environnement: 'Environnement',
-  administration: 'Administration',
-  autre: 'Autre',
+function traduireTable<E extends string>(t: (c: Cle) => string, table: Record<E, Cle>): Record<E, string> {
+  return Object.fromEntries(Object.entries<Cle>(table).map(([valeur, cle]) => [valeur, t(cle)])) as Record<E, string>
 }
+const liste = <E extends string>(table: Record<E, string>) => Object.entries(table) as Array<[E, string]>
 
-/* Les SEULS libellés imposés par le contrat — ne pas les inventer ni les changer. */
-export const LIBELLES_STATUT_PROJET: Record<StatutProjet, string> = {
-  recrutement: 'Ouvert',
-  en_cours: 'En cours',
-  termine: 'Terminé',
+export function useLibelles() {
+  const { t } = useI18n()
+  return useMemo(() => {
+    const role = traduireTable(t, CLES_ROLE)
+    const domaine = traduireTable(t, CLES_DOMAINE)
+    const niveau = traduireTable(t, CLES_NIVEAU)
+    const typeLien = traduireTable(t, CLES_TYPE_LIEN)
+    const typeRessource = traduireTable(t, CLES_TYPE_RESSOURCE)
+    return {
+      role,
+      domaine,
+      statutProjet: traduireTable(t, CLES_STATUT_PROJET),
+      statutDemande: traduireTable(t, CLES_STATUT_DEMANDE),
+      categorie: traduireTable(t, CLES_CATEGORIE),
+      niveau,
+      niveauNonPrecise: t('enum.niveau.nonPrecise'),
+      typeLien,
+      typeRessource,
+      visibilite: traduireTable(t, CLES_VISIBILITE),
+      /** Listes ordonnées pour les menus déroulants (l'ordre d'affichage est un choix d'UI). */
+      listeRoles: liste(role),
+      listeDomaines: liste(domaine),
+      listeNiveaux: liste(niveau),
+      listeTypesRessource: liste(typeRessource),
+      listeTypesLien: liste(typeLien),
+    }
+  }, [t])
 }
-
-export const LIBELLES_STATUT_DEMANDE: Record<StatutDemande, string> = {
-  en_attente: 'En attente',
-  acceptee: 'Acceptée',
-  refusee: 'Refusée',
-}
-
-export const LIBELLES_CATEGORIE_COMPETENCE: Record<CategorieCompetence, string> = {
-  langage: 'Langage',
-  framework: 'Framework',
-  outil: 'Outil',
-  domaine_technique: 'Domaine technique',
-  design: 'Design',
-  gestion_projet: 'Gestion de projet',
-  autre: 'Autre',
-}
-
-export const LIBELLES_NIVEAU: Record<NiveauCompetence, string> = {
-  debutant: 'Débutant',
-  intermediaire: 'Intermédiaire',
-  avance: 'Avancé',
-}
-
-export const LIBELLES_TYPE_LIEN: Record<TypeLien, string> = {
-  github: 'GitHub',
-  gitlab: 'GitLab',
-  linkedin: 'LinkedIn',
-  portfolio: 'Portfolio',
-  twitter: 'Twitter',
-  autre: 'Autre',
-}
-
-export const LIBELLES_TYPE_RESSOURCE: Record<TypeRessource, string> = {
-  code: 'Code',
-  lien: 'Lien',
-  tutoriel: 'Tutoriel',
-  api: 'API',
-  document: 'Document',
-  article: 'Article',
-  autre: 'Autre',
-}
-
-export const LIBELLES_VISIBILITE_RESSOURCE: Record<VisibiliteRessource, string> = {
-  projet: "Réservée à l'équipe",
-  publique: 'Publique',
-}
-
-/** Listes ordonnées pour les menus déroulants (l'ordre d'affichage est un choix d'UI). */
-export const LISTE_ROLES_PROFIL = Object.entries(LIBELLES_ROLE_PROFIL) as Array<[RoleProfil, string]>
-export const LISTE_DOMAINES = Object.entries(LIBELLES_DOMAINE) as Array<[Domaine, string]>
-export const LISTE_NIVEAUX = Object.entries(LIBELLES_NIVEAU) as Array<[NiveauCompetence, string]>
-export const LISTE_TYPES_RESSOURCE = Object.entries(LIBELLES_TYPE_RESSOURCE) as Array<[TypeRessource, string]>
-export const LISTE_TYPES_LIEN = Object.entries(LIBELLES_TYPE_LIEN) as Array<[TypeLien, string]>

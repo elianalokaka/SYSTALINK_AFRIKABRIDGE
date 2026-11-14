@@ -4,16 +4,17 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { Avatar, Badge, Button, Card, CardCorps, CardEntete, EmptyState, SkeletonTexte, Tabs } from '../../components/ui'
 import { abonnements, abonnes } from '../../api/suivi'
 import { useNomDePays } from '../../lib/pays'
-import { LIBELLES_ROLE_PROFIL } from '../../lib/labels'
-import { libelleAbonnements, libelleAbonnes } from './reseau'
+import { useLibelles } from '../../lib/labels'
+import { useI18n } from '../../i18n'
 
 type OngletReseau = 'abonnes' | 'abonnements'
 
 /** « 12 abonnés · 5 abonnements » — jamais affiché si le suivi n'est pas livré (l'appelant décide). */
 export function CompteursSuivi({ nbAbonnes, nbAbonnements }: { nbAbonnes: number; nbAbonnements: number }) {
+  const { t } = useI18n()
   return (
     <p className="text-sm tabular-nums text-fg-2">
-      {libelleAbonnes(nbAbonnes)} · {libelleAbonnements(nbAbonnements)}
+      {t('reseau.abonnes', { count: nbAbonnes })} · {t('reseau.abonnements', { count: nbAbonnements })}
     </p>
   )
 }
@@ -35,6 +36,8 @@ export function ListeReseau({
   nbAbonnes: number
   nbAbonnements: number
 }) {
+  const { t } = useI18n()
+  const L = useLibelles()
   const nomDePays = useNomDePays()
   const [onglet, setOnglet] = useState<OngletReseau>('abonnes')
   const [page, setPage] = useState(1)
@@ -54,15 +57,15 @@ export function ListeReseau({
 
   return (
     <Card>
-      <CardEntete titre="Réseau" />
+      <CardEntete titre={t('reseau.titre')} />
       <div className="px-4">
         <Tabs
           avecPanneaux
           actif={onglet}
           onChange={changerOnglet}
           onglets={[
-            { id: 'abonnes', libelle: 'Abonnés', compteur: nbAbonnes },
-            { id: 'abonnements', libelle: 'Abonnements', compteur: nbAbonnements },
+            { id: 'abonnes', libelle: t('reseau.ongletAbonnes'), compteur: nbAbonnes },
+            { id: 'abonnements', libelle: t('reseau.ongletAbonnements'), compteur: nbAbonnements },
           ]}
         />
       </div>
@@ -72,11 +75,11 @@ export function ListeReseau({
             <SkeletonTexte lignes={3} />
           ) : requete.isError && !requete.data ? (
             <EmptyState
-              titre="Impossible de charger cette liste"
-              description="Vérifie ta connexion puis réessaie."
+              titre={t('reseau.chargementImpossible')}
+              description={t('commun.verifierConnexion')}
               action={
                 <Button variante="secondaire" onClick={() => void requete.refetch()}>
-                  Réessayer
+                  {t('commun.reessayer')}
                 </Button>
               }
             />
@@ -97,7 +100,7 @@ export function ListeReseau({
                         {membre.nom}
                       </Link>
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <Badge variante="info">{LIBELLES_ROLE_PROFIL[membre.role_profil]}</Badge>
+                        <Badge variante="info">{L.role[membre.role_profil]}</Badge>
                         <span className="text-xs text-fg-2">{nomDePays(membre.pays)}</span>
                       </div>
                     </div>
@@ -106,22 +109,22 @@ export function ListeReseau({
               </ul>
 
               {dernierePage > 1 && (
-                <nav aria-label="Pagination du réseau" className="mt-4 flex items-center justify-between gap-3">
+                <nav aria-label={t('reseau.pagination')} className="mt-4 flex items-center justify-between gap-3">
                   <Button variante="secondaire" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-                    Précédent
+                    {t('commun.precedent')}
                   </Button>
                   <span className="text-sm tabular-nums text-fg-2">
-                    Page {page} / {dernierePage}
+                    {t('commun.page', { page, total: dernierePage })}
                   </span>
                   <Button variante="secondaire" disabled={page >= dernierePage} onClick={() => setPage((p) => p + 1)}>
-                    Suivant
+                    {t('commun.suivant')}
                   </Button>
                 </nav>
               )}
             </>
           ) : (
             <p className="text-sm text-fg-3">
-              {onglet === 'abonnes' ? 'Aucun abonné pour l’instant.' : 'Ne suit personne pour l’instant.'}
+              {onglet === 'abonnes' ? t('reseau.aucunAbonne') : t('reseau.neSuitPersonne')}
             </p>
           )}
         </div>

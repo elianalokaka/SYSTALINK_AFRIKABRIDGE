@@ -6,7 +6,7 @@ import { creerProjet } from '../../api/projets'
 import { listeCompetences } from '../../api/profil'
 import { ErreurApi } from '../../api/erreurs'
 import { rafraichirProjets } from '../../lib/cache'
-import { LISTE_DOMAINES } from '../../lib/labels'
+import { useLibelles } from '../../lib/labels'
 import type { Domaine, ProjetCreate, StatutProjetCreation } from '../../types'
 
 const CLASSE_SELECT = 'h-9 rounded-md border border-border-strong bg-surface-1 px-3 text-sm text-fg-1'
@@ -22,6 +22,7 @@ const CLASSE_SELECT = 'h-9 rounded-md border border-border-strong bg-surface-1 p
  *   - le créateur devient automatiquement `proprietaire`.
  */
 export function ProjetCreation() {
+  const L = useLibelles()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const catalogue = useQuery({ queryKey: ['skills'], queryFn: listeCompetences })
@@ -172,7 +173,7 @@ export function ProjetCreation() {
                 <span className="text-xs text-fg-3">{domaines.length}/3</span>
               </div>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {LISTE_DOMAINES.map(([valeur, libelle]) => {
+                {L.listeDomaines.map(([valeur, libelle]) => {
                   const coche = domaines.includes(valeur)
                   const desactive = !coche && domaines.length >= 3
                   return (

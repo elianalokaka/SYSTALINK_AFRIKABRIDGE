@@ -3,7 +3,7 @@ import { Link } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import { Button, Card, CardCorps, EmptyState, Input, SkeletonTexte } from '../../components/ui'
 import { listerProjets } from '../../api/projets'
-import { LISTE_DOMAINES } from '../../lib/labels'
+import { useLibelles } from '../../lib/labels'
 import { CarteProjet } from './CarteProjet'
 
 const CLASSE_SELECT = 'h-9 rounded-md border border-border-strong bg-surface-1 px-3 text-sm text-fg-1'
@@ -16,6 +16,7 @@ const CLASSE_SELECT = 'h-9 rounded-md border border-border-strong bg-surface-1 p
  * client : c'est le comportement attendu avec le vrai backend.
  */
 export function Projets() {
+  const L = useLibelles()
   const [q, setQ] = useState('')
   const [statut, setStatut] = useState('')
   const [domaine, setDomaine] = useState('')
@@ -59,7 +60,7 @@ export function Projets() {
             className={CLASSE_SELECT}
           >
             <option value="">Tous les domaines</option>
-            {LISTE_DOMAINES.map(([valeur, libelle]) => (
+            {L.listeDomaines.map(([valeur, libelle]) => (
               <option key={valeur} value={valeur}>
                 {libelle}
               </option>

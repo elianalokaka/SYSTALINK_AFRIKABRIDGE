@@ -17,10 +17,11 @@ import { detailProjet } from '../../api/projets'
 import { ErreurApi, messageErreur } from '../../api/erreurs'
 import { useSession } from '../../features/auth/SessionProvider'
 import { rafraichirRessources } from '../../lib/cache'
-import { LIBELLES_TYPE_RESSOURCE, LIBELLES_VISIBILITE_RESSOURCE, LIBELLES_ROLE_PROFIL } from '../../lib/labels'
+import { useLibelles } from '../../lib/labels'
 import { estLivre } from '../../lib/priorites'
 import { FilCommentaires } from './FilCommentaires'
-import { dateCourte, domaineDe, fichierSur, lienSur } from './outils'
+import { domaineDe, fichierSur, lienSur } from './outils'
+import { useDates } from '../../i18n'
 
 /**
  * Détail d'une ressource.
@@ -30,6 +31,8 @@ import { dateCourte, domaineDe, fichierSur, lienSur } from './outils'
  * la Policy du serveur (403), dont on affiche le message si elle refuse.
  */
 export function RessourceDetail() {
+  const { date } = useDates()
+  const L = useLibelles()
   const { id } = useParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -133,9 +136,9 @@ export function RessourceDetail() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="mb-2 flex flex-wrap items-center gap-1.5">
-              <Badge variante="accent">{LIBELLES_TYPE_RESSOURCE[ressource.type]}</Badge>
+              <Badge variante="accent">{L.typeRessource[ressource.type]}</Badge>
               <Badge variante={ressource.visibilite === 'projet' ? 'info' : 'neutre'}>
-                {LIBELLES_VISIBILITE_RESSOURCE[ressource.visibilite]}
+                {L.visibilite[ressource.visibilite]}
               </Badge>
             </div>
             <h1 className="break-words text-xl font-semibold text-fg-1">{ressource.titre}</h1>
@@ -234,7 +237,7 @@ export function RessourceDetail() {
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-fg-1">{ressource.auteur.nom}</p>
               <p className="truncate text-xs text-fg-2">
-                {LIBELLES_ROLE_PROFIL[ressource.auteur.role_profil]} · le {dateCourte(ressource.created_at)}
+                {L.role[ressource.auteur.role_profil]} · le {date(ressource.created_at)}
               </p>
             </div>
           </div>

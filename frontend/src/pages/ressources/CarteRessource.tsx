@@ -1,22 +1,24 @@
 import { Avatar, Badge, Card, CardCorps } from '../../components/ui'
-import { LIBELLES_TYPE_RESSOURCE, LIBELLES_VISIBILITE_RESSOURCE } from '../../lib/labels'
+import { useLibelles } from '../../lib/labels'
 import type { Ressource } from '../../types'
 import { estLivre } from '../../lib/priorites'
 import { libelleCommentaires } from './commentaires'
-import { dateCourte } from './outils'
+import { useDates } from '../../i18n'
 
 /**
  * Carte d'une ressource en liste. Comme `CarteProjet`, elle n'est pas
  * cliquable en soi : la page qui la rend l'enveloppe dans un `<Link>`.
  */
 export function CarteRessource({ ressource }: { ressource: Ressource }) {
+  const { date } = useDates()
+  const L = useLibelles()
   return (
     <Card className="h-full transition-colors hover:border-border-strong">
       <CardCorps className="flex h-full flex-col gap-3">
         <div className="flex flex-wrap items-center gap-1.5">
-          <Badge variante="accent">{LIBELLES_TYPE_RESSOURCE[ressource.type]}</Badge>
+          <Badge variante="accent">{L.typeRessource[ressource.type]}</Badge>
           {ressource.visibilite === 'projet' && (
-            <Badge variante="info">{LIBELLES_VISIBILITE_RESSOURCE.projet}</Badge>
+            <Badge variante="info">{L.visibilite.projet}</Badge>
           )}
         </div>
 
@@ -46,7 +48,7 @@ export function CarteRessource({ ressource }: { ressource: Ressource }) {
           </div>
           <span className="shrink-0 text-xs tabular-nums text-fg-3">
             {estLivre('commentaires') && ressource.commentaires_count > 0 && `${libelleCommentaires(ressource.commentaires_count)} · `}
-            {dateCourte(ressource.created_at)}
+            {date(ressource.created_at)}
           </span>
         </div>
       </CardCorps>

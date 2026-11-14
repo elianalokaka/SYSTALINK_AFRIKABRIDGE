@@ -1,7 +1,7 @@
 import { Avatar, Badge, Card, CardCorps, ProgressBar } from '../../components/ui'
-import { LIBELLES_DOMAINE } from '../../lib/labels'
+import { useLibelles } from '../../lib/labels'
 import type { ProjetCarte } from '../../types'
-import { libelleStatut, varianteStatut } from './statut'
+import { varianteStatut } from './statut'
 
 /**
  * Carte d'un projet en liste.
@@ -18,18 +18,19 @@ export function CarteProjet({
   /** Demandes à traiter (propriétaire) : affiche une pastille d'alerte. */
   demandesEnAttente?: number
 }) {
+  const L = useLibelles()
   return (
     <Card className="h-full transition-colors hover:border-border-strong">
       <CardCorps className="flex h-full flex-col gap-3">
         <div className="flex items-start justify-between gap-2">
           <h2 className="min-w-0 truncate text-sm font-semibold text-fg-1">{projet.nom}</h2>
-          <Badge variante={varianteStatut(projet.statut)}>{libelleStatut(projet.statut)}</Badge>
+          <Badge variante={varianteStatut(projet.statut)}>{L.statutProjet[projet.statut]}</Badge>
         </div>
 
         <div className="flex flex-wrap gap-1.5">
           {projet.domaines.map((domaine) => (
             <Badge key={domaine} variante="neutre">
-              {LIBELLES_DOMAINE[domaine]}
+              {L.domaine[domaine]}
             </Badge>
           ))}
         </div>
