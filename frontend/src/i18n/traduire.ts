@@ -34,3 +34,10 @@ export function traduire(langue: Langue, cle: Cle, variables?: Variables): strin
   brut ??= dico[cle] ?? DICTIONNAIRES.fr[cle] ?? cle
   return variables ? brut.replace(/\{(\w+)\}/g, (m, nom: string) => String(variables[nom] ?? m)) : brut
 }
+
+let langueCourante: Langue = LANGUE_PAR_DEFAUT
+/** Langue active pour le code HORS React (messages d'erreur du client HTTP) ; tenue à jour par `I18nProvider`. */
+export function definirLangueCourante(langue: Langue): void {
+  langueCourante = langue
+}
+export const traduireCourant = (cle: Cle, variables?: Variables): string => traduire(langueCourante, cle, variables)

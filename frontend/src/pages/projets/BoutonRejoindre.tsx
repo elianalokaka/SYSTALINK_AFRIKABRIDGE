@@ -5,6 +5,7 @@ import { annulerDemande, demanderAdhesion, mesDemandes } from '../../api/equipes
 import { messageErreur } from '../../api/erreurs'
 import { rafraichirProjets } from '../../lib/cache'
 import type { Projet } from '../../types'
+import { useI18n } from '../../i18n'
 
 const LONGUEUR_MAX_MESSAGE = 500
 
@@ -26,6 +27,7 @@ const LONGUEUR_MAX_MESSAGE = 500
  * projet lit pour décider.
  */
 export function BoutonRejoindre({ projet }: { projet: Projet }) {
+  const { t } = useI18n()
   const queryClient = useQueryClient()
   const [chargement, setChargement] = useState(false)
   const [erreur, setErreur] = useState<string | null>(null)
@@ -69,7 +71,7 @@ export function BoutonRejoindre({ projet }: { projet: Projet }) {
       await annulerDemande(demandeEnAttente.id)
     } catch (e) {
       setErreur(
-        messageErreur(e, { 409: 'Cette demande a déjà été traitée.', 404: 'Cette demande n’existe plus.' })
+        messageErreur(e, { 409: t('demandes.dejaTraitee'), 404: t('demandes.introuvable') })
       )
     } finally {
       setChargement(false)
@@ -78,16 +80,16 @@ export function BoutonRejoindre({ projet }: { projet: Projet }) {
   }
 
   if (projet.is_member) {
-    return <Badge variante="info">Membre</Badge>
+    return <Badge variante="info">{t('rejoindre.membre')}</Badge>
   }
 
   if (projet.ma_demande_statut === 'en_attente') {
     return (
       <div className="flex flex-col items-end gap-1">
         <div className="flex items-center gap-2">
-          <Badge variante="attente">Demande en attente</Badge>
+          <Badge variante="attente">{t('rejoindre.enAttente')}</Badge>
           <Button taille="sm" variante="discret" chargement={chargement} onClick={onAnnuler}>
-            Annuler
+            {t('rejoindre.annuler')}
           </Button>
         </div>
         {erreur && <p className="text-xs text-danger">{erreur}</p>}
@@ -102,7 +104,7 @@ export function BoutonRejoindre({ projet }: { projet: Projet }) {
     return (
       <div className="flex w-full max-w-sm flex-col gap-2">
         <FormField
-          label="Message au chef de projet (facultatif)"
+          label={t('rejoindre.messageLabel')}
           id="message-adhesion"
           aide={`${message.length}/${LONGUEUR_MAX_MESSAGE}`}
         >
@@ -110,7 +112,7 @@ export function BoutonRejoindre({ projet }: { projet: Projet }) {
             id="message-adhesion"
             rows={3}
             maxLength={LONGUEUR_MAX_MESSAGE}
-            placeholder="Présente-toi en une phrase : ce que tu sais faire, ta disponibilité…"
+            placeholder={t('rejoindre.messagePlaceholder')}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
           />
@@ -129,10 +131,10 @@ export function BoutonRejoindre({ projet }: { projet: Projet }) {
               setErreur(null)
             }}
           >
-            Fermer
+            {t('rejoindre.fermer')}
           </Button>
           <Button chargement={chargement} onClick={onEnvoyer}>
-            Envoyer ma demande
+            {t('rejoindre.envoyer')}
           </Button>
         </div>
       </div>
@@ -142,7 +144,7 @@ export function BoutonRejoindre({ projet }: { projet: Projet }) {
   return (
     <div className="flex flex-col items-end gap-1">
       <Button disabled={termine || complete} onClick={() => setFormulaireOuvert(true)}>
-        {termine ? 'Projet terminé' : complete ? 'Équipe complète' : 'Rejoindre ce projet'}
+        {termine ? t('rejoindre.termine') : complete ? t('rejoindre.complete') : t('rejoindre.rejoindre')}
       </Button>
       {erreur && (
         <p role="alert" className="text-xs text-danger">

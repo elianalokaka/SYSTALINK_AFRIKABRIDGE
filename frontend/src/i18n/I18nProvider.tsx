@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Contexte } from './contexte'
-import { LANGUES, LANGUE_PAR_DEFAUT, LOCALES, traduire, type Langue } from './traduire'
+import { LANGUES, LANGUE_PAR_DEFAUT, LOCALES, definirLangueCourante, traduire, type Langue } from './traduire'
 
 const CLE_STOCKAGE = 'africabridge_langue'
 
@@ -20,6 +20,8 @@ function langueMemorisee(): Langue {
  */
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [langue, setLangue] = useState<Langue>(langueMemorisee)
+  /* Synchrone, avant le rendu des enfants : le client HTTP lit cette valeur hors de React. */
+  definirLangueCourante(langue)
 
   useEffect(() => {
     document.documentElement.lang = langue

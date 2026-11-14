@@ -6,6 +6,8 @@ import { detailProjet, modifierProjet } from '../../api/projets'
 import { ErreurApi } from '../../api/erreurs'
 import { rafraichirProjets } from '../../lib/cache'
 import type { Projet, StatutProjet } from '../../types'
+import { useI18n } from '../../i18n'
+import { useLibelles } from '../../lib/labels'
 
 const CLASSE_SELECT = 'h-9 rounded-md border border-border-strong bg-surface-1 px-3 text-sm text-fg-1'
 
@@ -17,6 +19,7 @@ const CLASSE_SELECT = 'h-9 rounded-md border border-border-strong bg-surface-1 p
  * c'est DÉFINITIF — le contrat interdit de quitter `termine`.
  */
 export function ProjetEdition() {
+  const { t } = useI18n()
   const { id } = useParams()
   const navigate = useNavigate()
   const requete = useQuery({
@@ -38,8 +41,8 @@ export function ProjetEdition() {
   if (!requete.data) {
     return (
       <EmptyState
-        titre="Projet introuvable"
-        action={<Button variante="secondaire" onClick={() => navigate('/projets')}>Retour</Button>}
+        titre={t('projetEdition.introuvable')}
+        action={<Button variante="secondaire" onClick={() => navigate('/projets')}>{t('projetEdition.retour')}</Button>}
       />
     )
   }
@@ -53,6 +56,8 @@ export function ProjetEdition() {
 }
 
 function FormulaireEdition({ projet, onEnregistre }: { projet: Projet; onEnregistre: () => void }) {
+  const { t } = useI18n()
+  const L = useLibelles()
   const queryClient = useQueryClient()
   const [nom, setNom] = useState(projet.nom)
   const [description, setDescription] = useState(projet.description)
@@ -80,7 +85,7 @@ function FormulaireEdition({ projet, onEnregistre }: { projet: Projet; onEnregis
       rafraichirProjets(queryClient, projet.id)
       onEnregistre()
     } catch (erreur) {
-      setErreurGlobale(erreur instanceof ErreurApi ? erreur.message : 'Une erreur est survenue.')
+      setErreurGlobale(erreur instanceof ErreurApi ? erreur.message : t('erreur.survenue'))
     } finally {
       setChargement(false)
     }
@@ -89,42 +94,42 @@ function FormulaireEdition({ projet, onEnregistre }: { projet: Projet; onEnregis
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-lg font-semibold text-fg-1">Modifier le projet</h1>
+        <h1 className="text-lg font-semibold text-fg-1">{t('projetEdition.titre')}</h1>
         <p className="mt-1 text-sm text-fg-2">
-          Suivi d'avancement et clôture — passer à « Terminé » est définitif.
+          {t('projetEdition.intro')}
         </p>
       </div>
 
       <Card>
         <CardCorps>
           <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
-            <FormField id="nom" label="Nom du projet" obligatoire>
+            <FormField id="nom" label={t('projetCreation.nom')} obligatoire>
               <Input id="nom" value={nom} onChange={(e) => setNom(e.target.value)} />
             </FormField>
 
-            <FormField id="description" label="Description" obligatoire>
+            <FormField id="description" label={t('projetCreation.description')} obligatoire>
               <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={4} />
             </FormField>
 
-            <FormField id="objectifs" label="Objectifs" obligatoire>
+            <FormField id="objectifs" label={t('projetCreation.objectifs')} obligatoire>
               <Textarea id="objectifs" value={objectifs} onChange={(e) => setObjectifs(e.target.value)} rows={3} />
             </FormField>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <FormField id="statut" label="Statut" obligatoire>
+              <FormField id="statut" label={t('projetCreation.statut')} obligatoire>
                 <select
                   id="statut"
                   value={statut}
                   onChange={(e) => setStatut(e.target.value as StatutProjet)}
                   className={`${CLASSE_SELECT} w-full`}
                 >
-                  <option value="recrutement">Ouvert</option>
-                  <option value="en_cours">En cours</option>
-                  <option value="termine">Terminé</option>
+                  <option value="recrutement">{L.statutProjet.recrutement}</option>
+                  <option value="en_cours">{L.statutProjet.en_cours}</option>
+                  <option value="termine">{L.statutProjet.termine}</option>
                 </select>
               </FormField>
 
-              <FormField id="progression" label="Progression" aide="0 à 100 %">
+              <FormField id="progression" label={t('projetEdition.progression')} aide={t('projetEdition.progressionAide')}>
                 <Input
                   id="progression"
                   type="number"
@@ -136,7 +141,7 @@ function FormulaireEdition({ projet, onEnregistre }: { projet: Projet; onEnregis
               </FormField>
             </div>
 
-            <FormField id="lien" label="Lien de réalisation" aide="Démo ou dépôt du livrable (facultatif).">
+            <FormField id="lien" label={t('projetEdition.lien')} aide={t('projetEdition.lienAide')}>
               <Input
                 id="lien"
                 value={lien}
@@ -152,7 +157,7 @@ function FormulaireEdition({ projet, onEnregistre }: { projet: Projet; onEnregis
             )}
 
             <Button type="submit" chargement={chargement}>
-              {chargement ? 'Enregistrement…' : 'Enregistrer les modifications'}
+              {chargement ? t('modifierProfil.enregistrement') : t('projetEdition.bouton')}
             </Button>
           </form>
         </CardCorps>

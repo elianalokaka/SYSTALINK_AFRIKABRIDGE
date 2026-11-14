@@ -1,5 +1,6 @@
 import { Avatar, Badge, Card, CardCorps, ProgressBar } from '../../components/ui'
 import { useLibelles } from '../../lib/labels'
+import { useI18n } from '../../i18n'
 import type { ProjetCarte } from '../../types'
 import { varianteStatut } from './statut'
 
@@ -18,6 +19,7 @@ export function CarteProjet({
   /** Demandes à traiter (propriétaire) : affiche une pastille d'alerte. */
   demandesEnAttente?: number
 }) {
+  const { t } = useI18n()
   const L = useLibelles()
   return (
     <Card className="h-full transition-colors hover:border-border-strong">
@@ -37,7 +39,7 @@ export function CarteProjet({
 
         {demandesEnAttente > 0 && (
           <Badge variante="attente">
-            {demandesEnAttente} demande{demandesEnAttente > 1 ? 's' : ''} à traiter
+            {t('projets.demandesATraiter', { count: demandesEnAttente })}
           </Badge>
         )}
 
