@@ -1,3 +1,4 @@
+import { Logo } from './Logo'
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router'
 import { Avatar, Button } from '../ui'
@@ -104,7 +105,8 @@ export function AppShell() {
       </a>
       <header className="sticky top-0 z-10 border-b border-border-subtle bg-surface-1">
         <div className="mx-auto flex max-w-6xl items-center gap-x-4 px-4 py-2.5 sm:px-6 lg:gap-x-6">
-          <Link to="/" className="inline-flex shrink-0 items-center py-2 text-sm font-semibold text-fg-1">
+          <Link to="/" className="inline-flex shrink-0 items-center gap-2 py-2 text-sm font-semibold text-fg-1">
+            <Logo className="h-7 w-7 shrink-0 text-accent" />
             AfricaBridge
           </Link>
 
