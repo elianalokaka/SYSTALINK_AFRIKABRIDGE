@@ -1,0 +1,90 @@
+import { BrowserRouter, Route, Routes } from 'react-router'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { AppShell } from './components/layout/AppShell'
+import { RequiertSession } from './features/auth/RequiertSession'
+import { SessionProvider } from './features/auth/SessionProvider'
+import { Accueil } from './pages/accueil/Accueil'
+import { Connexion } from './pages/auth/Connexion'
+import { Inscription } from './pages/auth/Inscription'
+import { Atelier } from './pages/atelier/Atelier'
+import { MonProfil } from './pages/profil/MonProfil'
+import { ModifierProfil } from './pages/profil/ModifierProfil'
+import { MesDemandes } from './pages/equipes/MesDemandes'
+import { Bibliotheque } from './pages/ressources/Bibliotheque'
+import { RessourceCreation } from './pages/ressources/RessourceCreation'
+import { RessourceDetail } from './pages/ressources/RessourceDetail'
+import { RessourceEdition } from './pages/ressources/RessourceEdition'
+import { Talents } from './pages/talents/Talents'
+import { ProfilPublic } from './pages/talents/ProfilPublic'
+import { MesProjets } from './pages/projets/MesProjets'
+import { ProjetCreation } from './pages/projets/ProjetCreation'
+import { ProjetDetail } from './pages/projets/ProjetDetail'
+import { ProjetEdition } from './pages/projets/ProjetEdition'
+import { Projets } from './pages/projets/Projets'
+import { PageIntrouvable } from './pages/PageIntrouvable'
+import { I18nProvider } from './i18n'
+
+/**
+ * Configuration globale de TanStack Query.
+ */
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+      staleTime: 30_000,
+    },
+  },
+})
+
+/**
+ * Racine de l'application.
+ *
+ * Routes publiques : /connexion, /inscription, /atelier (page de développement, absente du build de production).
+ * Routes protégées : un layout `RequiertSession` → `AppShell` → les pages.
+ */
+function App() {
+  return (
+    <I18nProvider>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <SessionProvider>
+          <Routes>
+            <Route path="/connexion" element={<Connexion />} />
+            <Route path="/inscription" element={<Inscription />} />
+            {import.meta.env.DEV && <Route path="/atelier" element={<Atelier />} />}
+
+            <Route
+              element={
+                <RequiertSession>
+                  <AppShell />
+                </RequiertSession>
+              }
+            >
+              <Route index element={<Accueil />} />
+              <Route path="profil" element={<MonProfil />} />
+              <Route path="profil/modifier" element={<ModifierProfil />} />
+              <Route path="projets" element={<Projets />} />
+              <Route path="projets/nouveau" element={<ProjetCreation />} />
+              <Route path="projets/:id" element={<ProjetDetail />} />
+              <Route path="projets/:id/modifier" element={<ProjetEdition />} />
+              <Route path="mes-projets" element={<MesProjets />} />
+              <Route path="mes-demandes" element={<MesDemandes />} />
+              <Route path="ressources" element={<Bibliotheque />} />
+              <Route path="ressources/nouveau" element={<RessourceCreation />} />
+              <Route path="ressources/:id" element={<RessourceDetail />} />
+              <Route path="ressources/:id/modifier" element={<RessourceEdition />} />
+              <Route path="talents" element={<Talents />} />
+              <Route path="talents/:id" element={<ProfilPublic />} />
+              <Route path="*" element={<PageIntrouvable />} />
+            </Route>
+
+          </Routes>
+        </SessionProvider>
+      </BrowserRouter>
+    </QueryClientProvider>
+    </I18nProvider>
+  )
+}
+
+export default App

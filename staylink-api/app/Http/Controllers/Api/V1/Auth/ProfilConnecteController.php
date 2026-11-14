@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ProfilPriveResource;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -11,13 +12,16 @@ class ProfilConnecteController extends Controller
 {
     public function __invoke(Request $request): JsonResponse
     {
-        // Récupérer l'utilisateur authentifié.
         $utilisateur = $request->user();
 
-        // Charger les compétences associées.
-        $utilisateur->load('competences');
+        $utilisateur->load(['competences', 'domaines', 'liens']);
+        $utilisateur->loadCount([
+            'abonnes as followers_count',
+            'abonnements as following_count',
+            'projetsRejoints as projets_realises_count' => fn (Builder $projets) => $projets
+                ->where('projets.statut', 'termine'),
+        ]);
 
-        // Transformer les données selon le contrat OpenAPI.
         $profil = (new ProfilPriveResource($utilisateur))
             ->resolve($request);
 

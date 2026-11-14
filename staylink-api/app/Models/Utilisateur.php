@@ -2,13 +2,12 @@
 
 namespace App\Models;
 
-use Laravel\Sanctum\HasApiTokens;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
-
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 class Utilisateur extends Authenticatable implements MustVerifyEmail
 {
@@ -24,6 +23,8 @@ class Utilisateur extends Authenticatable implements MustVerifyEmail
         'photo_profil',
         'biographie',
         'pays',
+        'region',
+        'role_profil',
         'domaine',
         'titre_professionnel',
     ];
@@ -54,6 +55,54 @@ class Utilisateur extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Nom affiché dans le contrat OpenAPI (prénom + nom).
+     */
+    public function nomComplet(): string
+    {
+        return trim($this->prenom.' '.$this->nom);
+    }
+
+    /**
+     * Le contrat n'expose qu'un `nom` complet. La table conserve prénom et nom.
+     *
+     * @return array{0: string, 1: string}
+     */
+    public static function decomposerNomComplet(string $nomComplet, ?string $prenom = null): array
+    {
+        if (filled($prenom)) {
+            return [trim($prenom), trim($nomComplet)];
+        }
+
+        $complet = trim($nomComplet);
+        $espace = mb_strpos($complet, ' ');
+
+        if ($espace === false) {
+            return [$complet, $complet];
+        }
+
+        return [
+            mb_substr($complet, 0, $espace),
+            trim(mb_substr($complet, $espace)),
+        ];
+    }
+
+    /**
+     * Domaines d'intérêt du profil (contrat ProfilUpdate.domaines).
+     */
+    public function domaines(): HasMany
+    {
+        return $this->hasMany(UtilisateurDomaine::class, 'utilisateur_id');
+    }
+
+    /**
+     * Liens publics du profil (contrat LienProfil).
+     */
+    public function liens(): HasMany
+    {
+        return $this->hasMany(UtilisateurLien::class, 'utilisateur_id');
+    }
+
+    /**
      * Compétences maîtrisées par l'utilisateur.
      */
     public function competences(): BelongsToMany
@@ -63,7 +112,7 @@ class Utilisateur extends Authenticatable implements MustVerifyEmail
             'utilisateur_competence',
             'utilisateur_id',
             'competence_id'
-        );
+        )->withPivot('niveau');
     }
 
     /**
@@ -104,7 +153,6 @@ class Utilisateur extends Authenticatable implements MustVerifyEmail
             'utilisateur_id'
         );
     }
-
 
     /**
      * Candidatures envoyées par l'utilisateur.
@@ -182,7 +230,6 @@ class Utilisateur extends Authenticatable implements MustVerifyEmail
             'suivi_id'
         );
     }
-
 
     public function hasVerifiedEmail(): bool
     {

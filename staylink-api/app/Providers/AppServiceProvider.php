@@ -25,13 +25,29 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         RateLimiter::for('connexion', function (Request $request) {
-        $email = Str::lower(
-            trim((string) $request->input('email', ''))
-        );
+            $email = Str::lower(trim((string) $request->input('email', '')));
 
-        return Limit::perMinute(5)->by(
-            hash('sha256', $email.'|'.$request->ip())
-        );
-         });
+            return [
+                Limit::perMinute(5)->by('connexion-email:'.hash('sha256', $email.'|'.$request->ip())),
+                Limit::perMinute(20)->by('connexion-ip:'.$request->ip()),
+            ];
+        });
+
+        RateLimiter::for('inscription', function (Request $request) {
+            return Limit::perMinute(5)->by('inscription:'.$request->ip());
+        });
+
+        RateLimiter::for('ecritures', function (Request $request) {
+            $acteur = $request->user()?->id ?? $request->ip();
+
+            return Limit::perMinute(30)->by('ecriture:'.$acteur);
+        });
+
+        // Au-dessus du sondage de discussion (toutes les 5 s) : 12/min suffisent, 300 laisse la marge.
+        RateLimiter::for('lectures', function (Request $request) {
+            $acteur = $request->user()?->id ?? $request->ip();
+
+            return Limit::perMinute(300)->by('lecture:'.$acteur);
+        });
     }
 }

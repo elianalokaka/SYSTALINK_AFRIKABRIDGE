@@ -1,0 +1,1887 @@
+openapi: 3.0.3
+info:
+  title: AfricaBridge - API Contractuelle
+  version: 1.3.0
+  description: >
+    Contrat officiel d'interface entre le Backend Laravel (API REST) et le Frontend React JS
+    de la plateforme AfricaBridge (concours Systalink).
+    Il couvre le périmètre MVP (P0) : inscription/connexion, profils & compétences,
+    recherche de talents, projets, équipes, espace de collaboration, partage de ressources
+    et portfolio.
+    Le suivi entre développeurs (follow), les suggestions, les commentaires et le dashboard
+    sont marqués x-priorite: P1. Ils se coupent en premier en cas de retard.
+    Tant que le follow n'est pas livré, is_following vaut false et followers_count / following_count valent 0.
+
+    # RÈGLE D'OR DU PROJET :
+    # Ce document fait autorité. Toute divergence entre le code et ce contrat est un bug.
+    # Les commentaires # expliquent la cible, la table BDD impactée et la règle métier.
+    # v1.1.0 : hébergement sur un seul VPS Datacloud Systalink (front, API, base).
+    # v1.2.0 : 413 distinct du 422, Profil sans e-mail (ProfilPrive), hôte A_REMPLACER_AVANT_J2,
+    #   SESSION_COOKIE et CORS, seeder de démo, GET /stats, suggestions liées à un projet,
+    #   libellés Ouvert / En cours / Terminé, repli du dashboard.
+    # v1.3.0 : domaines libres, compétence par nom, fichier de ressource privé
+    #   (GET /resources/{id}/file), plafonds inscription / connexion / écritures.
+    #   GET /projects/suggestions n'existe pas : les suggestions sont GET /users/suggestions.
+
+    # AUTHENTIFICATION : Laravel Sanctum en mode SPA (session + cookie), AUCUN token à gérer.
+    # Les cookies restent le mode retenu : front et API partagent la même origine sur le VPS,
+    # donc le navigateur envoie le cookie (SameSite=Lax). Pas de tokens Bearer.
+    # Flux obligatoire côté React (axios avec withCredentials: true et withXSRFToken: true) :
+    #   1. GET  {racine}/sanctum/csrf-cookie  -> pose le cookie XSRF-TOKEN (204)
+    #   2. POST /auth/login                   -> pose le cookie de session `africabridge_session` (HttpOnly)
+    #   3. Toutes les requêtes suivantes envoient automatiquement les cookies.
+    #      Pour POST/PUT/PATCH/DELETE, axios copie le cookie XSRF-TOKEN dans l'en-tête X-XSRF-TOKEN.
+    #   4. POST /auth/logout                  -> invalide la session
+    # Le frontend ne lit, ne stocke et ne renvoie JAMAIS de token (pas de localStorage, pas de header Authorization).
+    # En production, les appels utilisent des URL relatives (/api/v1, /sanctum) : même origine que la page.
+    # Une session expirée renvoie 401 : le frontend redirige vers la page de connexion.
+    # Un jeton CSRF absent ou périmé renvoie 419 : le frontend rappelle /sanctum/csrf-cookie puis rejoue la requête.
+
+    # HÉBERGEMENT (décision d'équipe, MVP) :
+    #   Tout tient sur le VPS Datacloud de Systalink : build React, API Laravel, base de données.
+    #   Nginx sert le front à la racine et proxifie /api et /sanctum vers Laravel.
+    #   Une seule origine HTTPS (le nom d'hôte du VPS). Pas de front sur un domaine
+    #   et d'API sur un autre : c'est ce qui cassait les cookies (ex. vercel.app + onrender.com).
+    #   La base écoute uniquement en localhost sur ce VPS (non exposée sur Internet).
+    #
+    # PRÉREQUIS DE DÉPLOIEMENT (checklist J2, valable sur ce VPS) :
+    #   - Laravel 11+ : $middleware->statefulApi() dans bootstrap/app.php
+    #   - php artisan session:table && php artisan migrate
+    #     (obligatoire : SESSION_DRIVER=database)
+    #   - Nom d'hôte DNS réel confirmé par Systalink, certificat HTTPS actif
+    #     (Let's Encrypt ou certificat fourni), redirection HTTP vers HTTPS dans Nginx.
+    #     {hote} dans ce contrat vaut A_REMPLACER_AVANT_J2 tant que ce nom n'est pas connu.
+    #   - SESSION_SECURE_COOKIE=true. Le cookie secure n'est envoyé qu'en HTTPS.
+    #     Dérogation seule si Systalink ne peut pas fournir HTTPS pour la démo :
+    #     SESSION_SECURE_COOKIE=false, noté comme dérogation, pas comme réglage normal.
+    #   - .env développement :
+    #       SANCTUM_STATEFUL_DOMAINS=localhost:5173,localhost:3000
+    #       SESSION_DRIVER=database
+    #       SESSION_DOMAIN=localhost
+    #       SESSION_COOKIE=africabridge_session
+    #       CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+    #   - .env production (même machine, même origine) :
+    #       APP_URL=https://{hote}
+    #       SANCTUM_STATEFUL_DOMAINS={hote}
+    #       SESSION_DRIVER=database
+    #       SESSION_DOMAIN=null
+    #       SESSION_COOKIE=africabridge_session
+    #       SESSION_SECURE_COOKIE=true
+    #       SESSION_SAME_SITE=lax
+    #       CORS_ALLOWED_ORIGINS=https://{hote}
+    #     SESSION_DOMAIN reste null : le cookie est limité à l'hôte du VPS, sans sous-domaine app./api.
+    #     SESSION_COOKIE est obligatoire : sans elle Laravel dérive le nom de APP_NAME.
+    #   - config/cors.php :
+    #       'paths' => ['api/*', 'sanctum/csrf-cookie'],
+    #       'allowed_origins' => explode(',', env('CORS_ALLOWED_ORIGINS', 'http://localhost:5173')),
+    #       'supports_credentials' => true
+    #     Jamais allowed_origins = '*'. En production le front appelle l'API en chemin relatif,
+    #     le CORS ne sert que de filet. En dev, localhost:5173 doit être autorisé sinon le
+    #     navigateur bloque GET /sanctum/csrf-cookie.
+    #   - Nginx : location / -> fichiers du build React ;
+    #             location /api/ et location /sanctum/ -> PHP-FPM Laravel ;
+    #             client_max_body_size 16m;
+    #             error_page 413 = @payload_too_large;
+    #             location @payload_too_large {
+    #               default_type application/json;
+    #               return 413 '{"message":"Fichier trop volumineux (16 Mo maximum)."}';
+    #             }
+    #   - PHP du VPS :
+    #       upload_max_filesize=12M
+    #       post_max_size=16M
+    #     La limite métier (2 Mo photo, 10 Mo ressource) est un 422 Laravel.
+    #     Le 413 n'arrive qu'au-dessus de 16 Mo (Nginx, ou ValidatePostSize si Nginx laisse passer).
+    #   - Fichiers (photos, documents) : disque persistant du VPS,
+    #     storage/app/public (ou /var/africabridge/storage), exclu du script de déploiement
+    #     pour ne pas être effacé à chaque mise à jour. Sauvegarde de ce dossier à J19.
+    #   - Routes sensibles protégées par le middleware auth:sanctum
+    #   {hote} = nom d'hôte HTTPS fourni pour le VPS Datacloud Systalink.
+
+    # CONVENTIONS :
+    #   - Les listes à volume potentiellement grand sont paginées (?page=, ?per_page=, 15 par défaut, 50 maximum)
+    #     et renvoient { data: [...], meta: { current_page, per_page, total, last_page } }.
+    #     Routes concernées : GET /users, GET /users/{id}/followers, GET /users/{id}/following,
+    #     GET /projects, GET /me/projects, GET /projects/{id}/join-requests, GET /me/join-requests, GET /resources.
+    #   - Les collections bornées renvoient { data: [...] } sans meta :
+    #     GET /skills, GET /users/suggestions, GET /projects/suggestions,
+    #     GET /projects/{id}/members, GET /users/{id}/portfolio.
+    #   - Les messages utilisent une pagination par curseur (apres_id, avant_id, limit)
+    #     plus le paramètre depuis pour les suppressions (voir GET /projects/{id}/messages).
+    #   - Les erreurs de validation suivent le format natif Laravel (422 avec message + errors).
+    #     Photo au-dessus de 2 Mo, ressource au-dessus de 10 Mo : 422, champ photo ou fichier.
+    #   - Un corps supérieur à 16 Mo renvoie 413 JSON (Nginx ou PHP), message
+    #     « Fichier trop volumineux (16 Mo maximum). »
+    #   - Les dates sont en ISO 8601 UTC.
+    #   - Les identifiants sont des entiers (bigint auto-incrémenté).
+    #   - Chaque opération porte x-priorite: P0 (MVP) ou P1 (bonus, livrable si le planning tient).
+    #
+    # DONNÉES DE DÉMONSTRATION (php artisan migrate:fresh --seed, reproductible) :
+    #   - Catalogue de compétences complet, avec au minimum Python, JavaScript, IoT, Réseaux, UI/UX.
+    #   - Environ 10 profils : pays variés (CD, SN, CI, CM, BJ...), rôles variés, compétences variées.
+    #   - Un designer UI/UX au Sénégal (SN) : la recherche « UI/UX + Sénégal » du cahier doit le renvoyer.
+    #   - 5 à 8 projets (agriculture, santé, éducation, finance...), dont « Smart Agriculture RDC ».
+    #   - AU MOINS UN projet `termine` (date_fin, progression 100, lien_realisation, au moins 2 membres),
+    #     écrit directement en base. La règle API « termine refusé à la création » ne s'applique pas au seeder.
+    #   - Quelques ressources (liens, code) et quelques messages.
+    #   - Comptes de démonstration pour le jury, mots de passe notés dans la documentation.
+    #   - Le compte d'Eliana du fil rouge N'EXISTE PAS dans le seeder : elle s'inscrit pendant la démo.
+  contact:
+    name: Équipe Développement AfricaBridge
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Serveur de développement (Laravel local - php artisan serve). Le front Vite est sur un autre port.
+  - url: https://{hote}/api/v1
+    description: Production sur le VPS Datacloud Systalink. Front, API et base sur la même machine, même origine HTTPS. Nginx sert le front à la racine et cette API sous /api/v1.
+    variables:
+      hote:
+        default: A_REMPLACER_AVANT_J2
+        description: Marqueur. Remplacer par le nom d'hôte HTTPS réel confirmé par Systalink avant J2. Ne pas déployer avec cette valeur.
+
+# Toutes les routes exigent une session Sanctum valide, sauf celles qui déclarent `security: []`
+security:
+  - SanctumCookie: []
+
+tags:
+  - name: Auth
+    description: Inscription, connexion, déconnexion et session Sanctum (cookies)
+  - name: Profils & Compétences
+    description: Profil professionnel, photo, liens, catalogue de compétences
+  - name: Recherche de talents
+    description: Recherche/filtrage des membres et suggestions de collaborateurs
+  - name: Suivi entre développeurs
+    description: Suivre / ne plus suivre un membre, abonnés et abonnements
+  - name: Projets
+    description: Création, consultation, recherche et suivi d'avancement des projets
+  - name: Équipes
+    description: Demandes d'adhésion, acceptation/refus, membres du projet
+  - name: Messagerie projet
+    description: Discussion simple liée à chaque projet (réservée aux membres)
+  - name: Ressources
+    description: Bibliothèque de connaissances (code, liens, tutoriels, API, documents) et commentaires
+  - name: Portfolio
+    description: Projets terminés affichés sur les profils
+  - name: Dashboard
+    description: Synthèse du compte connecté (P1) et chiffres d'impact publics (GET /stats, P1)
+
+components:
+  # ==========================================
+  # SÉCURITÉ & AUTHENTIFICATION
+  # ==========================================
+  securitySchemes:
+    SanctumCookie:
+      type: apiKey
+      in: cookie
+      name: africabridge_session
+      # COMMENTAIRE BACKEND:
+      # Cookie de session HttpOnly posé par Laravel après POST /auth/login (nom = SESSION_COOKIE du .env).
+      # Le navigateur l'envoie automatiquement (withCredentials). Aucun token applicatif.
+      # Les requêtes d'écriture exigent aussi l'en-tête X-XSRF-TOKEN (valeur du cookie XSRF-TOKEN).
+      # Vérifié par le middleware auth:sanctum. Durée de vie : SESSION_LIFETIME (120 min par défaut).
+
+  # ==========================================
+  # PARAMÈTRES RÉUTILISABLES
+  # ==========================================
+  parameters:
+    UserId:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer }
+    ProjectId:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer }
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    PerPage:
+      name: per_page
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 50, default: 15 }
+
+  # ==========================================
+  # SCHÉMAS DE DONNÉES (DTOs)
+  # Mappage vers les tables MySQL/PostgreSQL gérées par les migrations Laravel
+  # ==========================================
+  schemas:
+    # --- ÉNUMÉRATIONS PARTAGÉES ---
+    Domaine:
+      type: string
+      maxLength: 100
+      description: >
+        Valeur du catalogue (agriculture, sante, education, fintech, energie, transport, iot,
+        intelligence_artificielle, commerce, environnement, administration) ou un nom libre
+        saisi par le membre. Un libellé connu (ex. « éducation ») est ramené à sa valeur technique.
+        Un nom inconnu est stocké tel quel. La valeur « autre » n'est pas enregistrée.
+      # CIBLE: Frontend (filtres, formulaires), Backend (validation)
+      # Utilisé pour les projets et les centres d'intérêt des membres.
+
+    RoleProfil:
+      type: string
+      enum: [developpeur_frontend, developpeur_backend, fullstack, designer_ui_ux, ingenieur_iot, data_scientist, chef_de_projet, etudiant, entrepreneur, autre]
+      # CIBLE: Frontend (profil, filtre "rôle" de la recherche de talents)
+      # BDD: users.role_profil. À ne pas confondre avec le rôle dans une équipe (RoleEquipe).
+
+    RoleEquipe:
+      type: string
+      enum: [proprietaire, membre]
+      # BDD: table pivot project_members.role_equipe. Le créateur du projet est `proprietaire`.
+
+    StatutProjet:
+      type: string
+      enum: [recrutement, en_cours, termine]
+      description: "Valeurs techniques. Libellés affichés : recrutement = « Ouvert », en_cours = « En cours », termine = « Terminé »."
+      # RÈGLE: un projet `termine` apparaît dans le portfolio de tous ses membres et n'accepte plus de demandes.
+      # RÈGLE: `termine` est définitif. ProjetUpdate qui quitte `termine` renvoie 422.
+      # Le propriétaire peut repasser `en_cours` à `recrutement`. Un projet `en_cours` accepte encore les demandes.
+
+    StatutProjetCreation:
+      type: string
+      enum: [recrutement, en_cours]
+      default: recrutement
+      # RÈGLE: `termine` est refusé à la création (422). Un projet ne peut pas naître déjà dans le portfolio.
+
+    # --- AUTH ---
+    UserRegister:
+      type: object
+      required: [nom, email, mot_de_passe, mot_de_passe_confirmation, pays]
+      properties:
+        nom: { type: string, maxLength: 120, example: "Eliana Lokoka" }
+        email: { type: string, format: email, example: "eliana@example.com" }
+        mot_de_passe: { type: string, format: password, minLength: 8, example: "SecurePass123!" }
+        mot_de_passe_confirmation: { type: string, format: password, example: "SecurePass123!" }
+        pays: { type: string, minLength: 2, maxLength: 2, description: "Code ISO 3166-1 alpha-2", example: "CD" }
+      # CIBLE: Frontend (formulaire d'inscription)
+      # BDD: table `users`. Mot de passe hashé (bcrypt/argon) par Laravel. Règle Laravel `confirmed`.
+      # Email unique. Après inscription, l'utilisateur est directement connecté (session ouverte).
+
+    UserLogin:
+      type: object
+      required: [email, mot_de_passe]
+      properties:
+        email: { type: string, format: email, example: "eliana@example.com" }
+        mot_de_passe: { type: string, format: password, example: "SecurePass123!" }
+        se_souvenir: { type: boolean, default: false, description: "Prolonge la durée de la session (remember me)" }
+      # CIBLE: Frontend (formulaire de connexion)
+      # BACKEND: Auth::attempt() avec session ; regenerate() de la session après succès (anti fixation).
+      # Limitation de débit : 5 tentatives/minute par e-mail+IP, et 20 tentatives/minute par IP.
+
+    # --- COMPÉTENCES ---
+    Competence:
+      type: object
+      properties:
+        id: { type: integer }
+        nom: { type: string, example: "Python" }
+        categorie: { type: string, enum: [langage, framework, outil, domaine_technique, design, gestion_projet, autre] }
+      # CIBLE: Frontend (sélecteur de compétences, filtres)
+      # BDD: table `competences`. Le seeder pose le catalogue de départ.
+      # Un nom inconnu envoyé à PUT /users/me/skills crée la compétence (catégorie autre).
+      # Un nom déjà présent, écrit autrement, réutilise la ligne existante.
+      # J5: le seeder contient au minimum Python, JavaScript, IoT, Réseaux et UI/UX (exemples du cahier des charges).
+
+    CompetenceUtilisateur:
+      allOf:
+        - $ref: '#/components/schemas/Competence'
+        - type: object
+          properties:
+            niveau: { type: string, enum: [debutant, intermediaire, avance], nullable: true }
+      # BDD: table pivot `skill_user` (user_id, skill_id, niveau).
+
+    CompetencesUpdate:
+      type: object
+      required: [competences]
+      properties:
+        competences:
+          type: array
+          maxItems: 30
+          items:
+            type: object
+            description: "Fournir competence_id ou nom, pas les deux à la fois."
+            properties:
+              competence_id: { type: integer, description: "Compétence déjà au catalogue. Obligatoire si nom est absent." }
+              nom: { type: string, minLength: 1, maxLength: 100, description: "Nom libre. Obligatoire si competence_id est absent. Réutilise ou crée la compétence." }
+              niveau: { type: string, enum: [debutant, intermediaire, avance], nullable: true }
+      # CIBLE: Frontend (édition du profil)
+      # BDD: sync() sur la table pivot. Remplace l'ensemble des compétences de l'utilisateur.
+      # Plafond : 30 requêtes d'écriture par minute et par membre (429).
+
+    # --- PROFILS ---
+    LienProfil:
+      type: object
+      required: [type, url]
+      properties:
+        type: { type: string, enum: [github, gitlab, linkedin, portfolio, twitter, autre] }
+        url: { type: string, format: uri, example: "https://github.com/eliana" }
+      # BDD: table `user_links` (user_id, type, url).
+
+    UtilisateurResume:
+      type: object
+      properties:
+        id: { type: integer }
+        nom: { type: string, example: "Eliana Lokoka" }
+        photo_url: { type: string, format: uri, nullable: true }
+        pays: { type: string, example: "CD" }
+        role_profil: { $ref: '#/components/schemas/RoleProfil' }
+      # CIBLE: Frontend (avatars, listes de membres, auteurs de messages/ressources)
+
+    Talent:
+      allOf:
+        - $ref: '#/components/schemas/UtilisateurResume'
+        - type: object
+          properties:
+            region: { type: string, nullable: true, example: "Kinshasa" }
+            bio_courte: { type: string, nullable: true, maxLength: 160, description: "Bio tronquée à 160 caractères. Distinct de Profil.bio (500)." }
+            competences: { type: array, items: { $ref: '#/components/schemas/CompetenceUtilisateur' } }
+            domaines: { type: array, items: { $ref: '#/components/schemas/Domaine' } }
+            followers_count: { type: integer, description: "P1. Tant que le follow n'est pas livré, renvoyer 0." }
+            is_following: { type: boolean, description: "P1. L'utilisateur connecté suit-il ce membre ? Tant que le follow n'est pas livré, renvoyer false." }
+      # CIBLE: Frontend (cartes de résultats de la recherche de talents)
+
+    Profil:
+      allOf:
+        - $ref: '#/components/schemas/Talent'
+        - type: object
+          properties:
+            bio: { type: string, nullable: true, maxLength: 500, description: "Bio complète (non tronquée)" }
+            liens: { type: array, items: { $ref: '#/components/schemas/LienProfil' } }
+            following_count: { type: integer, description: "P1. Tant que le follow n'est pas livré, renvoyer 0." }
+            projets_realises_count: { type: integer }
+            created_at: { type: string, format: date-time }
+      # CIBLE: Frontend (page profil public). Réponse de GET /users/{id}.
+      # La clé `email` est absente. Deux API Resources Laravel : ProfilResource sans e-mail.
+      # BDD: `users` + `skill_user` + `user_links` + compteurs agrégés depuis `follows` et `project_members`.
+
+    ProfilPrive:
+      allOf:
+        - $ref: '#/components/schemas/Profil'
+        - type: object
+          properties:
+            email: { type: string, format: email, description: "Uniquement pour le compte connecté" }
+      # CIBLE: Frontend (état global React). Réponse de POST /auth/register, POST /auth/login et GET /auth/me.
+      # ProfilPriveResource. GET /users/{id} ne doit jamais contenir la clé email.
+      # GET /users?q= cherche le nom et la bio, pas les e-mails.
+
+    TalentSuggere:
+      allOf:
+        - $ref: '#/components/schemas/Talent'
+        - type: object
+          properties:
+            competences_correspondantes:
+              type: array
+              items: { $ref: '#/components/schemas/Competence' }
+              description: "Compétences recherchées par le projet que ce membre possède (ex. UI/UX)"
+      # CIBLE: Frontend (cartes « Correspond : UI/UX » de GET /users/suggestions)
+
+    ProfilUpdate:
+      type: object
+      properties:
+        nom: { type: string, maxLength: 120 }
+        bio: { type: string, maxLength: 500, nullable: true }
+        pays: { type: string, minLength: 2, maxLength: 2 }
+        region: { type: string, maxLength: 120, nullable: true }
+        role_profil: { $ref: '#/components/schemas/RoleProfil' }
+        domaines: { type: array, items: { $ref: '#/components/schemas/Domaine' } }
+        liens: { type: array, maxItems: 10, items: { $ref: '#/components/schemas/LienProfil' } }
+      # CIBLE: Frontend (formulaire "Modifier mon profil")
+      # RÈGLE: PATCH partiel. L'email et le mot de passe ne se modifient pas ici. Compétences : PUT /users/me/skills.
+
+    # --- SUIVI ENTRE DÉVELOPPEURS ---
+    FollowState:
+      type: object
+      properties:
+        is_following: { type: boolean }
+        followers_count: { type: integer, description: "Nombre d'abonnés du membre ciblé après l'opération" }
+      # CIBLE: Frontend (bouton Suivre / Ne plus suivre, mise à jour optimiste du compteur)
+      # BDD: table `follows` (follower_id, followed_id, created_at) avec contrainte UNIQUE(follower_id, followed_id).
+
+    # --- PROJETS ---
+    ProjetResume:
+      type: object
+      properties:
+        id: { type: integer }
+        nom: { type: string, example: "Smart Agriculture RDC" }
+        domaines:
+          type: array
+          minItems: 1
+          maxItems: 3
+          items: { $ref: '#/components/schemas/Domaine' }
+          example: [agriculture, iot]
+        statut: { $ref: '#/components/schemas/StatutProjet' }
+        progression: { type: integer, minimum: 0, maximum: 100 }
+        nombre_membres_souhaite: { type: integer }
+        nombre_membres_actuel: { type: integer }
+      # CIBLE: Frontend (identité courte d'un projet : portfolio, dashboard, demandes)
+      # BDD: table `projects` + pivot `project_domain` (1 à 3 domaines). L'exemple « Agriculture / IoT » = [agriculture, iot].
+
+    Projet:
+      allOf:
+        - $ref: '#/components/schemas/ProjetResume'
+        - type: object
+          properties:
+            description: { type: string }
+            objectifs: { type: string }
+            competences_recherchees: { type: array, items: { $ref: '#/components/schemas/Competence' } }
+            createur: { $ref: '#/components/schemas/UtilisateurResume' }
+            lien_realisation: { type: string, format: uri, nullable: true, description: "Démo ou dépôt du livrable (mis en avant dans le portfolio)" }
+            date_fin: { type: string, format: date, nullable: true }
+            is_member: { type: boolean, description: "L'utilisateur connecté fait-il partie de l'équipe ?" }
+            ma_demande_statut: { type: string, enum: [en_attente, acceptee, refusee], nullable: true, description: "Dernière demande de l'utilisateur connecté sur ce projet" }
+            created_at: { type: string, format: date-time }
+            updated_at: { type: string, format: date-time }
+      # CIBLE: Frontend (page détail projet, portfolio). Pas les listes : elles utilisent ProjetCarte.
+      # BDD: table `projects` + pivots `project_domain`, `project_skill` + `project_members`.
+
+    ProjetCarte:
+      allOf:
+        - $ref: '#/components/schemas/ProjetResume'
+        - type: object
+          properties:
+            description_courte: { type: string, maxLength: 200, description: "Extrait de la description, 200 caractères maximum" }
+            createur: { $ref: '#/components/schemas/UtilisateurResume' }
+            competences_recherchees: { type: array, items: { $ref: '#/components/schemas/Competence' } }
+            is_member: { type: boolean, description: "L'utilisateur connecté fait-il partie de l'équipe ?" }
+            ma_demande_statut: { type: string, enum: [en_attente, acceptee, refusee], nullable: true, description: "Dernière demande de l'utilisateur connecté sur ce projet" }
+      # CIBLE: Frontend (cartes de GET /projects, GET /me/projects, GET /projects/suggestions)
+      # BDD: with(['createur', 'skills', 'domaines']) et withExists('members') pour éviter le N+1.
+      # Pas de description complète (3000 caractères) dans les listes.
+
+    ProjetCreate:
+      type: object
+      required: [nom, description, domaines, objectifs, nombre_membres_souhaite]
+      properties:
+        nom: { type: string, maxLength: 150 }
+        description: { type: string, maxLength: 3000 }
+        domaines:
+          type: array
+          minItems: 1
+          maxItems: 3
+          items: { $ref: '#/components/schemas/Domaine' }
+          example: [agriculture, iot]
+        objectifs: { type: string, maxLength: 2000 }
+        competence_ids: { type: array, items: { type: integer }, description: "Compétences recherchées" }
+        nombre_membres_souhaite: { type: integer, minimum: 2, maximum: 50, example: 5 }
+        statut: { $ref: '#/components/schemas/StatutProjetCreation' }
+      # CIBLE: Frontend (formulaire "Créer un projet") — le champ s'appelle domaines (tableau), plus domaine.
+      # RÈGLE: Le créateur devient automatiquement membre avec role_equipe = proprietaire. Statut par défaut : recrutement.
+      # RÈGLE: statut = termine à la création -> 422.
+
+    ProjetUpdate:
+      type: object
+      properties:
+        nom: { type: string, maxLength: 150 }
+        description: { type: string, maxLength: 3000 }
+        domaines:
+          type: array
+          minItems: 1
+          maxItems: 3
+          items: { $ref: '#/components/schemas/Domaine' }
+        objectifs: { type: string, maxLength: 2000 }
+        competence_ids: { type: array, items: { type: integer } }
+        nombre_membres_souhaite: { type: integer, minimum: 2, maximum: 50 }
+        statut: { $ref: '#/components/schemas/StatutProjet' }
+        progression: { type: integer, minimum: 0, maximum: 100 }
+        lien_realisation: { type: string, format: uri, nullable: true }
+      # CIBLE: Frontend (édition par le propriétaire, suivi d'avancement)
+      # RÈGLE: passer le statut à `termine` renseigne date_fin = aujourd'hui et fixe progression = 100.
+      # RÈGLE: un projet `termine` ne peut plus changer de statut (422). Le portfolio déjà affiché ne disparaît pas.
+      # RÈGLE: nombre_membres_souhaite ne peut pas être inférieur au nombre de membres actuels.
+
+    # --- ÉQUIPES ---
+    DemandeAdhesionCreate:
+      type: object
+      properties:
+        message: { type: string, maxLength: 500, nullable: true, example: "Je suis développeur backend Laravel, disponible 10h/semaine." }
+      # CIBLE: Frontend (bouton "Rejoindre ce projet")
+
+    DemandeAdhesion:
+      type: object
+      properties:
+        id: { type: integer }
+        projet: { $ref: '#/components/schemas/ProjetResume' }
+        utilisateur: { $ref: '#/components/schemas/UtilisateurResume' }
+        message: { type: string, nullable: true }
+        statut: { type: string, enum: [en_attente, acceptee, refusee] }
+        created_at: { type: string, format: date-time }
+        traitee_at: { type: string, format: date-time, nullable: true }
+      # CIBLE: Frontend (gestion des demandes côté propriétaire, suivi côté demandeur)
+      # BDD: table `join_requests`. Une seule demande `en_attente` par couple (projet, utilisateur).
+
+    DemandeDecision:
+      type: object
+      required: [decision]
+      properties:
+        decision: { type: string, enum: [acceptee, refusee] }
+      # CIBLE: Frontend (boutons Accepter / Refuser, propriétaire uniquement)
+      # RÈGLE: `acceptee` crée la ligne project_members (role_equipe = membre) dans la même transaction.
+
+    Membre:
+      type: object
+      properties:
+        utilisateur: { $ref: '#/components/schemas/UtilisateurResume' }
+        role_equipe: { $ref: '#/components/schemas/RoleEquipe' }
+        rejoint_le: { type: string, format: date-time }
+      # CIBLE: Frontend (onglet "Équipe")
+      # BDD: table `project_members`.
+
+    # --- MESSAGERIE PROJET ---
+    MessageCreate:
+      type: object
+      required: [contenu]
+      properties:
+        contenu: { type: string, minLength: 1, maxLength: 2000 }
+      # CIBLE: Frontend (zone de saisie de la discussion)
+
+    Message:
+      type: object
+      properties:
+        id: { type: integer }
+        projet_id: { type: integer }
+        auteur: { $ref: '#/components/schemas/UtilisateurResume' }
+        contenu: { type: string }
+        created_at: { type: string, format: date-time }
+      # CIBLE: Frontend (fil de discussion)
+      # BDD: table `messages` indexée sur (project_id, id).
+      # TEMPS RÉEL: hors MVP. Le front interroge toutes les 5 secondes
+      # GET /projects/{id}/messages?apres_id={dernier_id}&depuis={meta.server_time précédent}.
+      # Il retire de l'écran les ids reçus dans `supprimes`.
+
+    # --- RESSOURCES ---
+    TypeRessource:
+      type: string
+      enum: [code, lien, tutoriel, api, document, article, autre]
+
+    RessourceCreate:
+      type: object
+      required: [type, titre]
+      properties:
+        type: { $ref: '#/components/schemas/TypeRessource' }
+        titre: { type: string, maxLength: 200 }
+        description: { type: string, maxLength: 2000, nullable: true }
+        url: { type: string, format: uri, nullable: true, description: "Requis pour les types lien, tutoriel, api si aucun fichier ni code" }
+        contenu_code: { type: string, nullable: true, maxLength: 20000, description: "Extrait de code (type code)" }
+        langage: { type: string, nullable: true, example: "php" }
+        fichier:
+          type: string
+          format: binary
+          description: "Obligatoire si type = document (422 sinon). pdf, docx, zip, png, jpg. 10 Mo max. multipart/form-data. Au-dessus de 10 Mo : 422 sur le champ fichier. Au-dessus de 16 Mo : 413."
+        projet_id: { type: integer, nullable: true, description: "Projet auquel la ressource est rattachée. Absent = bibliothèque publique." }
+        visibilite:
+          type: string
+          enum: [projet, publique]
+          description: >
+            Facultatif. Si projet_id est renseigné, la valeur par défaut côté serveur est `projet`
+            (membres uniquement). Sans projet_id, la ressource est toujours `publique`
+            (`projet` sans projet_id => 422). `publique` avec projet_id est autorisé :
+            le membre choisit explicitement de partager hors de l'équipe.
+        competence_ids: { type: array, items: { type: integer }, description: "Compétences associées (aide à la recherche)" }
+      # CIBLE: Frontend (formulaire "Partager une ressource")
+      # RÈGLE: ne pas envoyer visibilite = publique par défaut quand la ressource part d'un projet.
+      #        Omettre le champ : le serveur applique `projet` si projet_id est présent, sinon `publique`.
+      # RÈGLE: type = document => fichier obligatoire. type in (lien, tutoriel, api) => url requise si aucun fichier ni code.
+      # BDD: table `resources` + pivot `resource_skill`.
+      # Fichier sur le disque privé (storage/app/private). Le téléchargement passe par GET /resources/{id}/file.
+
+    RessourceUpdate:
+      type: object
+      properties:
+        titre: { type: string, maxLength: 200 }
+        description: { type: string, maxLength: 2000, nullable: true }
+        url: { type: string, format: uri, nullable: true }
+        contenu_code: { type: string, nullable: true, maxLength: 20000 }
+        langage: { type: string, nullable: true }
+        competence_ids: { type: array, items: { type: integer } }
+      # RÈGLE: modifiable par son auteur ou par le propriétaire du projet lié.
+
+    Ressource:
+      type: object
+      properties:
+        id: { type: integer }
+        type: { $ref: '#/components/schemas/TypeRessource' }
+        titre: { type: string }
+        description: { type: string, nullable: true }
+        url: { type: string, format: uri, nullable: true }
+        contenu_code: { type: string, nullable: true }
+        langage: { type: string, nullable: true }
+        fichier_url:
+          type: string
+          format: uri
+          nullable: true
+          description: "GET /api/v1/resources/{id}/file, réservé à une session autorisée. Jamais une URL /storage/."
+        visibilite: { type: string, enum: [projet, publique] }
+        projet_id: { type: integer, nullable: true }
+        auteur: { $ref: '#/components/schemas/UtilisateurResume' }
+        competences: { type: array, items: { $ref: '#/components/schemas/Competence' } }
+        commentaires_count: { type: integer }
+        created_at: { type: string, format: date-time }
+      # CIBLE: Frontend (bibliothèque de connaissances, onglet "Ressources" d'un projet)
+
+    CommentaireCreate:
+      type: object
+      required: [contenu]
+      properties:
+        contenu: { type: string, minLength: 1, maxLength: 1000 }
+
+    Commentaire:
+      type: object
+      properties:
+        id: { type: integer }
+        ressource_id: { type: integer }
+        auteur: { $ref: '#/components/schemas/UtilisateurResume' }
+        contenu: { type: string }
+        created_at: { type: string, format: date-time }
+      # CIBLE: Frontend (commentaires et améliorations proposées par la communauté)
+      # BDD: table `resource_comments`.
+
+    # --- DASHBOARD ---
+    Dashboard:
+      type: object
+      properties:
+        mes_projets: { type: array, items: { $ref: '#/components/schemas/ProjetResume' }, description: "5 projets les plus récemment actifs" }
+        projets_count: { type: integer }
+        demandes_recues_en_attente: { type: integer, description: "Demandes à traiter sur les projets dont je suis propriétaire" }
+        mes_demandes_en_attente: { type: integer }
+        followers_count: { type: integer, description: "P1. Tant que le follow n'est pas livré, renvoyer 0." }
+        following_count: { type: integer, description: "P1. Tant que le follow n'est pas livré, renvoyer 0." }
+      # CIBLE: Frontend (page Dashboard - Arthur). Opération P1 : voir GET /me/dashboard.
+      # REPLI SI NON LIVRÉ : le front construit le tableau de bord avec des routes P0 :
+      #   GET /me/projects (mes projets) et GET /me/join-requests (mes demandes envoyées).
+      #   Les demandes reçues se lisent via GET /projects/{id}/join-requests, projet par projet.
+
+    Stats:
+      type: object
+      properties:
+        membres_count: { type: integer, description: "Nombre de comptes (users)" }
+        pays_count: { type: integer, description: "Nombre de pays distincts parmi les membres" }
+        projets_count: { type: integer, description: "Projets non supprimés" }
+        equipes_formees_count: { type: integer, description: "Projets ayant au moins 2 membres (le créateur compte)" }
+      # CIBLE: Frontend (page d'accueil et pitch). Agrégats uniquement, aucune donnée personnelle.
+
+    # --- PAGINATION ---
+    PaginationMeta:
+      type: object
+      properties:
+        current_page: { type: integer }
+        per_page: { type: integer }
+        total: { type: integer }
+        last_page: { type: integer }
+
+    TalentPage:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/Talent' } }
+        meta: { $ref: '#/components/schemas/PaginationMeta' }
+    UtilisateurPage:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/UtilisateurResume' } }
+        meta: { $ref: '#/components/schemas/PaginationMeta' }
+    ProjetPage:
+      type: object
+      description: Cartes légères pour les listes. Le détail complet est GET /projects/{id} (schéma Projet).
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/ProjetCarte' } }
+        meta: { $ref: '#/components/schemas/PaginationMeta' }
+    MessageFil:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/Message' }, description: "Messages non supprimés correspondant au curseur" }
+        supprimes:
+          type: array
+          items: { type: integer }
+          description: "Ids supprimés (soft delete) depuis le paramètre `depuis`. Tableau vide si `depuis` est absent."
+        meta:
+          type: object
+          required: [server_time]
+          properties:
+            server_time: { type: string, format: date-time, description: "Horloge du serveur. Le front la renvoie telle quelle dans `depuis` au poll suivant." }
+    DemandePage:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/DemandeAdhesion' } }
+        meta: { $ref: '#/components/schemas/PaginationMeta' }
+    RessourcePage:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/Ressource' } }
+        meta: { $ref: '#/components/schemas/PaginationMeta' }
+    CommentairePage:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/Commentaire' } }
+        meta: { $ref: '#/components/schemas/PaginationMeta' }
+
+  # ==========================================
+  # RÉPONSES STANDARDISÉES (Erreurs HTTP, format natif Laravel)
+  # ==========================================
+  responses:
+    UnauthenticatedError:
+      description: Session absente ou expirée (utilisateur non connecté)
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message: { type: string, example: "Unauthenticated." }
+    ForbiddenError:
+      description: Action non autorisée pour cet utilisateur (Policy Laravel)
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message: { type: string, example: "This action is unauthorized." }
+    NotFoundError:
+      description: Ressource introuvable
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message: { type: string, example: "Resource not found." }
+    CsrfMismatchError:
+      description: Jeton CSRF absent ou périmé. Le frontend rappelle GET /sanctum/csrf-cookie puis rejoue la requête.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message: { type: string, example: "CSRF token mismatch." }
+    ValidationError:
+      description: Payload non conforme (FormRequest Laravel)
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message: { type: string, example: "The email field is required." }
+              errors:
+                type: object
+                additionalProperties: { type: array, items: { type: string } }
+                example: { email: ["The email field is required."] }
+    PayloadTooLargeError:
+      description: >
+        Corps de requête supérieur à 16 Mo, refusé par Nginx ou par PHP.
+        Corps JSON : {"message":"Fichier trop volumineux (16 Mo maximum)."}.
+        Les dépassements des limites métier (2 Mo photo, 10 Mo ressource) renvoient 422
+        avec le détail dans errors.photo ou errors.fichier.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message: { type: string, example: "Fichier trop volumineux (16 Mo maximum)." }
+    TooManyRequestsError:
+      description: Trop de tentatives (throttle). Respecter l'en-tête Retry-After.
+      headers:
+        Retry-After: { schema: { type: integer }, description: "Secondes avant la prochaine tentative" }
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message: { type: string, example: "Too Many Attempts." }
+
+# ==========================================
+# CHEMINS / ROUTES API (ENDPOINTS)
+# ==========================================
+paths:
+  # === AUTHENTIFICATION (SANCTUM COOKIES) ===
+  /sanctum/csrf-cookie:
+    # Route native Laravel Sanctum, située à la RACINE du serveur (hors préfixe /api/v1)
+    servers:
+      - url: http://localhost:8000
+        description: Racine du serveur de développement
+      - url: https://{hote}
+        description: Racine du VPS Datacloud Systalink (même origine que le front et que /api/v1)
+        variables:
+          hote:
+            default: A_REMPLACER_AVANT_J2
+            description: Marqueur. Remplacer par le nom d'hôte HTTPS réel confirmé par Systalink avant J2.
+    get:
+      tags: [Auth]
+      x-priorite: P0
+      summary: Initialiser la protection CSRF (à appeler avant la connexion)
+      security: []
+      # CIBLE: Frontend React (appel unique au chargement de l'app ou juste avant le login, et après tout 419)
+      description: >
+        Pose le cookie `XSRF-TOKEN` (lisible par JavaScript) et un cookie de session anonyme.
+        Axios recopie ensuite automatiquement ce cookie dans l'en-tête X-XSRF-TOKEN des requêtes d'écriture.
+      responses:
+        '204':
+          description: Cookies posés, aucun corps de réponse
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+              description: "XSRF-TOKEN=...; SameSite=Lax (+ cookie de session)"
+
+  /auth/register:
+    post:
+      tags: [Auth]
+      x-priorite: P0
+      summary: Inscription d'un nouveau membre
+      security: []
+      # CIBLE: Frontend (page Inscription)
+      # BDD: INSERT INTO users. Connexion automatique après création (session ouverte).
+      description: >
+        Crée le compte, ouvre directement la session et renvoie le profil.
+        Nécessite un appel préalable à /sanctum/csrf-cookie.
+        Plafond : 5 inscriptions par minute et par adresse IP (429).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UserRegister' }
+      responses:
+        '201':
+          description: Compte créé et session ouverte
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+              description: "africabridge_session=...; HttpOnly; SameSite=Lax"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProfilPrive' }
+        '419': { $ref: '#/components/responses/CsrfMismatchError' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequestsError' }
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      x-priorite: P0
+      summary: Connexion (ouverture de session par cookie)
+      security: []
+      # CIBLE: Frontend (page Connexion)
+      description: >
+        Vérifie email + mot de passe puis ouvre une session Laravel. Aucun token n'est renvoyé :
+        l'authentification repose uniquement sur le cookie HttpOnly posé dans la réponse.
+        Nécessite un appel préalable à /sanctum/csrf-cookie.
+        Plafond : 5 essais par minute pour un même e-mail et une même IP, et 20 essais par minute pour une IP.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UserLogin' }
+      responses:
+        '200':
+          description: Session ouverte, profil de l'utilisateur renvoyé
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+              description: "africabridge_session=...; HttpOnly; SameSite=Lax"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProfilPrive' }
+        '419': { $ref: '#/components/responses/CsrfMismatchError' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequestsError' }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      x-priorite: P0
+      summary: Déconnexion (invalidation de la session)
+      # CIBLE: Frontend (menu utilisateur)
+      # BACKEND: Auth::logout(), session()->invalidate(), session()->regenerateToken().
+      responses:
+        '204': { description: Session détruite }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+        '419': { $ref: '#/components/responses/CsrfMismatchError' }
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      x-priorite: P0
+      summary: Récupérer l'utilisateur connecté (hydratation de l'état global React)
+      # CIBLE: Frontend (appel au démarrage de l'app pour savoir si la session est encore valide)
+      # RÈGLE: c'est LA route de l'utilisateur courant. Il n'existe pas de GET /users/me
+      #        (cette URL serait ambiguë avec /users/{id}).
+      # RÈGLE: 401 = pas de session -> afficher les pages publiques (accueil, connexion, inscription).
+      responses:
+        '200':
+          description: Profil complet de l'utilisateur connecté
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProfilPrive' }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+
+  # === PROFILS & COMPÉTENCES ===
+  /skills:
+    get:
+      tags: [Profils & Compétences]
+      x-priorite: P0
+      summary: Catalogue des compétences et technologies
+      # CIBLE: Frontend (sélecteurs, autocomplétion, filtres)
+      # BDD: SELECT FROM skills. Non paginé (catalogue limité).
+      parameters:
+        - name: q
+          in: query
+          description: Recherche partielle sur le nom (autocomplétion)
+          schema: { type: string }
+        - name: categorie
+          in: query
+          schema: { type: string, enum: [langage, framework, outil, domaine_technique, design, gestion_projet, autre] }
+      responses:
+        '200':
+          description: Liste des compétences
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Competence' } }
+                  domaines:
+                    type: array
+                    items: { type: string, maxLength: 100 }
+                    description: Catalogue fixe (sans « autre ») plus les noms libres déjà enregistrés.
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+
+  /users/me:
+    # IMPORTANT BACKEND: déclarer cette route AVANT /users/{id} pour éviter que "me" soit interprété comme un id.
+    # Il n'y a pas de GET sur ce chemin. L'utilisateur courant se lit via GET /auth/me.
+    patch:
+      tags: [Profils & Compétences]
+      x-priorite: P0
+      summary: Modifier mon profil
+      # CIBLE: Frontend (page "Modifier mon profil" - Jean-François)
+      # BDD: UPDATE users, remplacement de user_links.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProfilUpdate' }
+      responses:
+        '200':
+          description: Profil mis à jour
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProfilPrive' }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+        '419': { $ref: '#/components/responses/CsrfMismatchError' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequestsError' }
+
+  /users/me/skills:
+    put:
+      tags: [Profils & Compétences]
+      x-priorite: P0
+      summary: Définir mes compétences et technologies maîtrisées
+      # CIBLE: Frontend (sélecteur de compétences du profil)
+      # BDD: sync() sur skill_user. Remplace la liste complète.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CompetencesUpdate' }
+      responses:
+        '200':
+          description: Compétences mises à jour
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  competences: { type: array, items: { $ref: '#/components/schemas/CompetenceUtilisateur' } }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+        '419': { $ref: '#/components/responses/CsrfMismatchError' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequestsError' }
+
+  /users/me/photo:
+    post:
+      tags: [Profils & Compétences]
+      x-priorite: P0
+      summary: Envoyer ou remplacer ma photo de profil
+      # CIBLE: Frontend (upload d'avatar)
+      # RÈGLE: image jpg/png/webp, 2 Mo maximum (422, champ photo, au-dessus). L'ancienne photo est supprimée du stockage.
+      # 413 seulement si le corps dépasse 16 Mo (Nginx/PHP), en JSON.
+      # STOCKAGE: disque persistant du VPS Datacloud (storage/app), pas un disque éphémère.
+      # SERVEUR: upload_max_filesize=12M, post_max_size=16M, nginx client_max_body_size 16m.
+      # NOTE: POST (et non PATCH) car PHP ne lit pas multipart/form-data sur les méthodes PATCH/PUT.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [photo]
+              properties:
+                photo: { type: string, format: binary }
+      responses:
+        '200':
+          description: Photo enregistrée
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  photo_url: { type: string, format: uri }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+        '413': { $ref: '#/components/responses/PayloadTooLargeError' }
+        '419': { $ref: '#/components/responses/CsrfMismatchError' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequestsError' }
+
+  /users/{id}:
+    get:
+      tags: [Profils & Compétences]
+      x-priorite: P0
+      summary: Consulter le profil d'un membre
+      # CIBLE: Frontend (page profil public d'un développeur)
+      # RÈGLE: l'email n'est jamais renvoyé. Le schéma de réponse n'a pas la clé email.
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: Profil du membre. Le schéma Profil ne contient pas la clé email.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Profil' }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+
+  # === RECHERCHE DE TALENTS ===
+  /users:
+    get:
+      tags: [Recherche de talents]
+      x-priorite: P0
+      summary: Rechercher et filtrer des membres
+      # CIBLE: Frontend (page "Trouver des talents")
+      # BDD: SELECT FROM users JOIN skill_user. Index sur pays, role_profil. L'utilisateur connecté est exclu des résultats.
+      # NOTE FRONT: pour les tableaux, sérialiser en competence_ids[]=1&competence_ids[]=2 (paramsSerializer axios avec brackets).
+      parameters:
+        - name: q
+          in: query
+          description: Recherche texte sur le nom et la bio
+          schema: { type: string }
+        - name: competence_ids
+          in: query
+          description: Filtrer par compétences
+          schema: { type: array, items: { type: integer } }
+        - name: competence_match
+          in: query
+          description: "any = au moins une compétence, all = toutes les compétences"
+          schema: { type: string, enum: [any, all], default: any }
+        - name: domaine
+          in: query
+          schema: { $ref: '#/components/schemas/Domaine' }
+        - name: pays
+          in: query
+          description: Code ISO alpha-2
+          schema: { type: string, minLength: 2, maxLength: 2 }
+        - name: region
+          in: query
+          schema: { type: string }
+        - name: role_profil
+          in: query
+          schema: { $ref: '#/components/schemas/RoleProfil' }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+      responses:
+        '200':
+          description: Résultats paginés
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TalentPage' }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+
+  /users/suggestions:
+    # IMPORTANT BACKEND: déclarer cette route AVANT /users/{id}.
+    get:
+      tags: [Recherche de talents]
+      x-priorite: P1
+      summary: Suggestions de collaborateurs aux compétences complémentaires
+      # CIBLE: Frontend (bloc "Talents suggérés"). Afficher « Correspond : … » avec competences_correspondantes.
+      # RÈGLE: compétences recherchées par le projet (ou par mes projets en recrutement si projet_id est absent).
+      #        Exclure moi-même et les membres déjà dans l'équipe. Tri : compétences en commun, puis nom.
+      parameters:
+        - name: projet_id
+          in: query
+          required: false
+          description: >
+            Projet dont je suis propriétaire (403 sinon, 404 si inconnu). Si présent : membres possédant
+            au moins une des compétences recherchées par ce projet, hors équipe et hors moi-même.
+            Tri : nombre de compétences en commun (décroissant), puis nom.
+            Si absent : mêmes règles sur l'ensemble de mes projets au statut `recrutement`.
+          schema: { type: integer }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 20, default: 10 }
+      responses:
+        '200':
+          description: Liste de membres suggérés
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/TalentSuggere' } }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+
+  # === SUIVI ENTRE DÉVELOPPEURS (FOLLOW) ===
+  /users/{id}/follow:
+    post:
+      tags: [Suivi entre développeurs]
+      x-priorite: P1
+      summary: Suivre un membre
+      # CIBLE: Frontend (bouton "Suivre" sur le profil et les cartes de talents)
+      # BDD: INSERT INTO follows (follower_id = utilisateur connecté, followed_id = {id}).
+      # RÈGLE: impossible de se suivre soi-même (422). Déjà suivi -> 409 (le front traite 409 comme un succès).
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '201':
+          description: Membre suivi
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FollowState' }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409':
+          description: Ce membre est déjà suivi. Le front traite ce 409 comme un succès et met à jour le compteur avec le corps.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FollowState' }
+        '419': { $ref: '#/components/responses/CsrfMismatchError' }
+        '422': { description: Impossible de se suivre soi-même }
+        '429': { $ref: '#/components/responses/TooManyRequestsError' }
+    delete:
+      tags: [Suivi entre développeurs]
+      x-priorite: P1
+      summary: Ne plus suivre un membre
+      # CIBLE: Frontend (bouton "Suivi" -> "Ne plus suivre")
+      # BDD: DELETE FROM follows. Idempotent : renvoie 200 même si la relation n'existait pas.
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: Membre non suivi
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FollowState' }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '419': { $ref: '#/components/responses/CsrfMismatchError' }
+        '429': { $ref: '#/components/responses/TooManyRequestsError' }
+
+  /users/{id}/followers:
+    get:
+      tags: [Suivi entre développeurs]
+      x-priorite: P1
+      summary: Liste des abonnés d'un membre
+      # CIBLE: Frontend (onglet "Abonnés" du profil)
+      # BDD: SELECT users JOIN follows WHERE followed_id = {id}. Tri par date de suivi décroissante.
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+      responses:
+        '200':
+          description: Abonnés paginés
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UtilisateurPage' }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+
+  /users/{id}/following:
+    get:
+      tags: [Suivi entre développeurs]
+      x-priorite: P1
+      summary: Liste des membres suivis par un membre
+      # CIBLE: Frontend (onglet "Abonnements" du profil)
+      # BDD: SELECT users JOIN follows WHERE follower_id = {id}.
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+      responses:
+        '200':
+          description: Abonnements paginés
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UtilisateurPage' }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+
+  # === PORTFOLIO ===
+  /users/{id}/portfolio:
+    get:
+      tags: [Portfolio]
+      x-priorite: P0
+      summary: Projets réalisés (terminés) d'un membre
+      # CIBLE: Frontend (section "Projets réalisés" du profil)
+      # RÈGLE: projets dont statut = termine et dont le membre fait partie de l'équipe.
+      # BDD: SELECT projects JOIN project_members WHERE statut = 'termine' ORDER BY date_fin DESC.
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: Projets terminés du membre
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Projet' } }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+
+  # === PROJETS ===
+  /projects:
+    get:
+      tags: [Projets]
+      x-priorite: P0
+      summary: Rechercher et lister les projets
+      # CIBLE: Frontend (page "Explorer les projets") — cartes ProjetCarte, pas le détail complet.
+      # BDD: projects + project_domain + project_skill. Filtre ?domaine= : le projet est retenu s'il CONTIENT ce domaine.
+      #       with(['createur', 'skills', 'domaines']) et withExists pour is_member / ma_demande_statut (pas de N+1).
+      # NOTE FRONT: pour les tableaux, sérialiser en competence_ids[]=1&competence_ids[]=2.
+      parameters:
+        - name: q
+          in: query
+          description: Recherche texte sur le nom et la description
+          schema: { type: string }
+        - name: domaine
+          in: query
+          description: Retient les projets dont le tableau domaines contient cette valeur
+          schema: { $ref: '#/components/schemas/Domaine' }
+        - name: statut
+          in: query
+          schema: { $ref: '#/components/schemas/StatutProjet' }
+        - name: competence_ids
+          in: query
+          description: Projets recherchant ces compétences
+          schema: { type: array, items: { type: integer } }
+        - name: places_disponibles
+          in: query
+          description: true = uniquement les projets qui n'ont pas atteint leur nombre de membres souhaité
+          schema: { type: boolean }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+      responses:
+        '200':
+          description: Projets paginés
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjetPage' }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+    post:
+      tags: [Projets]
+      x-priorite: P0
+      summary: Créer un projet
+      # CIBLE: Frontend (formulaire "Créer un projet") — envoyer domaines[] (1 à 3), pas un domaine unique.
+      # BDD: INSERT INTO projects + project_domain + project_skill + project_members (créateur = proprietaire) dans une transaction.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProjetCreate' }
+      responses:
+        '201':
+          description: Projet créé
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Projet' }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+        '419': { $ref: '#/components/responses/CsrfMismatchError' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequestsError' }
+
+  /projects/{id}:
+    get:
+      tags: [Projets]
+      x-priorite: P0
+      summary: Détail d'un projet
+      # CIBLE: Frontend (page détail projet)
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: Détail du projet
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Projet' }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    patch:
+      tags: [Projets]
+      x-priorite: P0
+      summary: Modifier un projet / mettre à jour l'état d'avancement
+      # CIBLE: Frontend (édition par le propriétaire)
+      # AUTORISATION: Policy ProjectPolicy@update -> propriétaire uniquement.
+      # RÈGLE: statut `termine` définitif. Toute sortie de `termine` -> 422.
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProjetUpdate' }
+      responses:
+        '200':
+          description: Projet mis à jour
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Projet' }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '419': { $ref: '#/components/responses/CsrfMismatchError' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequestsError' }
+    delete:
+      tags: [Projets]
+      x-priorite: P0
+      summary: Supprimer un projet
+      # AUTORISATION: propriétaire uniquement.
+      # BDD: suppression logique (soft delete). Messages, demandes et ressources liés restent archivés.
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '204': { description: Projet supprimé }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '419': { $ref: '#/components/responses/CsrfMismatchError' }
+        '429': { $ref: '#/components/responses/TooManyRequestsError' }
+
+  /me/projects:
+    get:
+      tags: [Projets]
+      x-priorite: P0
+      summary: Mes projets (dont je suis membre)
+      # CIBLE: Frontend (menu "Mes projets", dashboard)
+      parameters:
+        - name: role_equipe
+          in: query
+          description: Filtrer sur les projets que je possède ou ceux que j'ai rejoints
+          schema: { $ref: '#/components/schemas/RoleEquipe' }
+        - name: statut
+          in: query
+          schema: { $ref: '#/components/schemas/StatutProjet' }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+      responses:
+        '200':
+          description: Projets paginés
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjetPage' }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+
+  # === ÉQUIPES ===
+  /projects/{id}/join-requests:
+    post:
+      tags: [Équipes]
+      x-priorite: P0
+      summary: Demander à rejoindre un projet
+      # CIBLE: Frontend (bouton "Rejoindre ce projet")
+      # BDD: INSERT INTO join_requests (statut = en_attente).
+      # RÈGLES: refus 409 si déjà membre, demande en attente existante, projet `termine` ou équipe complète.
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DemandeAdhesionCreate' }
+      responses:
+        '201':
+          description: Demande envoyée
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemandeAdhesion' }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409': { description: "Déjà membre, demande déjà en attente, projet terminé ou équipe complète" }
+        '419': { $ref: '#/components/responses/CsrfMismatchError' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequestsError' }
+    get:
+      tags: [Équipes]
+      x-priorite: P0
+      summary: Demandes d'adhésion reçues par un projet
+      # CIBLE: Frontend (onglet "Demandes" du propriétaire)
+      # AUTORISATION: propriétaire du projet uniquement.
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - name: statut
+          in: query
+          schema: { type: string, enum: [en_attente, acceptee, refusee], default: en_attente }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+      responses:
+        '200':
+          description: Demandes paginées
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemandePage' }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+
+  /join-requests/{id}:
+    patch:
+      tags: [Équipes]
+      x-priorite: P0
+      summary: Accepter ou refuser une demande d'adhésion
+      # CIBLE: Frontend (boutons Accepter / Refuser du propriétaire)
+      # AUTORISATION: propriétaire du projet concerné.
+      # BDD: UPDATE join_requests SET statut, traitee_at ; si acceptée INSERT INTO project_members (transaction).
+      # RÈGLES: demande déjà traitée -> 409 ; équipe complète au moment d'accepter -> 409.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DemandeDecision' }
+      responses:
+        '200':
+          description: Décision enregistrée
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemandeAdhesion' }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409': { description: "Demande déjà traitée ou équipe complète" }
+        '419': { $ref: '#/components/responses/CsrfMismatchError' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequestsError' }
+    delete:
+      tags: [Équipes]
+      x-priorite: P0
+      summary: Annuler ma demande d'adhésion en attente
+      # AUTORISATION: auteur de la demande uniquement. Seules les demandes `en_attente` peuvent être annulées.
+      # BDD: DELETE FROM join_requests.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '204': { description: Demande annulée }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409': { description: Demande déjà traitée }
+        '419': { $ref: '#/components/responses/CsrfMismatchError' }
+        '429': { $ref: '#/components/responses/TooManyRequestsError' }
+
+  /me/join-requests:
+    get:
+      tags: [Équipes]
+      x-priorite: P0
+      summary: Mes demandes d'adhésion envoyées
+      # CIBLE: Frontend (page "Mes demandes")
+      parameters:
+        - name: statut
+          in: query
+          schema: { type: string, enum: [en_attente, acceptee, refusee] }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+      responses:
+        '200':
+          description: Demandes paginées
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemandePage' }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+
+  /projects/{id}/members:
+    get:
+      tags: [Équipes]
+      x-priorite: P0
+      summary: Membres de l'équipe d'un projet
+      # CIBLE: Frontend (onglet "Équipe")
+      # BDD: SELECT FROM project_members JOIN users.
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: Liste des membres
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Membre' } }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+
+  /projects/{id}/members/{userId}:
+    delete:
+      tags: [Équipes]
+      x-priorite: P0
+      summary: Retirer un membre ou quitter le projet
+      # AUTORISATION: le propriétaire peut retirer n'importe quel membre ; un membre peut uniquement se retirer lui-même.
+      # RÈGLE: le propriétaire ne peut pas quitter son propre projet (409) : il doit le supprimer.
+      # BDD: DELETE FROM project_members.
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - name: userId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '204': { description: Membre retiré }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409': { description: Le propriétaire ne peut pas quitter son projet }
+        '419': { $ref: '#/components/responses/CsrfMismatchError' }
+        '429': { $ref: '#/components/responses/TooManyRequestsError' }
+
+  # === MESSAGERIE PROJET ===
+  /projects/{id}/messages:
+    get:
+      tags: [Messagerie projet]
+      x-priorite: P0
+      summary: Lire la discussion du projet
+      # CIBLE: Frontend (onglet "Discussion").
+      # POLLING (toutes les 5 s) : apres_id = dernier id affiché, depuis = meta.server_time du tour précédent.
+      #   Le front ajoute `data` et retire les ids listés dans `supprimes`.
+      # AUTORISATION: membres du projet uniquement (Policy).
+      # BDD: messages non supprimés selon le curseur ; supprimes = ids soft-deleted dont deleted_at >= depuis.
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - name: apres_id
+          in: query
+          description: Ne renvoyer que les messages dont l'id est supérieur (récupération des nouveaux messages)
+          schema: { type: integer }
+        - name: avant_id
+          in: query
+          description: Ne renvoyer que les messages dont l'id est inférieur (chargement de l'historique)
+          schema: { type: integer }
+        - name: depuis
+          in: query
+          description: Date ISO 8601 (valeur de meta.server_time reçue au précédent appel). Sert à remplir `supprimes`.
+          schema: { type: string, format: date-time }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+      responses:
+        '200':
+          description: Messages triés du plus ancien au plus récent, plus les ids supprimés depuis `depuis`
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MessageFil' }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    post:
+      tags: [Messagerie projet]
+      x-priorite: P0
+      summary: Envoyer un message dans la discussion du projet
+      # AUTORISATION: membres du projet uniquement.
+      # BDD: INSERT INTO messages.
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MessageCreate' }
+      responses:
+        '201':
+          description: Message envoyé
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Message' }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '419': { $ref: '#/components/responses/CsrfMismatchError' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequestsError' }
+
+  /projects/{id}/messages/{messageId}:
+    delete:
+      tags: [Messagerie projet]
+      x-priorite: P0
+      summary: Supprimer un message
+      # AUTORISATION: auteur du message ou propriétaire du projet.
+      # BDD: suppression logique (soft delete, deleted_at). Les autres clients le voient via `supprimes`
+      #      au prochain poll qui envoie `depuis`.
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - name: messageId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '204': { description: Message supprimé }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '419': { $ref: '#/components/responses/CsrfMismatchError' }
+        '429': { $ref: '#/components/responses/TooManyRequestsError' }
+
+  # === RESSOURCES ===
+  /resources:
+    get:
+      tags: [Ressources]
+      x-priorite: P0
+      summary: Bibliothèque de ressources (publiques + celles de mes projets)
+      # CIBLE: Frontend (page "Bibliothèque", onglet "Ressources" d'un projet via projet_id)
+      # RÈGLE: renvoie les ressources publiques et les ressources de projets dont je suis membre.
+      #   Avec projet_id : uniquement celles du projet (403 si je n'en suis pas membre).
+      # NOTE FRONT: pour les tableaux, sérialiser en competence_ids[]=1&competence_ids[]=2.
+      parameters:
+        - name: q
+          in: query
+          description: Recherche texte sur le titre et la description
+          schema: { type: string }
+        - name: type
+          in: query
+          schema: { $ref: '#/components/schemas/TypeRessource' }
+        - name: competence_ids
+          in: query
+          schema: { type: array, items: { type: integer } }
+        - name: projet_id
+          in: query
+          schema: { type: integer }
+        - name: auteur_id
+          in: query
+          schema: { type: integer }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+      responses:
+        '200':
+          description: Ressources paginées
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RessourcePage' }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+    post:
+      tags: [Ressources]
+      x-priorite: P0
+      summary: Partager une ressource (code, lien, tutoriel, API, document)
+      # CIBLE: Frontend (formulaire "Partager une ressource")
+      # BDD: INSERT INTO resources + resource_skill. Fichier sur le disque persistant du VPS (storage/app).
+      # RÈGLE: type = document => fichier obligatoire (422). Au-dessus de 10 Mo : 422 sur fichier. Au-dessus de 16 Mo : 413.
+      # RÈGLE: visibilite omise + projet_id => défaut `projet`.
+      # NOTE: utiliser multipart/form-data si un fichier est joint, sinon application/json.
+      # SERVEUR: upload_max_filesize=12M, post_max_size=16M, nginx client_max_body_size 16m.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RessourceCreate' }
+          multipart/form-data:
+            schema: { $ref: '#/components/schemas/RessourceCreate' }
+      responses:
+        '201':
+          description: Ressource publiée
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ressource' }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '413': { $ref: '#/components/responses/PayloadTooLargeError' }
+        '419': { $ref: '#/components/responses/CsrfMismatchError' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequestsError' }
+
+  /resources/{id}:
+    get:
+      tags: [Ressources]
+      x-priorite: P0
+      summary: Détail d'une ressource
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Détail de la ressource
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ressource' }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    patch:
+      tags: [Ressources]
+      x-priorite: P0
+      summary: Modifier une ressource
+      # AUTORISATION: auteur de la ressource ou propriétaire du projet lié.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RessourceUpdate' }
+      responses:
+        '200':
+          description: Ressource mise à jour
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ressource' }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '419': { $ref: '#/components/responses/CsrfMismatchError' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequestsError' }
+    delete:
+      tags: [Ressources]
+      x-priorite: P0
+      summary: Supprimer une ressource
+      # AUTORISATION: auteur de la ressource ou propriétaire du projet lié.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '204': { description: Ressource supprimée }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '419': { $ref: '#/components/responses/CsrfMismatchError' }
+        '429': { $ref: '#/components/responses/TooManyRequestsError' }
+
+  /resources/{id}/file:
+    get:
+      tags: [Ressources]
+      x-priorite: P0
+      summary: Télécharger le fichier d'une ressource
+      # AUTORISATION: session obligatoire. visibilite = projet => membre du projet uniquement (403 sinon).
+      # Le fichier est sur le disque privé. Cette route le sert après vérification. /storage/ressources/ est refusé.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Fichier binaire
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+
+  /resources/{id}/comments:
+    get:
+      tags: [Ressources]
+      x-priorite: P1
+      summary: Commentaires d'une ressource
+      # CIBLE: Frontend (fil de commentaires sous la ressource)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+      responses:
+        '200':
+          description: Commentaires paginés
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommentairePage' }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    post:
+      tags: [Ressources]
+      x-priorite: P1
+      summary: Commenter ou proposer une amélioration sur une ressource
+      # AUTORISATION: tout membre connecté pour une ressource publique ; membres du projet pour une ressource de projet.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CommentaireCreate' }
+      responses:
+        '201':
+          description: Commentaire publié
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Commentaire' }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '419': { $ref: '#/components/responses/CsrfMismatchError' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequestsError' }
+
+  /comments/{id}:
+    delete:
+      tags: [Ressources]
+      x-priorite: P1
+      summary: Supprimer un commentaire
+      # AUTORISATION: auteur du commentaire ou auteur de la ressource commentée.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '204': { description: Commentaire supprimé }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '419': { $ref: '#/components/responses/CsrfMismatchError' }
+        '429': { $ref: '#/components/responses/TooManyRequestsError' }
+
+  /stats:
+    get:
+      tags: [Dashboard]
+      x-priorite: P1
+      summary: Chiffres d'impact de la plateforme (page d'accueil et pitch)
+      security: []
+      # CIBLE: Frontend (page d'accueil, sans connexion, pour le jury)
+      # BDD: quatre COUNT. Cache 5 minutes (Cache::remember). throttle: 60 requêtes par minute.
+      # Agrégats uniquement, aucune donnée personnelle.
+      # Équipe formée = projet non supprimé ayant au moins 2 membres (le créateur compte).
+      responses:
+        '200':
+          description: Statistiques globales
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Stats' }
+        '429': { $ref: '#/components/responses/TooManyRequestsError' }
+
+  # === DASHBOARD ===
+  /me/dashboard:
+    get:
+      tags: [Dashboard]
+      x-priorite: P1
+      summary: Synthèse du tableau de bord de l'utilisateur connecté
+      # CIBLE: Frontend (page Dashboard après connexion). Bonus P1 : se coupe en premier si retard.
+      # BDD: agrégats sur project_members, join_requests et follows (un seul appel pour limiter les requêtes du front).
+      # Tant que le follow n'est pas livré, followers_count et following_count valent 0.
+      # REPLI SI NON LIVRÉ : le front construit le tableau de bord avec des routes P0 :
+      #   GET /me/projects (mes projets) et GET /me/join-requests (mes demandes envoyées).
+      #   Les demandes reçues se lisent via GET /projects/{id}/join-requests, projet par projet.
+      #   Le front bascule sur GET /me/dashboard dès qu'il est livré.
+      responses:
+        '200':
+          description: Données de synthèse
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Dashboard' }
+        '401': { $ref: '#/components/responses/UnauthenticatedError' }

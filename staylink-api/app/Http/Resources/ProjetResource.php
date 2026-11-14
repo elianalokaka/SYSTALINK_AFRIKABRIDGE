@@ -1,0 +1,56 @@
+<?php
+
+namespace App\Http\Resources;
+
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
+
+class ProjetResource extends JsonResource
+{
+    public function toArray(Request $request): array
+    {
+        $createur = $this->createur;
+
+        return [
+            'id' => $this->id,
+            'nom' => $this->nom,
+            'description' => $this->description,
+            'objectifs' => $this->objectifs,
+            'domaines' => $this->domaines
+                ->pluck('domaine')
+                ->values()
+                ->all(),
+            'statut' => $this->statut,
+            'progression' => (int) $this->progression,
+            'nombre_membres_souhaite' => $this->nombre_max_membres,
+            'nombre_membres_actuel' => (int) ($this->participations_count ?? $this->participations()->count()),
+            'competences_recherchees' => $this->competences
+                ->map(fn ($competence) => [
+                    'id' => $competence->id,
+                    'nom' => $competence->nom,
+                    'categorie' => $competence->categorie,
+                ])
+                ->values()
+                ->all(),
+            'createur' => array_filter([
+                'id' => $createur->id,
+                'nom' => trim($createur->prenom.' '.$createur->nom),
+                'photo_url' => $createur->photo_profil
+                    ? asset('storage/'.$createur->photo_profil)
+                    : null,
+                'pays' => $createur->pays,
+                'role_profil' => $createur->role_profil ?: null,
+            ], fn ($valeur, $cle) => $cle !== 'role_profil' || $valeur !== null, ARRAY_FILTER_USE_BOTH),
+            'lien_realisation' => $this->lien_realisation,
+            'date_fin' => $this->date_fin?->toDateString(),
+            'is_member' => array_key_exists('is_member', $this->resource->getAttributes())
+                ? (bool) $this->is_member
+                : ($this->relationLoaded('membres')
+                    ? $this->membres->contains('id', $request->user()?->id)
+                    : true),
+            'ma_demande_statut' => $this->ma_demande_statut,
+            'created_at' => $this->created_at?->toISOString(),
+            'updated_at' => $this->updated_at?->toISOString(),
+        ];
+    }
+}

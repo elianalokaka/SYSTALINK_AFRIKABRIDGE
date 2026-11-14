@@ -18,10 +18,15 @@ class InscriptionService
         array $donnees,
         Request $request
     ): Utilisateur {
+        [$prenom, $nom] = Utilisateur::decomposerNomComplet(
+            $donnees['nom'],
+            $donnees['prenom'] ?? null
+        );
+
         // Créer l'utilisateur dans PostgreSQL.
         $utilisateur = Utilisateur::create([
-            'nom' => $donnees['nom'],
-            'prenom' => $donnees['prenom'],
+            'nom' => $nom,
+            'prenom' => $prenom,
             'email' => $donnees['email'],
             'mot_de_passe' => $donnees['mot_de_passe'],
             'pays' => $donnees['pays'],

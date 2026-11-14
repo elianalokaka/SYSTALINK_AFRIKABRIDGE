@@ -6,28 +6,38 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Projet extends Model
 {
+    use SoftDeletes;
+
     protected $table = 'projets';
 
     protected $fillable = [
+        'createur_id',
         'nom',
         'description',
         'domaine',
         'objectifs',
         'nombre_max_membres',
+        'statut',
+        'progression',
+        'date_fin',
+        'lien_realisation',
+
     ];
 
     protected $attributes = [
-        'statut' => 'ouvert',
+        'statut' => 'recrutement',
     ];
 
     protected function casts(): array
     {
         return [
             'nombre_max_membres' => 'integer',
+            'progression' => 'integer',
+            'date_fin' => 'date',
         ];
     }
 
@@ -53,6 +63,11 @@ class Projet extends Model
             'projet_id',
             'competence_id'
         );
+    }
+
+    public function domaines(): HasMany
+    {
+        return $this->hasMany(ProjetDomaine::class, 'projet_id');
     }
 
     /**
@@ -104,7 +119,6 @@ class Projet extends Model
             'projet_id'
         );
     }
-
 
     /**
      * Messages de discussion du projet.
