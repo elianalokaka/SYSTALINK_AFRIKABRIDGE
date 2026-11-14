@@ -3,8 +3,8 @@ import { useQuery } from '@tanstack/react-query'
 import { Badge, Button, Card, CardCorps, CardEntete, EmptyState, SkeletonTexte } from '../../components/ui'
 import { listerRessources } from '../../api/ressources'
 import { ErreurApi } from '../../api/erreurs'
-import { LIBELLES_TYPE_RESSOURCE, LIBELLES_VISIBILITE_RESSOURCE } from '../../lib/labels'
-import { dateCourte } from './outils'
+import { useLibelles } from '../../lib/labels'
+import { useDates, useI18n } from '../../i18n'
 
 /**
  * Onglet « Ressources » d'un projet — réservé aux membres.
@@ -13,6 +13,9 @@ import { dateCourte } from './outils'
  * PAS une erreur d'interface (A-8) → section vide, sans alerte.
  */
 export function OngletRessources({ projetId }: { projetId: number }) {
+  const { t } = useI18n()
+  const { date } = useDates()
+  const L = useLibelles()
   const requete = useQuery({
     queryKey: ['ressources-projet', projetId],
     queryFn: () => listerRessources({ projet_id: projetId, per_page: 50 }),
@@ -35,29 +38,29 @@ export function OngletRessources({ projetId }: { projetId: number }) {
   return (
     <Card>
       <CardEntete
-        titre="Ressources du projet"
+        titre={t('ongletRessources.titre')}
         compteur={liste.length}
         action={
           <Link to={`/ressources/nouveau?projet=${projetId}`}>
-            <Button taille="sm">Partager ici</Button>
+            <Button taille="sm">{t('ongletRessources.partagerIci')}</Button>
           </Link>
         }
       />
       <CardCorps className="flex flex-col gap-2">
         {requete.isError && !interdit ? (
           <EmptyState
-            titre="Impossible de charger les ressources"
-            description="Vérifie ta connexion puis réessaie."
+            titre={t('ongletRessources.chargementImpossible')}
+            description={t('commun.verifierConnexion')}
             action={
               <Button variante="secondaire" onClick={() => void requete.refetch()}>
-                Réessayer
+                {t('commun.reessayer')}
               </Button>
             }
           />
         ) : liste.length === 0 ? (
           <EmptyState
-            titre="Aucune ressource pour l'instant"
-            description="Partage un lien, un extrait de code ou un document avec ton équipe."
+            titre={t('ongletRessources.videTitre')}
+            description={t('ongletRessources.videTexte')}
           />
         ) : (
           liste.map((ressource) => (
@@ -69,14 +72,14 @@ export function OngletRessources({ projetId }: { projetId: number }) {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-fg-1">{ressource.titre}</p>
                 <p className="truncate text-xs text-fg-3">
-                  {ressource.auteur.nom} · {dateCourte(ressource.created_at)}
+                  {ressource.auteur.nom} · {date(ressource.created_at)}
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-1.5">
                 {ressource.visibilite === 'publique' && (
-                  <Badge variante="neutre">{LIBELLES_VISIBILITE_RESSOURCE.publique}</Badge>
+                  <Badge variante="neutre">{L.visibilite.publique}</Badge>
                 )}
-                <Badge variante="accent">{LIBELLES_TYPE_RESSOURCE[ressource.type]}</Badge>
+                <Badge variante="accent">{L.typeRessource[ressource.type]}</Badge>
               </div>
             </Link>
           ))

@@ -80,6 +80,7 @@ ils servent de référence dans les échanges avec le backend et dans les tests.
 | `A-20` | 🟢 | Suivi entre développeurs | 409 = succès, optimiste, listes sans bouton, « mon » réseau via `GET /users/{moi}` | moyen |
 | `A-21` | 🟢 | Commentaires d'une ressource | récents d'abord, suppression en 2 temps en ligne, 403 = section réservée | moyen |
 | `A-22` | 🟢 | Finitions UX (focus erreur, confirmation, mot de passe) | purement front, aucune route ni contrat touchés | aucun |
+| `A-23` | 🟢 | Interface bilingue FR / EN | choix d'affichage du front ; aucune route ni champ touchés ; erreurs serveur restent telles quelles | aucun |
 | `V-1` | 🔴 | **Redemande après départ ou refus** | autorisée | **critique** |
 | `V-2` | 🔴 | `ma_demande_statut` après départ | redevient `null` | **critique** |
 | `V-3` | 🔴 | Tri réel des listes | confirmé par le backend | faible |
@@ -96,6 +97,7 @@ ils servent de référence dans les échanges avec le backend et dans les tests.
 | `V-14` | 🔴 | `GET /users/{id}` avec MON id | autorisé, compteurs exacts | moyen |
 | `V-15` | 🔴 | Ordre des commentaires | plus récent d'abord | moyen |
 | `V-16` | 🔴 | `commentaires_count` d'une ressource | exact après chaque écriture, aussi dans `GET /resources` | moyen |
+| `V-17` | 🔴 | Langue des textes renvoyés par le serveur | messages `errors.*` en français ; noms de compétences / domaines : une seule langue ou un champ par langue ? | faible |
 
 ---
 
@@ -418,6 +420,17 @@ une région `status`. Sur les cartes, le bouton n'est jamais dans le lien (lien 
 
 **Pilotage** : `priorites.commentaires`. À `false` : aucune section, aucun compteur, aucune requête `/comments`.
 
+### A-23 — Interface bilingue (français / anglais)
+
+**Décision** : le front propose deux langues ; la langue est mémorisée côté navigateur et **n'est jamais envoyée** au
+serveur. Aucune route, aucun champ, aucun enum n'est touché : les valeurs échangées (`pays` = ISO, `domaine`, `statut`,
+`type`…) restent les mêmes dans les deux langues, seul leur **libellé** change à l'affichage.
+
+- Les contenus saisis par les utilisateurs ne sont pas traduits.
+- Les messages de validation du serveur restent en français (choix assumé).
+- Les noms de compétences sont traduits **côté front** par un dictionnaire indexé sur le nom renvoyé par l'API, avec repli
+  sur ce nom : une compétence inconnue s'affiche telle que le serveur la nomme, sans erreur.
+
 ### A-22 — Finitions UX (passe finale)
 
 **Décision** : ces trois ajouts sont **purement côté front** ; ils ne changent ni une route, ni un champ, ni un code HTTP.
@@ -578,6 +591,13 @@ dans `GET /resources`, `GET /resources/{id}` et les réponses de création / mod
 après chaque `POST` / `DELETE` de commentaire. Un compteur figé fausserait l'affichage sans erreur visible.
 **À confirmer**, avec la règle d'autorisation : une ressource **publique** liée à un projet est commentable
 par tout membre connecté ; une ressource **réservée** (`visibilite: projet`) l'est par les membres du projet.
+
+### V-17 — Langue des textes renvoyés par le serveur 🔴
+
+Le front est bilingue (`A-23`). Deux points à confirmer avec le backend : (1) les messages `errors.*` restent-ils en
+français quelle que soit la langue choisie ? (acceptable pour la démonstration) ; (2) les noms de compétences et de
+domaines sont-ils stables (le front les traduit à partir de leur nom français) ? Si le backend les renomme, il suffit
+d'ajuster le dictionnaire de traduction des compétences — aucune autre conséquence.
 
 ---
 

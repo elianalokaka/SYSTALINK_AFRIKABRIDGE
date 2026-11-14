@@ -714,6 +714,42 @@ Le flux « mocks → vrai backend » du §1 suffit pour que les appels partent v
 6. Ressource d'équipe, compte non membre : pas d'accès à la ressource ; appel direct à `/comments` → `403`.
 7. Plus de 10 commentaires : pagination « Page 1 / 2 » ; supprimer le dernier de la page 2 ramène à la page 1.
 
+## 10. Interface bilingue (français / anglais)
+
+**Rien à brancher côté backend** : la langue est un pur choix d'affichage du front. Elle est mémorisée dans le navigateur
+(`localStorage`, clé `africabridge_langue`, défaut `fr`) et **aucune requête ne change** — mêmes routes, mêmes champs,
+mêmes enums. Ce que le serveur renvoie (messages de validation `errors.*`, noms de compétences, de domaines…) est
+affiché tel quel.
+
+| Sujet | Où | Règle |
+|---|---|---|
+| Textes de l'interface | `src/i18n/fr.ts` (référence) et `en.ts` | `en.ts` est typé sur les clés de `fr.ts` : une clé oubliée **ne compile pas** |
+| Utiliser une phrase | `const { t } = useI18n()` puis `t('connexion.titre')` | variables `{nom}` ; pluriels `cle_one` / `cle_other` + `{ count }` |
+| Pays | `lib/pays.ts` (`useNomsDePays`, `useNomDePays`) | le code ISO est envoyé, le nom est traduit par `Intl.DisplayNames` |
+| Bouton de langue | `components/layout/SelecteurLangue.tsx` | écrans de connexion / inscription et barre de navigation |
+| Dates | `locale` fournie par `useI18n()` | `fr-FR` / `en-GB` |
+
+**Ajouter une phrase** : (1) la clé et son texte français dans `fr.ts`, (2) la traduction dans `en.ts` (le compilateur
+l'exige), (3) `t('zone.cle')` dans le composant. Ne jamais écrire de texte visible en dur dans un composant.
+
+**Ne se traduit pas** : le contenu écrit par les utilisateurs (bio, descriptions, messages, commentaires), et les
+messages d'erreur du serveur (hypothèse `A-23`, question `V-17`).
+
+**Brancher le vrai backend** : aucune modification attendue. Si le backend souhaite répondre dans la langue de
+l'interface, le front pourra ajouter l'en-tête `Accept-Language` dans `api/client.ts` (une ligne) — non fait tant que
+`V-17` n'est pas tranchée.
+
+### Scénario de test
+
+1. Écran de connexion : cliquer **EN** → tout passe en anglais (titre, champs, boutons, texte de démonstration) ; **FR** revient.
+2. Passer en EN, aller sur **Sign up** : la langue est conservée ; la liste des pays est en anglais et triée.
+3. Se connecter (`aminata@example.com`) : la barre de navigation est en anglais ; le bouton de langue y est aussi.
+4. Réduire la fenêtre à 375 px : le menu mobile contient le bouton de langue sous la liste des liens.
+5. Passer en EN puis parcourir **Accueil, Projets (liste, détail, création), Ressources (liste, détail, commentaires, formulaire), Messagerie** : tout est en anglais, « 1 comment / 2 comments », « Yesterday / Today » ; repasser en FR sans recharger.
+6. Ne **pas** appuyer sur F5 pendant la démonstration (la base simulée se réinitialise).
+
+**Reste en français, volontairement** : contenu saisi par les utilisateurs, données de démonstration (mocks), messages de validation du serveur, page `/atelier` (outil de développement).
+
 ---
 
 *Runbook vivant. Toute divergence constatée et non consignée selon §2 est un écart non traité —

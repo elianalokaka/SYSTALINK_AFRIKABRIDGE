@@ -1,3 +1,4 @@
+import { traduireCourant, type Cle } from '../i18n'
 /**
  * Normalisation des erreurs de l'API.
  *
@@ -87,31 +88,22 @@ export class ErreurApi extends Error {
 export function messageParDefaut(statut: number): string {
   switch (statut) {
     case 0:
-      return 'Serveur injoignable. Vérifie ta connexion.'
     case 400:
-      return 'Requête invalide.'
     case 401:
-      return 'Ta session a expiré. Reconnecte-toi.'
     case 403:
-      return "Tu n'as pas les droits pour cette action."
     case 404:
-      return 'Élément introuvable.'
     case 409:
-      return 'Cette action entre en conflit avec l’état actuel.'
     case 413:
-      return 'Fichier trop volumineux (16 Mo maximum).'
     case 419:
-      return 'Ta session de sécurité a expiré. Réessaie.'
     case 422:
-      return 'Certains champs sont invalides.'
     case 429:
-      return 'Trop de tentatives. Patiente un instant.'
+      return traduireCourant(`http.${statut}` as Cle)
     case 500:
     case 502:
     case 503:
-      return 'Le serveur a rencontré un problème. Réessaie plus tard.'
+      return traduireCourant('http.5xx')
     default:
-      return 'Une erreur est survenue.'
+      return traduireCourant('erreur.survenue')
   }
 }
 
@@ -124,5 +116,5 @@ export function messageParDefaut(statut: number): string {
  */
 export function messageErreur(erreur: unknown, parStatut: Partial<Record<number, string>> = {}): string {
   if (erreur instanceof ErreurApi) return parStatut[erreur.statut] ?? erreur.message
-  return 'Une erreur est survenue.'
+  return traduireCourant('erreur.survenue')
 }

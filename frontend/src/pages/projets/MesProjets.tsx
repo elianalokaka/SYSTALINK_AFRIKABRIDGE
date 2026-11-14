@@ -6,6 +6,7 @@ import { mesProjets } from '../../api/projets'
 import { useDemandesRecues } from '../../features/equipes/useDemandesRecues'
 import type { RoleEquipe } from '../../types'
 import { CarteProjet } from './CarteProjet'
+import { useI18n } from '../../i18n'
 
 type Filtre = 'tous' | RoleEquipe
 
@@ -18,6 +19,7 @@ type Filtre = 'tous' | RoleEquipe
  * qu'une décision l'attend.
  */
 export function MesProjets() {
+  const { t } = useI18n()
   const [filtre, setFiltre] = useState<Filtre>('tous')
   const requete = useQuery({
     queryKey: ['mes-projets', filtre],
@@ -29,21 +31,21 @@ export function MesProjets() {
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold text-fg-1">Mes projets</h1>
+          <h1 className="text-lg font-semibold text-fg-1">{t('mesProjets.titre')}</h1>
           <p className="mt-1 text-sm text-fg-2">
-            {requete.data?.meta.total ?? 0} projet{requete.data?.meta.total === 1 ? '' : 's'}
+            {t('projets.nombre', { count: requete.data?.meta.total ?? 0 })}
           </p>
         </div>
         <Link to="/projets/nouveau">
-          <Button>Créer un projet</Button>
+          <Button>{t('projets.creer')}</Button>
         </Link>
       </div>
 
       <Tabs
         onglets={[
-          { id: 'tous', libelle: 'Tous' },
-          { id: 'proprietaire', libelle: 'Que je possède' },
-          { id: 'membre', libelle: "Que j'ai rejoints" },
+          { id: 'tous', libelle: t('mesProjets.tous') },
+          { id: 'proprietaire', libelle: t('mesProjets.possede') },
+          { id: 'membre', libelle: t('mesProjets.rejoints') },
         ]}
         actif={filtre}
         onChange={(id) => setFiltre(id as Filtre)}
@@ -69,11 +71,11 @@ export function MesProjets() {
       ) : (
         <Card>
           <EmptyState
-            titre="Aucun projet pour l'instant"
-            description="Crée ton premier projet, ou rejoins une équipe qui te ressemble."
+            titre={t('mesProjets.videTitre')}
+            description={t('mesProjets.videTexte')}
             action={
               <Link to="/projets/nouveau">
-                <Button>Créer un projet</Button>
+                <Button>{t('projets.creer')}</Button>
               </Link>
             }
           />

@@ -1,10 +1,4 @@
 import type { StatutProjet } from '../../types'
-import { LIBELLES_STATUT_PROJET } from '../../lib/labels'
-
-/** Libellé affiché d'un statut de projet (imposé par le contrat). */
-export function libelleStatut(statut: StatutProjet): string {
-  return LIBELLES_STATUT_PROJET[statut]
-}
 
 /**
  * Variante de badge associée à un statut.

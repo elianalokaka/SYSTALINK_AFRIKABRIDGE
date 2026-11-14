@@ -22,8 +22,6 @@ export function domaineDe(url: string): string {
   }
 }
 
-export const dateCourte = (iso: string) => new Date(iso).toLocaleDateString('fr-FR')
-
 /** « Le moteur de ce type » : quels champs de contenu un type de ressource porte. */
 export function champsDuType(type: Ressource['type']) {
   return {

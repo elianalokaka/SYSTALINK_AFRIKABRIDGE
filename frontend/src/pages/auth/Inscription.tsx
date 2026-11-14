@@ -3,9 +3,10 @@ import { Link, useNavigate } from 'react-router'
 import { Button, Card, CardCorps, ChampMotDePasse, FormField, Input } from '../../components/ui'
 import { useTitreDocument } from '../../components/layout/useSuiviDeRoute'
 import { ErreurApi } from '../../api/erreurs'
+import { useI18n } from '../../i18n'
 import { MiseEnPageAuth } from './MiseEnPageAuth'
 import { useSession } from '../../features/auth/SessionProvider'
-import { PAYS } from '../../lib/constants'
+import { useNomsDePays } from '../../lib/pays'
 import type { UserRegister } from '../../types'
 
 /**
@@ -20,7 +21,9 @@ import type { UserRegister } from '../../types'
  * pas de seconde étape de connexion.
  */
 export function Inscription() {
-  useTitreDocument('Créer un compte')
+  const { t } = useI18n()
+  const pays = useNomsDePays()
+  useTitreDocument(t('inscription.titre'))
   const { sInscrire } = useSession()
   const navigate = useNavigate()
   const [chargement, setChargement] = useState(false)
@@ -50,7 +53,7 @@ export function Inscription() {
         if (erreur.validation) setErreurs(erreur.erreursParChamp())
         else setErreurGlobale(erreur.message)
       } else {
-        setErreurGlobale('Une erreur inattendue est survenue.')
+        setErreurGlobale(t('erreur.inattendue'))
       }
     } finally {
       setChargement(false)
@@ -60,11 +63,11 @@ export function Inscription() {
   return (
     <MiseEnPageAuth>
         <div className="mb-6">
-          <h1 className="text-lg font-semibold text-fg-1">Créer un compte</h1>
+          <h1 className="text-lg font-semibold text-fg-1">{t('inscription.titre')}</h1>
           <p className="mt-1 text-sm text-fg-2">
-            Déjà membre ?{' '}
+            {t('inscription.dejaMembre')}{' '}
             <Link to="/connexion" className="text-accent hover:text-accent-hover">
-              Connecte-toi
+              {t('inscription.lienConnexion')}
             </Link>
           </p>
         </div>
@@ -72,24 +75,24 @@ export function Inscription() {
         <Card>
           <CardCorps>
             <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
-              <FormField id="nom" label="Nom complet" obligatoire erreur={erreurs.nom}>
+              <FormField id="nom" label={t('inscription.nom')} obligatoire erreur={erreurs.nom}>
                 <Input
                   id="nom"
                   name="nom"
                   autoComplete="name"
-                  placeholder="Eliana Lokoka"
+                  placeholder={t('inscription.nomExemple')}
                   invalide={Boolean(erreurs.nom)}
                   aria-describedby={erreurs.nom ? 'nom-erreur' : undefined}
                 />
               </FormField>
 
-              <FormField id="email" label="Adresse e-mail" obligatoire erreur={erreurs.email}>
+              <FormField id="email" label={t('connexion.email')} obligatoire erreur={erreurs.email}>
                 <Input
                   id="email"
                   type="email"
                   name="email"
                   autoComplete="email"
-                  placeholder="toi@exemple.com"
+                  placeholder={t('connexion.emailExemple')}
                   invalide={Boolean(erreurs.email)}
                   aria-describedby={erreurs.email ? 'email-erreur' : undefined}
                 />
@@ -97,9 +100,9 @@ export function Inscription() {
 
               <FormField
                 id="mot-de-passe"
-                label="Mot de passe"
+                label={t('connexion.motDePasse')}
                 obligatoire
-                aide="8 caractères minimum."
+                aide={t('inscription.motDePasseAide')}
                 erreur={erreurs.mot_de_passe}
               >
                 <ChampMotDePasse
@@ -115,12 +118,12 @@ export function Inscription() {
 
               <FormField
                 id="mot-de-passe-confirmation"
-                label="Confirmer le mot de passe"
+                label={t('inscription.confirmation')}
                 obligatoire
                 erreur={erreurs.mot_de_passe_confirmation}
               >
                 <ChampMotDePasse
-                  nomBascule="Afficher la confirmation du mot de passe"
+                  nomBascule={t('mdp.afficherConfirmation')}
                   id="mot-de-passe-confirmation"
                   name="mot_de_passe_confirmation"
                   autoComplete="new-password"
@@ -133,7 +136,7 @@ export function Inscription() {
                 />
               </FormField>
 
-              <FormField id="pays" label="Pays" obligatoire erreur={erreurs.pays}>
+              <FormField id="pays" label={t('inscription.pays')} obligatoire erreur={erreurs.pays}>
                 <select
                   id="pays"
                   name="pays"
@@ -143,11 +146,11 @@ export function Inscription() {
                   className="h-9 w-full rounded-md border border-border-strong bg-surface-1 px-3 text-sm text-fg-1 aria-[invalid=true]:border-danger"
                 >
                   <option value="" disabled>
-                    Sélectionne ton pays
+                    {t('inscription.paysChoisir')}
                   </option>
-                  {PAYS.map((pays) => (
-                    <option key={pays.code} value={pays.code}>
-                      {pays.nom}
+                  {pays.map((p) => (
+                    <option key={p.code} value={p.code}>
+                      {p.nom}
                     </option>
                   ))}
                 </select>
@@ -163,7 +166,7 @@ export function Inscription() {
               )}
 
               <Button type="submit" chargement={chargement} pleineLargeur>
-                {chargement ? 'Création…' : 'Créer mon compte'}
+                {chargement ? t('inscription.boutonEnCours') : t('inscription.bouton')}
               </Button>
             </form>
           </CardCorps>

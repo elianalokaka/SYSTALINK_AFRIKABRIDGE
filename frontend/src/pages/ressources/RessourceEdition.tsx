@@ -4,9 +4,11 @@ import { Button, Card, CardCorps, EmptyState, SkeletonTexte } from '../../compon
 import { detailRessource } from '../../api/ressources'
 import { useSession } from '../../features/auth/SessionProvider'
 import { FormulaireRessource } from './FormulaireRessource'
+import { useI18n } from '../../i18n'
 
 /** « Modifier une ressource » — l'accès réel est contrôlé par le serveur (403). */
 export function RessourceEdition() {
+  const { t } = useI18n()
   const { id } = useParams()
   const navigate = useNavigate()
   const { profil } = useSession()
@@ -29,11 +31,11 @@ export function RessourceEdition() {
   if (!requete.data) {
     return (
       <EmptyState
-        titre="Ressource introuvable"
-        description="Elle n'existe plus, ou tu n'y as pas accès."
+        titre={t('ressource.introuvableTitre')}
+        description={t('ressourceEdition.introuvableTexte')}
         action={
           <Button variante="secondaire" onClick={() => navigate('/ressources')}>
-            Retour à la bibliothèque
+            {t('ressource.retourBibliotheque')}
           </Button>
         }
       />

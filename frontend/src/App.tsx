@@ -22,6 +22,7 @@ import { ProjetDetail } from './pages/projets/ProjetDetail'
 import { ProjetEdition } from './pages/projets/ProjetEdition'
 import { Projets } from './pages/projets/Projets'
 import { PageIntrouvable } from './pages/PageIntrouvable'
+import { I18nProvider } from './i18n'
 
 /**
  * Configuration globale de TanStack Query.
@@ -44,6 +45,7 @@ const queryClient = new QueryClient({
  */
 function App() {
   return (
+    <I18nProvider>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <SessionProvider>
@@ -81,6 +83,7 @@ function App() {
         </SessionProvider>
       </BrowserRouter>
     </QueryClientProvider>
+    </I18nProvider>
   )
 }
 

@@ -6,12 +6,11 @@ import { commentaires, commenter, supprimerCommentaire } from '../../api/comment
 import { ErreurApi, messageErreur } from '../../api/erreurs'
 import { useSession } from '../../features/auth/SessionProvider'
 import { rafraichirCommentaires } from '../../lib/cache'
-import { LIBELLES_ROLE_PROFIL } from '../../lib/labels'
+import { useLibelles } from '../../lib/labels'
 import type { Ressource } from '../../types'
 import { LONGUEUR_MAX_COMMENTAIRE } from './commentaires'
-import { dateCourte } from './outils'
+import { useDates, useI18n } from '../../i18n'
 
-const heure = (iso: string) => new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 const PAR_PAGE = 10
 
 /**
@@ -25,6 +24,9 @@ const PAR_PAGE = 10
  * - Tri : hypothèse A-1 (plus récent en premier) — jamais retrié côté front.
  */
 export function FilCommentaires({ ressource }: { ressource: Ressource }) {
+  const { t } = useI18n()
+  const { date, heure } = useDates()
+  const L = useLibelles()
   const queryClient = useQueryClient()
   const { profil: moi } = useSession()
   const estAuteurRessource = moi?.id === ressource.auteur.id
@@ -46,7 +48,7 @@ export function FilCommentaires({ ressource }: { ressource: Ressource }) {
     onSuccess: () => {
       setTexte('')
       setPage(1)
-      setAnnonce('Commentaire publié.')
+      setAnnonce(t('commentaires.publie'))
       rafraichirCommentaires(queryClient)
     },
   })
@@ -57,7 +59,7 @@ export function FilCommentaires({ ressource }: { ressource: Ressource }) {
       /* Dernier élément d'une page > 1 : on recule d'une page au lieu d'afficher une page vide. */
       if (page > 1 && (requete.data?.data.length ?? 0) <= 1) setPage(page - 1)
       setAConfirmer(null)
-      setAnnonce('Commentaire supprimé.')
+      setAnnonce(t('commentaires.supprime'))
       rafraichirCommentaires(queryClient)
     },
   })
@@ -81,25 +83,25 @@ export function FilCommentaires({ ressource }: { ressource: Ressource }) {
 
   return (
     <Card>
-      <CardEntete titre="Commentaires" compteur={interdit ? undefined : total} />
+      <CardEntete titre={t('commentaires.titre')} compteur={interdit ? undefined : total} />
       <CardCorps className="flex flex-col gap-5">
         {interdit ? (
-          <p className="text-sm text-fg-3">Les commentaires de cette ressource sont réservés à son équipe.</p>
+          <p className="text-sm text-fg-3">{t('commentaires.reserves')}</p>
         ) : (
           <>
             <form onSubmit={onPublier} className="flex flex-col gap-3" noValidate>
               <FormField
                 id="nouveau-commentaire"
-                label="Ton commentaire"
+                label={t('commentaires.label')}
                 erreur={erreurContenu}
-                aide={`${texte.length} / ${LONGUEUR_MAX_COMMENTAIRE} caractères`}
+                aide={t('commentaires.compteur', { n: texte.length, max: LONGUEUR_MAX_COMMENTAIRE })}
               >
                 <Textarea
                   id="nouveau-commentaire"
                   rows={3}
                   value={texte}
                   maxLength={LONGUEUR_MAX_COMMENTAIRE}
-                  placeholder="Pose une question ou propose une amélioration…"
+                  placeholder={t('commentaires.placeholder')}
                   invalide={Boolean(erreurContenu)}
                   aria-describedby={erreurContenu ? 'nouveau-commentaire-erreur' : 'nouveau-commentaire-aide'}
                   onChange={(e) => setTexte(e.target.value)}
@@ -107,12 +109,12 @@ export function FilCommentaires({ ressource }: { ressource: Ressource }) {
               </FormField>
               {erreurPublication && !erreurContenu && (
                 <p role="alert" className="text-sm text-danger">
-                  {messageErreur(erreurPublication, { 403: 'Tu ne peux pas commenter cette ressource.', 404: 'Cette ressource n’existe plus.' })}
+                  {messageErreur(erreurPublication, { 403: t('commentaires.interditCommenter'), 404: t('commentaires.ressourceDisparue') })}
                 </p>
               )}
               <div>
                 <Button type="submit" chargement={publication.isPending} disabled={texte.trim() === '' || trop}>
-                  Publier
+                  {t('commentaires.publier')}
                 </Button>
               </div>
             </form>
@@ -121,11 +123,11 @@ export function FilCommentaires({ ressource }: { ressource: Ressource }) {
               <SkeletonTexte lignes={3} />
             ) : requete.isError && !requete.data ? (
               <EmptyState
-                titre="Impossible de charger les commentaires"
-                description="Vérifie ta connexion puis réessaie."
+                titre={t('commentaires.chargementImpossible')}
+                description={t('commun.verifierConnexion')}
                 action={
                   <Button variante="secondaire" onClick={() => void requete.refetch()}>
-                    Réessayer
+                    {t('commun.reessayer')}
                   </Button>
                 }
               />
@@ -143,9 +145,9 @@ export function FilCommentaires({ ressource }: { ressource: Ressource }) {
                             <Link to={`/talents/${commentaire.auteur.id}`} className="py-1 text-sm font-semibold text-fg-1 hover:text-accent">
                               {commentaire.auteur.nom}
                             </Link>
-                            <span className="text-xs text-fg-3">{LIBELLES_ROLE_PROFIL[commentaire.auteur.role_profil]}</span>
+                            <span className="text-xs text-fg-3">{L.role[commentaire.auteur.role_profil]}</span>
                             <span className="text-xs tabular-nums text-fg-3">
-                              le {dateCourte(commentaire.created_at)} à {heure(commentaire.created_at)}
+                              {t('commentaires.dateHeure', { date: date(commentaire.created_at), heure: heure(commentaire.created_at) })}
                             </span>
                           </div>
                           <p className="mt-1 whitespace-pre-wrap break-words text-sm text-fg-1">{commentaire.contenu}</p>
@@ -160,28 +162,28 @@ export function FilCommentaires({ ressource }: { ressource: Ressource }) {
                                     chargement={suppression.isPending}
                                     onClick={() => suppression.mutate(commentaire.id)}
                                   >
-                                    Confirmer la suppression
+                                    {t('commentaires.confirmerSuppression')}
                                   </Button>
                                   <Button taille="sm" variante="discret" onClick={() => setAConfirmer(null)}>
-                                    Annuler
+                                    {t('commentaires.annuler')}
                                   </Button>
                                 </>
                               ) : (
                                 <Button
                                   taille="sm"
                                   variante="discret"
-                                  aria-label={`Supprimer le commentaire de ${commentaire.auteur.nom}`}
+                                  aria-label={t('commentaires.supprimerDe', { nom: commentaire.auteur.nom })}
                                   onClick={() => {
                                     suppression.reset()
                                     setAConfirmer(commentaire.id)
                                   }}
                                 >
-                                  Supprimer
+                                  {t('commentaires.supprimer')}
                                 </Button>
                               )}
                               {enConfirmation && suppression.isError && (
                                 <span role="alert" className="text-xs text-danger">
-                                  {messageErreur(suppression.error, { 403: 'Tu ne peux pas supprimer ce commentaire.', 404: 'Ce commentaire n’existe plus.' })}
+                                  {messageErreur(suppression.error, { 403: t('commentaires.suppressionInterdite'), 404: t('commentaires.commentaireDisparu') })}
                                 </span>
                               )}
                             </div>
@@ -193,21 +195,21 @@ export function FilCommentaires({ ressource }: { ressource: Ressource }) {
                 </ul>
 
                 {dernierePage > 1 && (
-                  <nav aria-label="Pagination des commentaires" className="flex items-center justify-between gap-3">
+                  <nav aria-label={t('commentaires.pagination')} className="flex items-center justify-between gap-3">
                     <Button variante="secondaire" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-                      Précédent
+                      {t('commun.precedent')}
                     </Button>
                     <span className="text-sm tabular-nums text-fg-2">
-                      Page {page} / {dernierePage}
+                      {t('commun.page', { page, total: dernierePage })}
                     </span>
                     <Button variante="secondaire" disabled={page >= dernierePage} onClick={() => setPage((p) => p + 1)}>
-                      Suivant
+                      {t('commun.suivant')}
                     </Button>
                   </nav>
                 )}
               </>
             ) : (
-              <p className="text-sm text-fg-3">Aucun commentaire pour l’instant. Sois le premier à réagir.</p>
+              <p className="text-sm text-fg-3">{t('commentaires.aucun')}</p>
             )}
           </>
         )}

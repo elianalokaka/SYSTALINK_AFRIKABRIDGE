@@ -3,7 +3,8 @@ import { Link } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import { Button, Card, CardCorps, EmptyState, Input, SkeletonTexte } from '../../components/ui'
 import { listerProjets } from '../../api/projets'
-import { LISTE_DOMAINES } from '../../lib/labels'
+import { useLibelles } from '../../lib/labels'
+import { useI18n } from '../../i18n'
 import { CarteProjet } from './CarteProjet'
 
 const CLASSE_SELECT = 'h-9 rounded-md border border-border-strong bg-surface-1 px-3 text-sm text-fg-1'
@@ -16,6 +17,8 @@ const CLASSE_SELECT = 'h-9 rounded-md border border-border-strong bg-surface-1 p
  * client : c'est le comportement attendu avec le vrai backend.
  */
 export function Projets() {
+  const { t } = useI18n()
+  const L = useLibelles()
   const [q, setQ] = useState('')
   const [statut, setStatut] = useState('')
   const [domaine, setDomaine] = useState('')
@@ -34,47 +37,47 @@ export function Projets() {
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold text-fg-1">Explorer les projets</h1>
+          <h1 className="text-lg font-semibold text-fg-1">{t('projets.titre')}</h1>
           <p className="mt-1 text-sm text-fg-2">
-            {requete.data?.meta.total ?? 0} projet{requete.data?.meta.total === 1 ? '' : 's'}
+            {t('projets.nombre', { count: requete.data?.meta.total ?? 0 })}
           </p>
         </div>
         <Link to="/projets/nouveau">
-          <Button>Créer un projet</Button>
+          <Button>{t('projets.creer')}</Button>
         </Link>
       </div>
 
       <Card>
         <CardCorps className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
           <Input
-            aria-label="Rechercher un projet"
-            placeholder="Rechercher un projet…"
+            aria-label={t('projets.rechercher')}
+            placeholder={t('projets.rechercherPoints')}
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
           <select
-            aria-label="Filtrer par domaine"
+            aria-label={t('talents.filtrerDomaine')}
             value={domaine}
             onChange={(e) => setDomaine(e.target.value)}
             className={CLASSE_SELECT}
           >
-            <option value="">Tous les domaines</option>
-            {LISTE_DOMAINES.map(([valeur, libelle]) => (
+            <option value="">{t('talents.tousDomaines')}</option>
+            {L.listeDomaines.map(([valeur, libelle]) => (
               <option key={valeur} value={valeur}>
                 {libelle}
               </option>
             ))}
           </select>
           <select
-            aria-label="Filtrer par statut"
+            aria-label={t('projets.filtrerStatut')}
             value={statut}
             onChange={(e) => setStatut(e.target.value)}
             className={CLASSE_SELECT}
           >
-            <option value="">Tous les statuts</option>
-            <option value="recrutement">Ouvert</option>
-            <option value="en_cours">En cours</option>
-            <option value="termine">Terminé</option>
+            <option value="">{t('projets.tousStatuts')}</option>
+            <option value="recrutement">{L.statutProjet.recrutement}</option>
+            <option value="en_cours">{L.statutProjet.en_cours}</option>
+            <option value="termine">{L.statutProjet.termine}</option>
           </select>
         </CardCorps>
       </Card>
@@ -96,11 +99,11 @@ export function Projets() {
       ) : (
         <Card>
           <EmptyState
-            titre="Aucun projet ne correspond"
-            description="Essaie d'élargir tes filtres, ou crée le premier projet."
+            titre={t('projets.aucunTitre')}
+            description={t('projets.aucunTexte')}
             action={
               <Link to="/projets/nouveau">
-                <Button>Créer un projet</Button>
+                <Button>{t('projets.creer')}</Button>
               </Link>
             }
           />

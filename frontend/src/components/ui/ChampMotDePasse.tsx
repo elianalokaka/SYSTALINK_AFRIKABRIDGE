@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useI18n } from '../../i18n'
 import { cn } from '../../lib/cn'
 import { Input, type InputProps } from './Input'
 
@@ -17,21 +18,23 @@ export interface ChampMotDePasseProps extends Omit<InputProps, 'type'> {
  */
 export function ChampMotDePasse({
   className,
-  nomBascule = 'Afficher le mot de passe',
+  nomBascule,
   ...reste
 }: ChampMotDePasseProps) {
+  const { t } = useI18n()
+  const nom = nomBascule ?? t('mdp.afficher')
   const [visible, setVisible] = useState(false)
   return (
     <div className="relative">
       <Input {...reste} type={visible ? 'text' : 'password'} className={cn('pr-24', className)} />
       <button
         type="button"
-        aria-label={nomBascule}
+        aria-label={nom}
         aria-pressed={visible}
         onClick={() => setVisible((v) => !v)}
         className="absolute inset-y-0 right-0 rounded-md px-3 text-xs font-medium text-fg-2 hover:text-fg-1"
       >
-        {visible ? 'Masquer' : 'Afficher'}
+        {visible ? t('commun.masquer') : t('commun.afficher')}
       </button>
     </div>
   )
